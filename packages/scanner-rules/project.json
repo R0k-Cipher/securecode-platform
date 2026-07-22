@@ -1,0 +1,19 @@
+{
+  "name": "scanner-rules",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/scanner-rules/src",
+  "projectType": "library",
+  "tags": ["scope:scanner", "type:rules"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/scanner-rules",
+        "main": "packages/scanner-rules/src/index.ts",
+        "tsConfig": "packages/scanner-rules/tsconfig.lib.json",
+        "assets": ["packages/scanner-rules/*.md"]
+      }
+    }
+  }
+}

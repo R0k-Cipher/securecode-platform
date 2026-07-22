@@ -43,3 +43,57 @@ Thumbs.db
 .nx/migrate-runs
 .claude/worktrees
 .claude/settings.local.json
+
+.angular
+
+/generated/prisma
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Nx
+.nx/
+dist/
+
+# Angular
+.angular/
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# Temporary scan data
+storage/workspaces/*
+!storage/workspaces/.gitkeep
+
+# Generated reports
+storage/reports/*
+!storage/reports/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+
+# Certificates and keys
+*.pem
+*.key
+*.p12
+*.pfx

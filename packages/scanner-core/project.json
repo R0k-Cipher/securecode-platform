@@ -1,0 +1,19 @@
+{
+  "name": "scanner-core",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/scanner-core/src",
+  "projectType": "library",
+  "tags": ["scope:scanner", "type:core"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/scanner-core",
+        "main": "packages/scanner-core/src/index.ts",
+        "tsConfig": "packages/scanner-core/tsconfig.lib.json",
+        "assets": ["packages/scanner-core/*.md"]
+      }
+    }
+  }
+}

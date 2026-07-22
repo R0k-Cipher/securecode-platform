@@ -1,0 +1,19 @@
+{
+  "name": "queue-contracts",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/queue-contracts/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:contracts"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/queue-contracts",
+        "main": "packages/queue-contracts/src/index.ts",
+        "tsConfig": "packages/queue-contracts/tsconfig.lib.json",
+        "assets": ["packages/queue-contracts/*.md"]
+      }
+    }
+  }
+}
