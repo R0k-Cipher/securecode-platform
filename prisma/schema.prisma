@@ -1,12 +1,10 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// ============================================================================
+// SecureCode-AI - Prisma schema
+// Target: PostgreSQL + Prisma ORM 6.x
+// ============================================================================
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -14,12 +12,1056 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model SystemHealth {
-  id        String   @id @default(cuid())
-  service   String   @unique
-  status    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ============================================================================
+// ENUMS - Identity and access
+// ============================================================================
 
-  @@map("system_health")
+enum UserStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  DISABLED
+}
+
+enum TokenType {
+  REFRESH
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  INVITATION
+}
+
+// ============================================================================
+// ENUMS - Organizations and projects
+// ============================================================================
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+  SUSPENDED
+}
+
+// ============================================================================
+// ENUMS - Git integrations
+// ============================================================================
+
+enum GitProvider {
+  GITHUB
+  GITLAB
+}
+
+enum ConnectionStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  ERROR
+}
+
+enum RepositoryVisibility {
+  PRIVATE
+  INTERNAL
+  PUBLIC
+}
+
+enum PullRequestState {
+  OPEN
+  CLOSED
+  MERGED
+}
+
+enum WebhookEventStatus {
+  RECEIVED
+  VERIFIED
+  PROCESSING
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+// ============================================================================
+// ENUMS - Scans and findings
+// ============================================================================
+
+enum ScanType {
+  FULL_SCAN
+  INCREMENTAL_SCAN
+  PULL_REQUEST_SCAN
+  RELEASE_SCAN
+  MANUAL_SCAN
+}
+
+enum ScanTrigger {
+  MANUAL
+  PUSH
+  PULL_REQUEST
+  RELEASE
+  SCHEDULED
+  API
+}
+
+enum ScanStatus {
+  QUEUED
+  PREPARING
+  DOWNLOADING
+  DETECTING
+  SCANNING
+  PROCESSING_RESULTS
+  CALCULATING_SCORE
+  GENERATING_REPORT
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum TechnologyCategory {
+  LANGUAGE
+  FRAMEWORK
+  LIBRARY
+  DATABASE
+  RUNTIME
+  PACKAGE_MANAGER
+  BUILD_TOOL
+  CONTAINER
+  INFRASTRUCTURE
+  OTHER
+}
+
+enum FindingSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FindingStatus {
+  DETECTED
+  TO_REVIEW
+  CONFIRMED
+  FALSE_POSITIVE
+  ASSIGNED
+  IN_PROGRESS
+  READY_FOR_RETEST
+  FIXED
+  REOPENED
+  ACCEPTED_RISK
+  CLOSED
+}
+
+enum VulnerabilityStatus {
+  OPEN
+  IN_PROGRESS
+  MITIGATED
+  ACCEPTED_RISK
+  RESOLVED
+  CLOSED
+}
+
+// ============================================================================
+// ENUMS - OWASP WSTG
+// ============================================================================
+
+enum WstgControlStatus {
+  NOT_STARTED
+  AUTOMATICALLY_TESTED
+  MANUAL_REVIEW_REQUIRED
+  COMPLIANT
+  VULNERABLE
+  PARTIALLY_COMPLIANT
+}
+
+// ============================================================================
+// ENUMS - Reports, audit and notifications
+// ============================================================================
+
+enum ReportStatus {
+  PENDING
+  GENERATING
+  READY
+  FAILED
+  EXPIRED
+}
+
+enum ReportFormat {
+  PDF
+  JSON
+  HTML
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  INVITE
+  ACCEPT_INVITATION
+  CONNECT
+  DISCONNECT
+  SCAN
+  EXPORT
+  DOWNLOAD
+  ASSIGN
+  CHANGE_STATUS
+}
+
+enum NotificationType {
+  SYSTEM
+  INVITATION
+  SCAN_STARTED
+  SCAN_COMPLETED
+  SCAN_FAILED
+  FINDING_ASSIGNED
+  FINDING_UPDATED
+  REPORT_READY
+}
+
+enum RepositorySyncStatus {
+  NOT_SYNCED
+  PENDING
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  SKIPPED
+}
+
+enum RepositorySyncTrigger {
+  INITIAL_IMPORT
+  MANUAL
+  WEBHOOK
+  SCHEDULED
+  RETRY
+}
+
+// ============================================================================
+// IDENTITY AND ACCESS MANAGEMENT
+// ============================================================================
+
+model User {
+  id              String     @id @default(uuid()) @db.Uuid
+  email           String     @unique @db.VarChar(320)
+  passwordHash    String?    @db.VarChar(255)
+  firstName       String     @db.VarChar(100)
+  lastName        String     @db.VarChar(100)
+  avatarUrl       String?    @db.Text
+  status          UserStatus @default(INVITED)
+  emailVerifiedAt DateTime?  @db.Timestamptz(6)
+  lastLoginAt     DateTime?  @db.Timestamptz(6)
+  createdAt       DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime   @updatedAt @db.Timestamptz(6)
+
+  sessions                   Session[]
+  securityTokens             SecurityToken[]
+  createdOrganizations       Organization[]       @relation("OrganizationCreator")
+  organizationMemberships    OrganizationMember[] @relation("OrganizationMemberUser")
+  invitedOrganizationMembers OrganizationMember[] @relation("OrganizationMemberInviter")
+  sentInvitations            Invitation[]         @relation("InvitationSender")
+  createdProjects            Project[]            @relation("ProjectCreator")
+  projectMemberships         ProjectMember[]      @relation("ProjectMemberUser")
+  gitConnections             GitConnection[]      @relation("GitConnectionConnector")
+  
+  createdRepositories Repository[]     @relation("RepositoryCreator")
+  triggeredRepositorySyncs RepositorySync[] @relation("RepositorySyncTriggerUser")
+
+  requestedScans             Scan[]               @relation("ScanRequester")
+  findingComments            FindingComment[]     @relation("FindingCommentAuthor")
+  receivedAssignments        FindingAssignment[]  @relation("FindingAssignee")
+  createdAssignments         FindingAssignment[]  @relation("FindingAssigner")
+  ownedVulnerabilities       Vulnerability[]      @relation("VulnerabilityOwner")
+  requestedReports           Report[]             @relation("ReportRequester")
+  reviewedWstgControls       ProjectWstgControl[] @relation("WstgReviewer")
+  auditLogs                  AuditLog[]           @relation("AuditActor")
+  notifications              Notification[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Session {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @db.Uuid
+  refreshTokenHash String    @unique @db.VarChar(255)
+  ipAddress        String?   @db.VarChar(64)
+  userAgent        String?   @db.Text
+  expiresAt        DateTime  @db.Timestamptz(6)
+  revokedAt        DateTime? @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@map("sessions")
+}
+
+model SecurityToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String?   @db.Uuid
+  type      TokenType
+  tokenHash String    @unique @db.VarChar(255)
+  expiresAt DateTime  @db.Timestamptz(6)
+  usedAt    DateTime? @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId, type])
+  @@index([type, expiresAt])
+  @@map("security_tokens")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique @db.VarChar(100)
+  name        String   @db.VarChar(150)
+  description String?  @db.Text
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  permissions             RolePermission[]
+  organizationMemberships OrganizationMember[]
+  projectMemberships      ProjectMember[]
+  invitations             Invitation[]
+
+  @@index([isSystem])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique @db.VarChar(150)
+  name        String   @db.VarChar(150)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String   @db.Uuid
+  permissionId String   @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+// ============================================================================
+// ORGANIZATIONS AND PROJECTS
+// ============================================================================
+
+model Organization {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @db.VarChar(200)
+  slug        String   @unique @db.VarChar(200)
+  description String?  @db.Text
+  logoUrl     String?  @db.Text
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  createdBy      User                 @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  members        OrganizationMember[]
+  invitations    Invitation[]
+  projects       Project[]
+  gitConnections GitConnection[]
+
+  repositories     Repository[]
+  repositorySyncs  RepositorySync[]
+
+  auditLogs      AuditLog[]
+
+  @@index([createdById])
+  @@index([createdAt])
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  userId         String    @db.Uuid
+  roleId         String    @db.Uuid
+  invitedById    String?   @db.Uuid
+  joinedAt       DateTime? @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user         User         @relation("OrganizationMemberUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  invitedBy    User?        @relation("OrganizationMemberInviter", fields: [invitedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([invitedById])
+  @@map("organization_members")
+}
+
+model Invitation {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  email          String    @db.VarChar(320)
+  roleId         String    @db.Uuid
+  invitedById    String    @db.Uuid
+  tokenHash      String    @unique @db.VarChar(255)
+  expiresAt      DateTime  @db.Timestamptz(6)
+  acceptedAt     DateTime? @db.Timestamptz(6)
+  revokedAt      DateTime? @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  invitedBy    User         @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([organizationId, email])
+  @@index([roleId])
+  @@index([invitedById])
+  @@index([expiresAt])
+  @@map("invitations")
+}
+
+model Project {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @db.Uuid
+  name           String        @db.VarChar(200)
+  slug           String        @db.VarChar(200)
+  description    String?       @db.Text
+  status         ProjectStatus @default(ACTIVE)
+  defaultBranch  String?       @db.VarChar(255)
+  createdById    String        @db.Uuid
+  createdAt      DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(6)
+  archivedAt     DateTime?     @db.Timestamptz(6)
+
+  organization    Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdBy       User                 @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  members         ProjectMember[]
+  repositories    Repository[]
+  scans           Scan[]
+  findings        Finding[]
+  vulnerabilities Vulnerability[]
+  wstgControls    ProjectWstgControl[]
+  reports         Report[]
+  auditLogs       AuditLog[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+  @@index([createdById])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @db.Uuid
+  userId    String   @db.Uuid
+  roleId    String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user    User    @relation("ProjectMemberUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  role    Role    @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("project_members")
+}
+
+// ============================================================================
+// GITHUB / GITLAB INTEGRATIONS
+// ============================================================================
+
+model GitConnection {
+  id                    String           @id @default(uuid()) @db.Uuid
+  organizationId        String           @db.Uuid
+  connectedById         String           @db.Uuid
+  provider              GitProvider
+  externalAccountId     String           @db.VarChar(255)
+  externalAccountName   String?          @db.VarChar(255)
+
+  installationId        String?          @db.VarChar(255)
+  repositorySelection   String?          @db.VarChar(50)
+  permissions           Json?
+
+  encryptedAccessToken  String?          @db.Text
+  encryptedRefreshToken String?          @db.Text
+  tokenExpiresAt        DateTime?        @db.Timestamptz(6)
+
+  status                ConnectionStatus @default(ACTIVE)
+  createdAt             DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime         @updatedAt @db.Timestamptz(6)
+  revokedAt             DateTime?        @db.Timestamptz(6)
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  connectedBy   User           @relation("GitConnectionConnector", fields: [connectedById], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  repositories  Repository[]
+  webhookEvents WebhookEvent[]
+
+  @@unique([organizationId, provider, externalAccountId])
+  @@unique([provider, installationId])
+  @@index([connectedById])
+  @@index([provider, status])
+  @@map("git_connections")
+}
+
+model Repository {
+  id                  String               @id @default(uuid()) @db.Uuid
+  organizationId      String               @db.Uuid
+  projectId           String               @db.Uuid
+  gitConnectionId     String               @db.Uuid
+  createdById         String?              @db.Uuid
+
+  provider            GitProvider
+  externalId          String               @db.VarChar(255)
+  nodeId              String?              @db.VarChar(255)
+
+  owner               String               @db.VarChar(255)
+  name                String               @db.VarChar(255)
+  fullName            String               @db.VarChar(500)
+  description         String?              @db.Text
+
+  defaultBranch       String?              @db.VarChar(255)
+  cloneUrl            String?              @db.Text
+  sshUrl              String?              @db.Text
+  webUrl              String               @db.Text
+
+  visibility          RepositoryVisibility @default(PRIVATE)
+
+  isPrivate           Boolean              @default(true)
+  isFork              Boolean              @default(false)
+  isArchived          Boolean              @default(false)
+
+  primaryLanguage     String?              @db.VarChar(100)
+  lastRemoteCommitSha String?              @db.VarChar(64)
+
+  syncStatus          RepositorySyncStatus @default(NOT_SYNCED)
+  lastSyncedAt        DateTime?            @db.Timestamptz(6)
+
+  createdAt           DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime             @updatedAt @db.Timestamptz(6)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  gitConnection GitConnection @relation(fields: [gitConnectionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  createdBy    User?         @relation("RepositoryCreator", fields: [createdById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  syncs        RepositorySync[]
+  commits      Commit[]
+  pullRequests PullRequest[]
+  releases     Release[]
+  webhookEvents WebhookEvent[]
+  scans        Scan[]
+  findings     Finding[]
+
+  @@unique([gitConnectionId, externalId])
+  @@unique([projectId, fullName])
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([gitConnectionId])
+  @@index([createdById])
+  @@index([syncStatus])
+  @@index([projectId, isArchived])
+  @@index([organizationId, syncStatus])
+
+  @@map("repositories")
+}
+
+model RepositorySync {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @db.Uuid
+  repositoryId   String                @db.Uuid
+  triggeredById  String?               @db.Uuid
+
+  status         RepositorySyncStatus  @default(PENDING)
+  trigger        RepositorySyncTrigger
+
+  branch         String?               @db.VarChar(255)
+  commitSha      String?               @db.VarChar(64)
+
+  queueJobId     String?               @db.VarChar(255)
+  attempt        Int                   @default(0)
+
+  errorMessage   String?               @db.Text
+  metadata       Json?
+
+  startedAt      DateTime?             @db.Timestamptz(6)
+  completedAt    DateTime?             @db.Timestamptz(6)
+  failedAt       DateTime?             @db.Timestamptz(6)
+
+  createdAt      DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime              @updatedAt @db.Timestamptz(6)
+
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  repository     Repository            @relation(fields: [repositoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  triggeredBy    User?                 @relation("RepositorySyncTriggerUser", fields: [triggeredById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([organizationId])
+  @@index([repositoryId])
+  @@index([triggeredById])
+  @@index([status])
+  @@index([repositoryId, status])
+  @@index([createdAt])
+  @@index([queueJobId])
+
+  @@map("repository_syncs")
+}
+
+model Commit {
+  id           String    @id @default(uuid()) @db.Uuid
+  repositoryId String    @db.Uuid
+  externalSha  String    @db.VarChar(64)
+  branch       String?   @db.VarChar(255)
+  message      String?   @db.Text
+  authorName   String?   @db.VarChar(255)
+  authorEmail  String?   @db.VarChar(320)
+  committedAt  DateTime? @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  scans      Scan[]
+
+  @@unique([repositoryId, externalSha])
+  @@index([repositoryId, branch])
+  @@index([committedAt])
+  @@map("commits")
+}
+
+model PullRequest {
+  id            String           @id @default(uuid()) @db.Uuid
+  repositoryId  String           @db.Uuid
+  externalId    String           @db.VarChar(255)
+  number        Int
+  title         String           @db.VarChar(500)
+  sourceBranch  String           @db.VarChar(255)
+  targetBranch  String           @db.VarChar(255)
+  authorName    String?          @db.VarChar(255)
+  state         PullRequestState @default(OPEN)
+  headCommitSha String?          @db.VarChar(64)
+  baseCommitSha String?          @db.VarChar(64)
+  openedAt      DateTime?        @db.Timestamptz(6)
+  closedAt      DateTime?        @db.Timestamptz(6)
+  mergedAt      DateTime?        @db.Timestamptz(6)
+  createdAt     DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime         @updatedAt @db.Timestamptz(6)
+
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  scans      Scan[]
+
+  @@unique([repositoryId, externalId])
+  @@unique([repositoryId, number])
+  @@index([repositoryId, state])
+  @@map("pull_requests")
+}
+
+model Release {
+  id              String    @id @default(uuid()) @db.Uuid
+  repositoryId    String    @db.Uuid
+  externalId      String    @db.VarChar(255)
+  tagName         String    @db.VarChar(255)
+  name            String?   @db.VarChar(500)
+  targetCommitSha String?   @db.VarChar(64)
+  releasedAt      DateTime? @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  scans      Scan[]
+
+  @@unique([repositoryId, externalId])
+  @@unique([repositoryId, tagName])
+  @@index([releasedAt])
+  @@map("releases")
+}
+
+model WebhookEvent {
+  id                 String             @id @default(uuid()) @db.Uuid
+  gitConnectionId    String?            @db.Uuid
+  repositoryId       String?            @db.Uuid
+  provider           GitProvider
+  externalEventId    String?            @db.VarChar(255)
+  eventType          String             @db.VarChar(150)
+  deliveryId         String?            @db.VarChar(255)
+  signatureValid     Boolean            @default(false)
+  status             WebhookEventStatus @default(RECEIVED)
+  payload            Json
+  errorMessage       String?            @db.Text
+  processingAttempts Int                @default(0)
+  receivedAt         DateTime           @default(now()) @db.Timestamptz(6)
+  processedAt        DateTime?          @db.Timestamptz(6)
+  createdAt          DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(6)
+
+  gitConnection GitConnection? @relation(fields: [gitConnectionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  repository    Repository?    @relation(fields: [repositoryId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@unique([provider, deliveryId])
+  @@index([gitConnectionId])
+  @@index([repositoryId])
+  @@index([provider, eventType])
+  @@index([status, receivedAt])
+  @@map("webhook_events")
+}
+
+// ============================================================================
+// SECURITY SCANNING
+// ============================================================================
+
+model Scan {
+  id            String      @id @default(uuid()) @db.Uuid
+  projectId     String      @db.Uuid
+  repositoryId  String      @db.Uuid
+  commitId      String?     @db.Uuid
+  pullRequestId String?     @db.Uuid
+  releaseId     String?     @db.Uuid
+  requestedById String?     @db.Uuid
+  type          ScanType
+  trigger       ScanTrigger @default(MANUAL)
+  status        ScanStatus  @default(QUEUED)
+  branch        String      @db.VarChar(255)
+  commitSha     String      @db.VarChar(64)
+  score         Decimal?    @db.Decimal(5, 2)
+  progress      Int         @default(0)
+  queueJobId    String?     @db.VarChar(255)
+  configuration Json?
+  statistics    Json?
+  queuedAt      DateTime    @default(now()) @db.Timestamptz(6)
+  startedAt     DateTime?   @db.Timestamptz(6)
+  completedAt   DateTime?   @db.Timestamptz(6)
+  failedAt      DateTime?   @db.Timestamptz(6)
+  cancelledAt   DateTime?   @db.Timestamptz(6)
+  errorMessage  String?     @db.Text
+  createdAt     DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime    @updatedAt @db.Timestamptz(6)
+
+  project      Project             @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  repository   Repository          @relation(fields: [repositoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  commit       Commit?             @relation(fields: [commitId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  pullRequest  PullRequest?        @relation(fields: [pullRequestId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  release      Release?            @relation(fields: [releaseId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  requestedBy  User?               @relation("ScanRequester", fields: [requestedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  technologies ScanTechnology[]
+  findings     Finding[]
+  occurrences  FindingOccurrence[]
+  reports      Report[]
+
+  @@index([projectId, status])
+  @@index([repositoryId, createdAt])
+  @@index([commitId])
+  @@index([pullRequestId])
+  @@index([releaseId])
+  @@index([requestedById])
+  @@index([status, queuedAt])
+  @@index([commitSha])
+  @@map("scans")
+}
+
+model ScanTechnology {
+  id         String             @id @default(uuid()) @db.Uuid
+  scanId     String             @db.Uuid
+  name       String             @db.VarChar(150)
+  version    String?            @db.VarChar(100)
+  category   TechnologyCategory
+  confidence Decimal?           @db.Decimal(5, 2)
+  metadata   Json?
+  createdAt  DateTime           @default(now()) @db.Timestamptz(6)
+
+  scan Scan @relation(fields: [scanId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([scanId, name, version, category])
+  @@index([name, category])
+  @@map("scan_technologies")
+}
+
+model Finding {
+  id              String          @id @default(uuid()) @db.Uuid
+  scanId          String          @db.Uuid
+  projectId       String          @db.Uuid
+  repositoryId    String          @db.Uuid
+  ruleId          String          @db.VarChar(255)
+  scanner         String          @db.VarChar(150)
+  fingerprint     String          @db.VarChar(128)
+  title           String          @db.VarChar(500)
+  description     String          @db.Text
+  severity        FindingSeverity
+  status          FindingStatus   @default(DETECTED)
+  category        String?         @db.VarChar(255)
+  owaspCategory   String?         @db.VarChar(100)
+  cweId           String?         @db.VarChar(50)
+  cvssScore       Decimal?        @db.Decimal(3, 1)
+  filePath        String?         @db.Text
+  startLine       Int?
+  startColumn     Int?
+  endLine         Int?
+  endColumn       Int?
+  codeSnippet     String?         @db.Text
+  recommendation  String?         @db.Text
+  confidence      Decimal?        @db.Decimal(5, 2)
+  metadata        Json?
+  firstDetectedAt DateTime        @default(now()) @db.Timestamptz(6)
+  lastDetectedAt  DateTime        @default(now()) @db.Timestamptz(6)
+  resolvedAt      DateTime?       @db.Timestamptz(6)
+  createdAt       DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime        @updatedAt @db.Timestamptz(6)
+
+  scan                   Scan                   @relation(fields: [scanId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  project                Project                @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  repository             Repository             @relation(fields: [repositoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  occurrences            FindingOccurrence[]
+  comments               FindingComment[]
+  assignments            FindingAssignment[]
+  vulnerabilityRelations VulnerabilityFinding[]
+  wstgControls           FindingWstgControl[]
+
+  @@unique([repositoryId, fingerprint])
+  @@index([scanId])
+  @@index([projectId, severity, status])
+  @@index([repositoryId, ruleId])
+  @@index([status, updatedAt])
+  @@index([cweId])
+  @@index([owaspCategory])
+  @@map("findings")
+}
+
+model FindingOccurrence {
+  id          String   @id @default(uuid()) @db.Uuid
+  findingId   String   @db.Uuid
+  scanId      String   @db.Uuid
+  filePath    String?  @db.Text
+  startLine   Int?
+  startColumn Int?
+  endLine     Int?
+  endColumn   Int?
+  commitSha   String   @db.VarChar(64)
+  detectedAt  DateTime @default(now()) @db.Timestamptz(6)
+
+  finding Finding @relation(fields: [findingId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  scan    Scan    @relation(fields: [scanId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([findingId, scanId, filePath, startLine, startColumn])
+  @@index([scanId])
+  @@index([commitSha])
+  @@map("finding_occurrences")
+}
+
+model FindingComment {
+  id        String   @id @default(uuid()) @db.Uuid
+  findingId String   @db.Uuid
+  authorId  String   @db.Uuid
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  finding Finding @relation(fields: [findingId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  author  User    @relation("FindingCommentAuthor", fields: [authorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([findingId, createdAt])
+  @@index([authorId])
+  @@map("finding_comments")
+}
+
+model FindingAssignment {
+  id           String    @id @default(uuid()) @db.Uuid
+  findingId    String    @db.Uuid
+  assignedToId String    @db.Uuid
+  assignedById String    @db.Uuid
+  assignedAt   DateTime  @default(now()) @db.Timestamptz(6)
+  unassignedAt DateTime? @db.Timestamptz(6)
+
+  finding    Finding @relation(fields: [findingId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  assignedTo User    @relation("FindingAssignee", fields: [assignedToId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  assignedBy User    @relation("FindingAssigner", fields: [assignedById], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([findingId, unassignedAt])
+  @@index([assignedToId, unassignedAt])
+  @@index([assignedById])
+  @@map("finding_assignments")
+}
+
+model Vulnerability {
+  id          String              @id @default(uuid()) @db.Uuid
+  projectId   String              @db.Uuid
+  title       String              @db.VarChar(500)
+  description String              @db.Text
+  severity    FindingSeverity
+  status      VulnerabilityStatus @default(OPEN)
+  cweId       String?             @db.VarChar(50)
+  cvssScore   Decimal?            @db.Decimal(3, 1)
+  ownerId     String?             @db.Uuid
+  dueDate     DateTime?           @db.Timestamptz(6)
+  metadata    Json?
+  createdAt   DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime            @updatedAt @db.Timestamptz(6)
+  resolvedAt  DateTime?           @db.Timestamptz(6)
+
+  project  Project                @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  owner    User?                  @relation("VulnerabilityOwner", fields: [ownerId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  findings VulnerabilityFinding[]
+
+  @@index([projectId, severity, status])
+  @@index([ownerId, status])
+  @@index([dueDate])
+  @@map("vulnerabilities")
+}
+
+model VulnerabilityFinding {
+  vulnerabilityId String   @db.Uuid
+  findingId       String   @db.Uuid
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+
+  vulnerability Vulnerability @relation(fields: [vulnerabilityId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  finding       Finding       @relation(fields: [findingId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([vulnerabilityId, findingId])
+  @@index([findingId])
+  @@map("vulnerability_findings")
+}
+
+// ============================================================================
+// OWASP WSTG
+// ============================================================================
+
+model WstgControl {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @db.VarChar(100)
+  category    String   @db.VarChar(150)
+  title       String   @db.VarChar(500)
+  description String?  @db.Text
+  version     String   @db.VarChar(50)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  projects ProjectWstgControl[]
+  findings FindingWstgControl[]
+
+  @@unique([code, version])
+  @@index([category, isActive])
+  @@map("wstg_controls")
+}
+
+model ProjectWstgControl {
+  id           String            @id @default(uuid()) @db.Uuid
+  projectId    String            @db.Uuid
+  controlId    String            @db.Uuid
+  status       WstgControlStatus @default(NOT_STARTED)
+  evidence     String?           @db.Text
+  notes        String?           @db.Text
+  lastTestedAt DateTime?         @db.Timestamptz(6)
+  reviewedById String?           @db.Uuid
+  createdAt    DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime          @updatedAt @db.Timestamptz(6)
+
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  control    WstgControl @relation(fields: [controlId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  reviewedBy User?       @relation("WstgReviewer", fields: [reviewedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@unique([projectId, controlId])
+  @@index([controlId])
+  @@index([reviewedById])
+  @@index([projectId, status])
+  @@map("project_wstg_controls")
+}
+
+model FindingWstgControl {
+  findingId String   @db.Uuid
+  controlId String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  finding Finding     @relation(fields: [findingId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  control WstgControl @relation(fields: [controlId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([findingId, controlId])
+  @@index([controlId])
+  @@map("finding_wstg_controls")
+}
+
+// ============================================================================
+// REPORTS, AUDIT AND NOTIFICATIONS
+// ============================================================================
+
+model Report {
+  id            String       @id @default(uuid()) @db.Uuid
+  projectId     String       @db.Uuid
+  scanId        String?      @db.Uuid
+  requestedById String       @db.Uuid
+  status        ReportStatus @default(PENDING)
+  format        ReportFormat
+  name          String       @db.VarChar(255)
+  storagePath   String?      @db.Text
+  fileSize      BigInt?
+  checksum      String?      @db.VarChar(128)
+  filters       Json?
+  generatedAt   DateTime?    @db.Timestamptz(6)
+  expiresAt     DateTime?    @db.Timestamptz(6)
+  errorMessage  String?      @db.Text
+  createdAt     DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime     @updatedAt @db.Timestamptz(6)
+
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  scan        Scan?   @relation(fields: [scanId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  requestedBy User    @relation("ReportRequester", fields: [requestedById], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([projectId, status])
+  @@index([scanId])
+  @@index([requestedById])
+  @@index([expiresAt])
+  @@map("reports")
+}
+
+model AuditLog {
+  id             String      @id @default(uuid()) @db.Uuid
+  organizationId String?     @db.Uuid
+  projectId      String?     @db.Uuid
+  actorId        String?     @db.Uuid
+  action         AuditAction
+  resourceType   String      @db.VarChar(150)
+  resourceId     String?     @db.VarChar(255)
+  description    String?     @db.Text
+  ipAddress      String?     @db.VarChar(64)
+  userAgent      String?     @db.Text
+  metadata       Json?
+  createdAt      DateTime    @default(now()) @db.Timestamptz(6)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  project      Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  actor        User?         @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([resourceType, resourceId])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @db.Uuid
+  type      NotificationType
+  title     String           @db.VarChar(255)
+  message   String           @db.Text
+  readAt    DateTime?        @db.Timestamptz(6)
+  metadata  Json?
+  createdAt DateTime         @default(now()) @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
 }

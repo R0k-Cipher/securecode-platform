@@ -1,7 +1,10 @@
+packages:
+  - "packages/*"
+
 autoInstallPeers: true
 
 onlyBuiltDependencies:
-  - '@prisma/client'
-  - '@prisma/engines'
+  - "@prisma/client"
+  - "@prisma/engines"
   - nx
   - prisma
