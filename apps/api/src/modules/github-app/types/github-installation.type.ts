@@ -22,6 +22,7 @@ export interface GithubInstallation {
 
 export interface GithubInstallationState {
   organizationId: string;
+  projectId: string;
   userId: string;
   expiresAt: number;
   nonce: string;

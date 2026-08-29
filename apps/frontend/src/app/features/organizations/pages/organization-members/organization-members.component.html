@@ -1,0 +1,345 @@
+<section class="members-page">
+
+  <header class="page-header">
+
+    <div>
+      <span class="eyebrow">
+        ORGANISATION
+      </span>
+
+      <h1>
+        Membres et invitations
+      </h1>
+
+      <p>
+        Gérez les accès à l'organisation et invitez de nouveaux collaborateurs par email.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      class="primary"
+      (click)="inviteOpen.set(true)"
+    >
+      Inviter un membre
+    </button>
+
+  </header>
+
+  @if (
+    message()
+  ) {
+    <div class="message">
+      {{ message() }}
+
+      @if (
+        devToken()
+      ) {
+        <small>
+          Token DEV :
+          {{ devToken() }}
+        </small>
+      }
+    </div>
+  }
+
+  @if (
+    inviteOpen()
+  ) {
+
+    <section class="invite-card">
+
+      <div>
+        <span class="section-label">
+          NOUVEL ACCÈS
+        </span>
+
+        <h2>
+          Envoyer une invitation
+        </h2>
+      </div>
+
+      <label>
+        <span>
+          Adresse email
+        </span>
+
+        <input
+          type="email"
+          placeholder="collaborateur@entreprise.com"
+          [ngModel]="email()"
+          (ngModelChange)="email.set($event)"
+        >
+      </label>
+
+      <label>
+        <span>
+          Rôle
+        </span>
+
+        <select
+          [ngModel]="roleId()"
+          (ngModelChange)="roleId.set($event)"
+        >
+          @for (
+            role of roles();
+            track role.id
+          ) {
+            <option
+              [value]="role.id"
+            >
+              {{
+                role.name
+              }}
+            </option>
+          }
+        </select>
+      </label>
+
+      <div class="form-actions">
+        <button
+          type="button"
+          (click)="inviteOpen.set(false)"
+        >
+          Annuler
+        </button>
+
+        <button
+          type="button"
+          class="primary"
+          [disabled]="sending()"
+          (click)="sendInvitation()"
+        >
+          {{
+            sending()
+              ? 'Envoi...'
+              : 'Envoyer l’invitation'
+          }}
+        </button>
+      </div>
+
+    </section>
+
+  }
+
+  <section class="card">
+
+    <div class="card-header">
+      <div>
+        <strong>
+          Membres actifs
+        </strong>
+
+        <small>
+          {{
+            members().length
+          }}
+          membre(s)
+        </small>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+
+        <thead>
+          <tr>
+            <th>Utilisateur</th>
+            <th>Rôle</th>
+            <th>Statut</th>
+            <th>Dernière connexion</th>
+            <th></th>
+          </tr>
+        </thead>
+
+        <tbody>
+          @for (
+            member of members();
+            track member.id
+          ) {
+            <tr>
+              <td>
+                <strong>
+                  {{
+                    member.user.firstName
+                  }}
+                  {{
+                    member.user.lastName
+                  }}
+                </strong>
+
+                <small>
+                  {{
+                    member.user.email
+                  }}
+                </small>
+              </td>
+
+              <td>
+                @if (
+                  member.role.code ===
+                  'OWNER'
+                ) {
+                  <span class="badge owner">
+                    OWNER
+                  </span>
+                } @else {
+                  <select
+                    [ngModel]="member.role.id"
+                    (ngModelChange)="changeRole(member, $event)"
+                  >
+                    @for (
+                      role of roles();
+                      track role.id
+                    ) {
+                      <option
+                        [value]="role.id"
+                      >
+                        {{
+                          role.name
+                        }}
+                      </option>
+                    }
+                  </select>
+                }
+              </td>
+
+              <td>
+                <span class="badge">
+                  {{
+                    member.user.status
+                  }}
+                </span>
+              </td>
+
+              <td>
+                {{
+                  member.user.lastLoginAt
+                    ? (
+                        member.user.lastLoginAt
+                        | date:
+                          'dd/MM/yyyy HH:mm'
+                      )
+                    : 'Jamais'
+                }}
+              </td>
+
+              <td>
+                @if (
+                  member.role.code !==
+                  'OWNER'
+                ) {
+                  <button
+                    type="button"
+                    class="danger"
+                    (click)="remove(member)"
+                  >
+                    Retirer
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+
+      </table>
+    </div>
+
+  </section>
+
+  <section class="card">
+
+    <div class="card-header">
+      <div>
+        <strong>
+          Invitations
+        </strong>
+
+        <small>
+          Invitations envoyées et état de traitement.
+        </small>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Rôle</th>
+            <th>Statut</th>
+            <th>Expiration</th>
+            <th>Invité par</th>
+            <th></th>
+          </tr>
+        </thead>
+
+        <tbody>
+          @for (
+            invitation of invitations();
+            track invitation.id
+          ) {
+            <tr>
+              <td>
+                <strong>
+                  {{
+                    invitation.email
+                  }}
+                </strong>
+              </td>
+
+              <td>
+                {{
+                  invitation.role.name
+                }}
+              </td>
+
+              <td>
+                <span class="badge">
+                  {{
+                    invitationStatus(
+                      invitation
+                    )
+                  }}
+                </span>
+              </td>
+
+              <td>
+                {{
+                  invitation.expiresAt
+                  | date:
+                    'dd/MM/yyyy HH:mm'
+                }}
+              </td>
+
+              <td>
+                {{
+                  invitation.invitedBy.email
+                }}
+              </td>
+
+              <td>
+                @if (
+                  invitationStatus(
+                    invitation
+                  ) ===
+                  'EN ATTENTE'
+                ) {
+                  <button
+                    type="button"
+                    class="danger"
+                    (click)="cancelInvitation(invitation)"
+                  >
+                    Annuler
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+  </section>
+
+</section>

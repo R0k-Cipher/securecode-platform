@@ -1,3 +1,7 @@
+import type {
+  PlatformRole,
+} from '@prisma/client';
+
 export type JwtTokenType = 'access' | 'refresh';
 
 export interface JwtPayload {
@@ -5,6 +9,7 @@ export interface JwtPayload {
   email: string;
   sessionId: string;
   tokenType: JwtTokenType;
+  platformRole: PlatformRole;
   iat?: number;
   exp?: number;
 }
@@ -18,6 +23,7 @@ export interface AuthenticatedUser {
   status: string;
   emailVerifiedAt: Date | null;
   sessionId: string;
+  platformRole: PlatformRole;
 }
 
 

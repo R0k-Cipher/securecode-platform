@@ -38,6 +38,10 @@ import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { OrganizationQueryDto } from './dto/organization-query.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 
+import {
+  PlatformAdminGuard,
+} from '../auth/guards/platform-admin.guard';
+
 @ApiTags('Organizations')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
@@ -48,6 +52,7 @@ export class OrganizationsController {
   ) {}
 
   @Post()
+  @UseGuards(PlatformAdminGuard)
   @ApiOperation({
     summary: 'Créer une organisation',
   })
@@ -317,6 +322,20 @@ export class OrganizationsController {
     return this.organizationsService.acceptInvitation(
       user.id,
       dto,
+    );
+  }
+
+  @Get(':organizationId/roles')
+  getAssignableRoles(
+    @Param('organizationId')
+    organizationId: string,
+
+    @CurrentUser()
+    user: AuthenticatedUser,
+  ) {
+    return this.organizationsService.getAssignableRoles(
+      organizationId,
+      user.id,
     );
   }
 }

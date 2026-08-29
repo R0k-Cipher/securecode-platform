@@ -12,6 +12,8 @@ import {
 } from '@prisma/client';
 import { createHash, randomBytes } from 'node:crypto';
 
+import { EmailService } from '../email/email.service';
+
 import { PrismaService } from '@securecode-platform/database';
 
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
@@ -22,11 +24,19 @@ import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { OrganizationMapper } from './mappers/organization.mapper';
 
+import {
+  AuditService,
+} from '../audit/audit.service';
+
 @Injectable()
 export class OrganizationsService {
   private readonly invitationExpirationDays = 7;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /**
    * Crée une organisation et ajoute automatiquement le créateur
@@ -161,6 +171,22 @@ export class OrganizationsService {
                 projects: true,
               },
             },
+            members:{
+              where:{
+                userId:currentUserId,
+              },
+              take: 1,
+
+              select: {
+                role:{
+                  select:{
+                    id :true,
+                    code: true,
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         }),
         this.prisma.organization.count({
@@ -169,8 +195,21 @@ export class OrganizationsService {
       ]);
 
     return {
-      data: organizations.map((organization) =>
-        OrganizationMapper.withStatistics(organization),
+      data: organizations.map(
+        (organization) => {
+          const mapped =
+            OrganizationMapper.withStatistics(
+              organization,
+            );
+
+          return {
+            ...mapped,
+
+            currentUserRole:
+              organization.members[0]?.role ??
+              null,
+          };
+        },
       ),
       meta: {
         page,
@@ -475,6 +514,7 @@ export class OrganizationsService {
    * Le token brut doit être envoyé par email.
    * Seul son hash est stocké en base.
    */
+
   async inviteMember(
     organizationId: string,
     currentUserId: string,
@@ -483,18 +523,78 @@ export class OrganizationsService {
     await this.ensureUserHasOrganizationRole(
       organizationId,
       currentUserId,
-      ['OWNER', 'ADMIN'],
+      [
+        'OWNER',
+        'ADMIN',
+      ],
     );
 
-    await this.ensureOrganizationExists(organizationId);
+    const organization =
+      await this.prisma.organization
+        .findUnique({
+          where: {
+            id:
+              organizationId,
+          },
 
-    const email = dto.email.trim().toLowerCase();
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        });
 
-    const role = await this.prisma.role.findUnique({
-      where: {
-        id: dto.roleId,
-      },
-    });
+    if (!organization) {
+      throw new NotFoundException(
+        'Organisation introuvable',
+      );
+    }
+
+    const inviter =
+      await this.prisma.user
+        .findUnique({
+          where: {
+            id:
+              currentUserId,
+          },
+
+          select: {
+            firstName:
+              true,
+
+            lastName:
+              true,
+
+            email:
+              true,
+          },
+        });
+
+    if (!inviter) {
+      throw new NotFoundException(
+        'Utilisateur invitant introuvable.',
+      );
+    }
+
+    const email =
+      dto.email
+        .trim()
+        .toLowerCase();
+
+    const role =
+      await this.prisma.role
+        .findUnique({
+          where: {
+            id:
+              dto.roleId,
+          },
+
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        });
 
     if (!role) {
       throw new NotFoundException(
@@ -502,64 +602,86 @@ export class OrganizationsService {
       );
     }
 
-    if (role.code === 'OWNER') {
+    if (
+      role.code ===
+      'OWNER'
+    ) {
       throw new ForbiddenException(
         'Le rôle OWNER ne peut pas être attribué par invitation',
       );
     }
 
     const existingUser =
-      await this.prisma.user.findUnique({
-        where: {
-          email,
-        },
-        select: {
-          id: true,
-        },
-      });
-
-    if (existingUser) {
-      const existingMembership =
-        await this.prisma.organizationMember.findUnique({
+      await this.prisma.user
+        .findUnique({
           where: {
-            organizationId_userId: {
-              organizationId,
-              userId: existingUser.id,
-            },
+            email,
+          },
+
+          select: {
+            id: true,
           },
         });
 
-      if (existingMembership) {
+    if (existingUser) {
+      const membership =
+        await this.prisma.organizationMember
+          .findUnique({
+            where: {
+              organizationId_userId: {
+                organizationId,
+                userId:
+                  existingUser.id,
+              },
+            },
+          });
+
+      if (membership) {
         throw new ConflictException(
           'Cet utilisateur est déjà membre de l’organisation',
         );
       }
     }
 
-    const existingInvitation =
-      await this.prisma.invitation.findFirst({
-        where: {
-          organizationId,
-          email,
-          acceptedAt: null,
-          revokedAt: null,
-          expiresAt: {
-            gt: new Date(),
-          },
-        },
-      });
+    const activeInvitation =
+      await this.prisma.invitation
+        .findFirst({
+          where: {
+            organizationId,
+            email,
+            acceptedAt:
+              null,
+            revokedAt:
+              null,
 
-    if (existingInvitation) {
+            expiresAt: {
+              gt:
+                new Date(),
+            },
+          },
+        });
+
+    if (activeInvitation) {
       throw new ConflictException(
         'Une invitation active existe déjà pour cette adresse email',
       );
     }
 
-    const invitationToken = randomBytes(48).toString(
-      'hex',
-    );
-    const tokenHash = this.hashToken(invitationToken);
-    const expiresAt = new Date();
+    const token =
+      randomBytes(
+        48,
+      )
+        .toString(
+          'hex',
+        );
+
+    const tokenHash =
+      this.hashToken(
+        token,
+      );
+
+    const expiresAt =
+      new Date();
 
     expiresAt.setDate(
       expiresAt.getDate() +
@@ -568,69 +690,152 @@ export class OrganizationsService {
 
     const invitation =
       await this.prisma.$transaction(
-        async (transaction) => {
-          const createdInvitation =
-            await transaction.invitation.create({
-              data: {
-                organizationId,
-                email,
-                roleId: role.id,
-                invitedById: currentUserId,
-                tokenHash,
-                expiresAt,
-              },
-              include: {
-                organization: {
-                  select: {
-                    id: true,
-                    name: true,
-                    slug: true,
-                  },
+        async (
+          transaction,
+        ) => {
+          const created =
+            await transaction.invitation
+              .create({
+                data: {
+                  organizationId,
+                  email,
+                  roleId:
+                    role.id,
+                  invitedById:
+                    currentUserId,
+                  tokenHash,
+                  expiresAt,
                 },
-                role: {
-                  select: {
-                    id: true,
-                    code: true,
-                    name: true,
-                  },
-                },
-                invitedBy: {
-                  select: {
-                    id: true,
-                    email: true,
-                    firstName: true,
-                    lastName: true,
-                  },
-                },
-              },
-            });
 
-          await transaction.auditLog.create({
-            data: {
-              organizationId,
-              actorId: currentUserId,
-              action: AuditAction.INVITE,
-              resourceType: 'Invitation',
-              resourceId: createdInvitation.id,
-              description: `Invitation envoyée à ${email}`,
-              metadata: {
-                email,
-                roleCode: role.code,
-                expiresAt: expiresAt.toISOString(),
-              },
-            },
-          });
+                include: {
+                  organization: {
+                    select: {
+                      id: true,
+                      name: true,
+                      slug: true,
+                    },
+                  },
 
-          return createdInvitation;
+                  role: {
+                    select: {
+                      id: true,
+                      code: true,
+                      name: true,
+                    },
+                  },
+
+                  invitedBy: {
+                    select: {
+                      id: true,
+                      email: true,
+                      firstName: true,
+                      lastName: true,
+                    },
+                  },
+                },
+              });
+
+
+          if (existingUser) {
+            await transaction.notification
+              .create({
+                data: {
+                  userId:
+                    existingUser.id,
+
+                  type:
+                    'INVITATION',
+
+                  title:
+                    `Invitation à rejoindre ${organization.name}`,
+
+                  message:
+                    `Vous avez été invité avec le rôle ${role.name}.`,
+
+                  metadata: {
+                    organizationId,
+                    invitationId:
+                      created.id,
+                  },
+                },
+              });
+          }
+
+          return created;
         },
       );
 
+
+    await this.auditService.create({
+      organizationId,
+      actorId: currentUserId,
+
+      action: AuditAction.INVITE,
+
+      resourceType: 'Invitation',
+
+      resourceId: invitation.id,
+
+      description:
+        `Invitation envoyée à ${email}`,
+
+      metadata: {
+        email,
+
+        roleCode:
+          role.code,
+
+        expiresAt:
+          expiresAt.toISOString(),
+      },
+    });
+
+    const delivery =
+      await this.emailService
+        .sendOrganizationInvitation({
+          to:
+            email,
+
+          organizationName:
+            organization.name,
+
+          inviterName:
+            `${inviter.firstName} ${inviter.lastName}`.trim() ||
+            inviter.email,
+
+          roleName:
+            role.name,
+
+          token,
+
+          expiresAt,
+        });
+
     return {
       invitation,
-      token: invitationToken,
       expiresAt,
+
+      delivery: {
+        emailSent:
+          delivery.sent,
+
+        messageId:
+          delivery.messageId,
+      },
+
+      /*
+      * Utile uniquement en développement si SMTP n'est pas configuré.
+      * En production, vous pouvez supprimer invitationToken de la réponse.
+      */
+      invitationToken:
+        delivery.sent
+          ? undefined
+          : token,
+
       message:
-        'Invitation créée avec succès. Le token doit être envoyé par email.',
+        delivery.sent
+          ? 'Invitation créée et envoyée par email.'
+          : 'Invitation créée. SMTP non configuré : utilisez invitationToken pour le test local.',
     };
   }
 
@@ -1312,27 +1517,89 @@ export class OrganizationsService {
       .slice(0, 200);
   }
 
+    /*
+  Ajoutez cette méthode dans OrganizationsService :
+  */
+
+  async getAssignableRoles(
+    organizationId: string,
+    currentUserId: string,
+  ) {
+    await this.ensureUserHasOrganizationRole(
+      organizationId,
+      currentUserId,
+      [
+        'OWNER',
+        'ADMIN',
+      ],
+    );
+
+    return this.prisma.role
+      .findMany({
+        where: {
+          code: {
+            in: [
+              'ADMIN',
+              'MANAGER',
+              'SECURITY_ANALYST',
+              'DEVELOPER',
+              'AUDITOR',
+              'VIEWER',
+            ],
+          },
+        },
+
+        orderBy: {
+          code:
+            'asc',
+        },
+
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          description: true,
+        },
+      });
+  }
+
   private hashToken(token: string): string {
     return createHash('sha256')
       .update(token)
       .digest('hex');
   }
 
-private normalizeOptionalText(
-  value?: string | null,
-): string | null | undefined {
-  if (value === undefined) {
-    return undefined;
+
+  private normalizeOptionalText(
+    value: string | null | undefined,
+  ): string | null {
+    if (
+      value === undefined ||
+      value === null
+    ) {
+      return null;
+    }
+
+    const normalized =
+      value.trim();
+
+    return normalized.length
+      ? normalized
+      : null;
   }
 
-  if (value === null) {
-    return null;
+  async requireManagementAccess(
+    organizationId: string,
+    userId: string,
+  ) {
+    return this.ensureUserHasOrganizationRole(
+      organizationId,
+      userId,
+      [
+        'OWNER',
+        'ADMIN',
+      ],
+    );
   }
 
-  const normalized = value.trim();
-
-  return normalized.length > 0
-    ? normalized
-    : null;
-}
 }

@@ -1,0 +1,176 @@
+<div class="invitation-shell">
+
+  <section class="invitation-card">
+
+    <div class="brand">
+      <span>SC</span>
+      <div>
+        <strong>SecureCode</strong>
+        <small>CODE SECURITY PLATFORM</small>
+      </div>
+    </div>
+
+    @if (
+      loading()
+    ) {
+      <div class="state">
+        Vérification de l'invitation...
+      </div>
+    } @else if (
+      error() &&
+      !preview()
+    ) {
+      <div class="error">
+        {{ error() }}
+      </div>
+    } @else if (
+      preview();
+      as invitation
+    ) {
+
+      <span class="eyebrow">
+        INVITATION
+      </span>
+
+      <h1>
+        Rejoindre
+        {{ invitation.organization.name }}
+      </h1>
+
+      <p class="intro">
+        {{
+          invitation.invitedBy.firstName
+        }}
+        {{
+          invitation.invitedBy.lastName
+        }}
+        vous invite à rejoindre cette organisation avec le rôle
+        <strong>
+          {{ invitation.role.name }}
+        </strong>.
+      </p>
+
+      <div class="details">
+        <div>
+          <span>Email</span>
+          <strong>
+            {{ invitation.email }}
+          </strong>
+        </div>
+
+        <div>
+          <span>Expiration</span>
+          <strong>
+            {{
+              invitation.expiresAt
+              | date:
+                'dd/MM/yyyy HH:mm'
+            }}
+          </strong>
+        </div>
+      </div>
+
+      @if (
+        error()
+      ) {
+        <div class="error">
+          {{ error() }}
+        </div>
+      }
+
+      @if (
+        auth.authenticated()
+      ) {
+
+        <button
+          type="button"
+          class="primary full"
+          [disabled]="submitting()"
+          (click)="acceptExisting()"
+        >
+          {{
+            submitting()
+              ? 'Traitement...'
+              : 'Accepter l’invitation'
+          }}
+        </button>
+
+      } @else if (
+        invitation.existingUser
+      ) {
+
+        <div class="existing">
+          <strong>
+            Un compte SecureCode existe déjà pour cette adresse.
+          </strong>
+
+          <p>
+            Connectez-vous avec ce compte, puis ouvrez à nouveau le lien d'invitation.
+          </p>
+
+          <a
+            routerLink="/login"
+            class="primary-link"
+          >
+            Se connecter
+          </a>
+        </div>
+
+      } @else {
+
+        <div class="registration">
+
+          <div class="section-title">
+            Créer votre compte
+          </div>
+
+          <label>
+            <span>Prénom</span>
+            <input
+              type="text"
+              [ngModel]="firstName()"
+              (ngModelChange)="firstName.set($event)"
+            >
+          </label>
+
+          <label>
+            <span>Nom</span>
+            <input
+              type="text"
+              [ngModel]="lastName()"
+              (ngModelChange)="lastName.set($event)"
+            >
+          </label>
+
+          <label class="full-field">
+            <span>Mot de passe</span>
+            <input
+              type="password"
+              [ngModel]="password()"
+              (ngModelChange)="password.set($event)"
+              placeholder="12 caractères minimum"
+            >
+          </label>
+
+          <button
+            type="button"
+            class="primary full-field"
+            [disabled]="submitting()"
+            (click)="register()"
+          >
+            {{
+              submitting()
+                ? 'Création...'
+                : 'Créer mon compte et rejoindre'
+            }}
+          </button>
+
+        </div>
+
+      }
+
+    }
+
+  </section>
+
+</div>

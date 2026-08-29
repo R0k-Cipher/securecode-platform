@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Param,
   ParseUUIDPipe,
@@ -9,7 +8,11 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+
+import {
+  AuthGuard,
+} from '@nestjs/passport';
+
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -17,35 +20,68 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
+import {
+  CurrentUser,
+} from '../auth/decorators/current-user.decorator';
 
-import { RequirePermissions } from '../rbac/decorators/require-permissions.decorator';
-import { PermissionsGuard } from '../rbac/guards/permissions.guard';
-import { PERMISSION_CODES } from '../rbac/types/permission-code.type';
+import type {
+  AuthenticatedUser,
+} from '../auth/interfaces/jwt-payload.interface';
 
-import { GithubInstallationCallbackDto } from './dto/github-installation-callback.dto';
-import { ListInstallationRepositoriesDto } from './dto/list-installation-repositories.dto';
-import { ImportGithubRepositoryDto } from './dto/import-github-repository.dto';
+import {
+  RequirePermissions,
+} from '../rbac/decorators/require-permissions.decorator';
 
-import { GithubAppService } from './github-app.service';
+import {
+  PermissionsGuard,
+} from '../rbac/guards/permissions.guard';
 
-@ApiTags('GitHub App')
+import {
+  PERMISSION_CODES,
+} from '../rbac/types/permission-code.type';
+
+import {
+  GithubInstallationCallbackDto,
+} from './dto/github-installation-callback.dto';
+
+import {
+  ListInstallationRepositoriesDto,
+} from './dto/list-installation-repositories.dto';
+
+import {
+  ImportGithubRepositoryDto,
+} from './dto/import-github-repository.dto';
+
+import {
+  GithubAppService,
+} from './github-app.service';
+
+@ApiTags(
+  'GitHub App',
+)
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(
+  AuthGuard('jwt'),
+)
 @Controller()
 export class GithubAppController {
   constructor(
-    private readonly githubAppService: GithubAppService,
+    private readonly githubAppService:
+      GithubAppService,
   ) {}
 
-  /**
-   * Générer l’URL d’installation de la GitHub App.
+  /*
+   * ------------------------------------------------
+   * Installation URL
+   * ------------------------------------------------
    */
+
   @Get(
-    'organizations/:organizationId/github-app/installation-url',
+    'organizations/:organizationId/projects/:projectId/github-app/installation-url',
   )
-  @UseGuards(PermissionsGuard)
+  @UseGuards(
+    PermissionsGuard,
+  )
   @RequirePermissions(
     PERMISSION_CODES.GIT_CONNECTION_CREATE,
   )
@@ -62,78 +98,63 @@ export class GithubAppController {
       'organizationId',
       new ParseUUIDPipe(),
     )
-    organizationId: string,
+    organizationId:
+      string,
+
+    @Param(
+      'projectId',
+      new ParseUUIDPipe(),
+    )
+    projectId:
+      string,
 
     @CurrentUser()
-    user: AuthenticatedUser,
+    user:
+      AuthenticatedUser,
   ) {
-    return this.githubAppService.createInstallationUrl(
-      organizationId,
-      user.id,
-    );
+    return this.githubAppService
+      .createInstallationUrl(
+        organizationId,
+        projectId,
+        user.id,
+      );
   }
 
-  /**
-   * Finaliser l’installation GitHub App.
-   *
-   * Attention :
-   * cette route nécessite un JWT.
-   * Le frontend doit recevoir le callback GitHub,
-   * puis appeler cette route avec le JWT utilisateur.
-   */
   @Get(
-    'organizations/:organizationId/github-app/callback',
-  )
-  @UseGuards(PermissionsGuard)
-  @RequirePermissions(
-    PERMISSION_CODES.GIT_CONNECTION_CREATE,
+    'github-app/callback',
   )
   @ApiOperation({
     summary:
       "Finaliser l'installation de la GitHub App",
   })
-  async completeInstallation(
-    @Param(
-      'organizationId',
-      new ParseUUIDPipe(),
-    )
-    organizationId: string,
-
+  completeInstallation(
     @Query()
-    query: GithubInstallationCallbackDto,
+    query:
+      GithubInstallationCallbackDto,
 
     @CurrentUser()
-    user: AuthenticatedUser,
+    user:
+      AuthenticatedUser,
   ) {
-    const result =
-      await this.githubAppService.completeInstallation(
+    return this.githubAppService
+      .completeInstallation(
         query.installation_id,
-        query.state,
         user.id,
       );
-
-    if (
-      result.connection.organizationId !==
-      organizationId
-    ) {
-      throw new ForbiddenException(
-        "L'organisation du callback ne correspond pas.",
-      );
-    }
-
-    return result;
   }
 
-  /**
-   * Générer un token d’installation GitHub temporaire.
-   *
-   * Cette route devrait idéalement être utilisée
-   * uniquement par le backend ou le worker.
+  /*
+   * ------------------------------------------------
+   * Installation token
+   * ------------------------------------------------
    */
+
   @Post(
     'organizations/:organizationId/github-app/connections/:connectionId/access-token',
   )
-  @UseGuards(PermissionsGuard)
+  @UseGuards(
+    PermissionsGuard,
+  )
   @RequirePermissions(
     PERMISSION_CODES.REPOSITORY_SYNC,
   )
@@ -146,16 +167,19 @@ export class GithubAppController {
       'organizationId',
       new ParseUUIDPipe(),
     )
-    organizationId: string,
+    organizationId:
+      string,
 
     @Param(
       'connectionId',
       new ParseUUIDPipe(),
     )
-    connectionId: string,
+    connectionId:
+      string,
 
     @CurrentUser()
-    user: AuthenticatedUser,
+    user:
+      AuthenticatedUser,
   ) {
     return this.githubAppService
       .createInstallationAccessToken(
@@ -165,14 +189,18 @@ export class GithubAppController {
       );
   }
 
-  /**
-   * Lister les repositories accessibles par
-   * une installation GitHub.
+  /*
+   * ------------------------------------------------
+   * GitHub repositories
+   * ------------------------------------------------
    */
+
   @Get(
     'organizations/:organizationId/github-app/connections/:gitConnectionId/repositories',
   )
-  @UseGuards(PermissionsGuard)
+  @UseGuards(
+    PermissionsGuard,
+  )
   @RequirePermissions(
     PERMISSION_CODES.PROJECT_READ,
   )
@@ -185,37 +213,56 @@ export class GithubAppController {
       'organizationId',
       new ParseUUIDPipe(),
     )
-    organizationId: string,
+    organizationId:
+      string,
 
     @Param(
       'gitConnectionId',
       new ParseUUIDPipe(),
     )
-    gitConnectionId: string,
+    gitConnectionId:
+      string,
 
     @Query()
-    query: ListInstallationRepositoriesDto,
+    query:
+      ListInstallationRepositoriesDto,
 
     @CurrentUser()
-    user: AuthenticatedUser,
+    user:
+      AuthenticatedUser,
   ) {
-    return this.githubAppService.listRepositories({
-      organizationId,
-      gitConnectionId,
-      userId: user.id,
-      page: query.page,
-      perPage: query.perPage,
-      search: query.search,
-    });
+    return this.githubAppService
+      .listRepositories({
+        organizationId,
+
+        gitConnectionId,
+
+        userId:
+          user.id,
+
+        page:
+          query.page,
+
+        perPage:
+          query.perPage,
+
+        search:
+          query.search,
+      });
   }
 
-  /**
-   * Importer un repository GitHub dans un projet.
+  /*
+   * ------------------------------------------------
+   * Import repository
+   * ------------------------------------------------
    */
+
   @Post(
     'organizations/:organizationId/projects/:projectId/github-app/repositories/import',
   )
-  @UseGuards(PermissionsGuard)
+  @UseGuards(
+    PermissionsGuard,
+  )
   @RequirePermissions(
     PERMISSION_CODES.PROJECT_UPDATE,
   )
@@ -228,28 +275,35 @@ export class GithubAppController {
       'organizationId',
       new ParseUUIDPipe(),
     )
-    organizationId: string,
+    organizationId:
+      string,
 
     @Param(
       'projectId',
       new ParseUUIDPipe(),
     )
-    projectId: string,
+    projectId:
+      string,
 
     @Body()
-    dto: ImportGithubRepositoryDto,
+    dto:
+      ImportGithubRepositoryDto,
 
     @CurrentUser()
-    user: AuthenticatedUser,
+    user:
+      AuthenticatedUser,
   ) {
-    return this.githubAppService.importRepository(
-      {
-        ...dto,
-        organizationId,
-        projectId,
-      },
-      user.id,
-    );
+    return this.githubAppService
+      .importRepository(
+        {
+          ...dto,
+
+          organizationId,
+
+          projectId,
+        },
+
+        user.id,
+      );
   }
 }
-

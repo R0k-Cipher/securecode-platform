@@ -1,0 +1,220 @@
+<section class="github-page">
+
+  <header class="page-header">
+
+    <div>
+
+      <span class="eyebrow">
+        GITHUB INTEGRATION
+      </span>
+
+      <h1>
+        Importer un repository
+      </h1>
+
+      <p>
+        Sélectionnez un repository GitHub
+        à synchroniser avec SecureCode-AI.
+      </p>
+
+    </div>
+
+  </header>
+
+  <section class="search-card">
+
+    <input
+      type="search"
+      [(ngModel)]="search"
+      placeholder="Rechercher un repository..."
+      (keyup.enter)="searchRepositories()"
+    />
+
+    <button
+      type="button"
+      (click)="searchRepositories()"
+      [disabled]="loading()"
+    >
+      Rechercher
+    </button>
+
+  </section>
+
+  @if (error()) {
+
+    <div class="alert-error">
+      {{ error() }}
+    </div>
+
+  }
+
+  @if (loading()) {
+
+    <div class="loading-state">
+
+      <span class="spinner"></span>
+
+      Chargement des repositories GitHub...
+
+    </div>
+
+  } @else {
+
+    <section class="repository-container">
+
+      <div class="section-heading">
+
+        <div>
+
+          <span class="section-label">
+            AVAILABLE REPOSITORIES
+          </span>
+
+          <h2>
+            Repositories GitHub
+          </h2>
+
+        </div>
+
+        <span class="page-indicator">
+          Page {{ page }}
+          / {{ totalPages }}
+        </span>
+
+      </div>
+
+      @if (
+        repositories().length === 0
+      ) {
+
+        <div class="empty-state">
+          Aucun repository trouvé.
+        </div>
+
+      } @else {
+
+        <div class="repository-list">
+
+          @for (
+            repository of repositories();
+            track repository.id
+          ) {
+
+            <article class="repository-row">
+
+              <div class="repo-icon">
+                GH
+              </div>
+
+              <div class="repo-content">
+
+                <h3>
+                  {{ repository.fullName }}
+                </h3>
+
+                <p>
+                  {{
+                    repository.description
+                      || 'Aucune description'
+                  }}
+                </p>
+
+                <div class="repo-meta">
+
+                  <span>
+                    {{
+                      repository.language
+                        || 'Langage inconnu'
+                    }}
+                  </span>
+
+                  <span>
+                    {{
+                      repository.defaultBranch
+                        || 'Branche inconnue'
+                    }}
+                  </span>
+
+                  <span>
+                    {{
+                      repository.private
+                        ? 'Private'
+                        : 'Public'
+                    }}
+                  </span>
+
+                </div>
+
+              </div>
+
+              <button
+                type="button"
+                class="import-button"
+                (click)="
+                  importRepository(
+                    repository
+                  )
+                "
+                [disabled]="
+                  importingRepositoryId()
+                    === repository.id
+                "
+              >
+                {{
+                  importingRepositoryId()
+                    === repository.id
+                    ? 'Importation...'
+                    : 'Importer'
+                }}
+              </button>
+
+            </article>
+
+          }
+
+        </div>
+
+      }
+
+      <footer class="pagination">
+
+        <button
+          type="button"
+          (click)="previousPage()"
+          [disabled]="
+            page <= 1 ||
+            loading()
+          "
+        >
+          Précédent
+        </button>
+
+        <span>
+          Page
+          <strong>
+            {{ page }}
+          </strong>
+          sur
+          <strong>
+            {{ totalPages }}
+          </strong>
+        </span>
+
+        <button
+          type="button"
+          (click)="nextPage()"
+          [disabled]="
+            page >= totalPages ||
+            loading()
+          "
+        >
+          Suivant
+        </button>
+
+      </footer>
+
+    </section>
+
+  }
+
+</section>

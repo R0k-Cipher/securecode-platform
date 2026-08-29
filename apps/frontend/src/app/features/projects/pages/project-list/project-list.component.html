@@ -1,0 +1,648 @@
+<section class="projects-page">
+
+  <header class="page-header">
+
+    <div>
+      <span class="eyebrow">
+        WORKSPACE
+      </span>
+
+      <h1>
+        Projets
+      </h1>
+
+      <p>
+        Organisez vos repositories et vos analyses
+        de sécurité par projet.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      class="primary-button"
+      (click)="openCreate()"
+    >
+      Nouveau projet
+    </button>
+
+  </header>
+
+  <section class="toolbar">
+
+    <div class="search-field">
+      <input
+        #searchInput
+        type="search"
+        placeholder="Rechercher un projet..."
+        [value]="search()"
+        (input)="onSearch(searchInput.value)"
+      />
+    </div>
+
+    <div class="status-filter">
+
+      <button
+        type="button"
+        [class.active]="status() === null"
+        (click)="filterStatus(null)"
+      >
+        Tous
+      </button>
+
+      <button
+        type="button"
+        [class.active]="status() === 'ACTIVE'"
+        (click)="filterStatus('ACTIVE')"
+      >
+        Actifs
+      </button>
+
+      <button
+        type="button"
+        [class.active]="status() === 'ARCHIVED'"
+        (click)="filterStatus('ARCHIVED')"
+      >
+        Archivés
+      </button>
+
+    </div>
+
+  </section>
+
+  @if (error()) {
+    <div
+      class="alert"
+      role="alert"
+    >
+      <strong>
+        Opération impossible
+      </strong>
+
+      <span>
+        {{ error() }}
+      </span>
+
+      <button
+        type="button"
+        (click)="error.set(null)"
+      >
+        Fermer
+      </button>
+    </div>
+  }
+
+  @if (
+    loading() &&
+    projects().length === 0
+  ) {
+    <div class="projects-grid">
+
+      @for (
+        item of [1, 2, 3, 4];
+        track item
+      ) {
+        <article class="project-card skeleton-card">
+          <div class="skeleton skeleton-title"></div>
+          <div class="skeleton skeleton-line"></div>
+          <div class="skeleton skeleton-line short"></div>
+        </article>
+      }
+
+    </div>
+  }
+
+  @if (
+    !loading() &&
+    projects().length === 0
+  ) {
+    <section class="empty-state">
+
+      <div class="empty-mark">
+        P
+      </div>
+
+      @if (search()) {
+        <h2>
+          Aucun projet trouvé
+        </h2>
+
+        <p>
+          Aucun projet ne correspond à
+          « {{ search() }} ».
+        </p>
+
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="onSearch('')"
+        >
+          Effacer la recherche
+        </button>
+      } @else {
+        <h2>
+          Aucun projet
+        </h2>
+
+        <p>
+          Créez le premier projet de cette
+          organisation pour connecter ensuite
+          vos repositories.
+        </p>
+
+        <button
+          type="button"
+          class="primary-button"
+          (click)="openCreate()"
+        >
+          Créer un projet
+        </button>
+      }
+
+    </section>
+  }
+
+  @if (
+    projects().length > 0
+  ) {
+
+    <section class="projects-grid">
+
+      @for (
+        project of projects();
+        track project.id
+      ) {
+        <article
+          class="project-card"
+          [class.archived]="
+            project.status === 'ARCHIVED'
+          "
+          tabindex="0"
+          (click)="openProject(project)"
+          (keydown.enter)="openProject(project)"
+        >
+
+          <header class="project-card-header">
+
+            <div class="project-mark">
+              {{
+                project.name
+                  .charAt(0)
+                  .toUpperCase()
+              }}
+            </div>
+
+            <div class="project-heading">
+              <h2>
+                {{ project.name }}
+              </h2>
+
+              <span
+                class="status-badge"
+                [class.archived-badge]="
+                  project.status === 'ARCHIVED'
+                "
+              >
+                {{ project.status }}
+              </span>
+            </div>
+
+          </header>
+
+          <p class="slug">
+            {{ project.slug }}
+          </p>
+
+          <p class="description">
+            {{
+              project.description ||
+              'Aucune description renseignée.'
+            }}
+          </p>
+
+          <div class="project-meta">
+
+            <div>
+              <span>
+                Branche
+              </span>
+
+              <strong>
+                {{
+                  project.defaultBranch ||
+                  'Non définie'
+                }}
+              </strong>
+            </div>
+
+            <div>
+              <span>
+                Repositories
+              </span>
+
+              <strong>
+                {{
+                  project.repositoriesCount ??
+                  0
+                }}
+              </strong>
+            </div>
+
+            <div>
+              <span>
+                Findings
+              </span>
+
+              <strong>
+                {{
+                  project.findingsCount ??
+                  0
+                }}
+              </strong>
+            </div>
+
+          </div>
+
+          <footer class="project-actions">
+
+            @if (
+              project.status !==
+              'ARCHIVED'
+            ) {
+              <button
+                type="button"
+                (click)="
+                  openEdit(
+                    project,
+                    $event
+                  )
+                "
+              >
+                Modifier
+              </button>
+
+              <button
+                type="button"
+                [disabled]="
+                  processing() ===
+                  project.id
+                "
+                (click)="
+                  archive(
+                    project,
+                    $event
+                  )
+                "
+              >
+                Archiver
+              </button>
+            }
+
+            @if (
+              project.status ===
+              'ARCHIVED'
+            ) {
+              <button
+                type="button"
+                [disabled]="
+                  processing() ===
+                  project.id
+                "
+                (click)="
+                  restore(
+                    project,
+                    $event
+                  )
+                "
+              >
+                Restaurer
+              </button>
+            }
+
+            <button
+              type="button"
+              class="danger-action"
+              [disabled]="
+                deleting() ===
+                project.id
+              "
+              (click)="
+                remove(
+                  project,
+                  $event
+                )
+              "
+            >
+              Supprimer
+            </button>
+
+          </footer>
+
+        </article>
+      }
+
+    </section>
+
+  }
+
+  @if (
+    pagination().totalPages >
+    1
+  ) {
+    <nav class="pagination">
+
+      <button
+        type="button"
+        [disabled]="
+          !pagination().hasPreviousPage ||
+          loading()
+        "
+        (click)="previousPage()"
+      >
+        Précédent
+      </button>
+
+      <span>
+        Page
+        {{ pagination().page }}
+        sur
+        {{ pagination().totalPages }}
+      </span>
+
+      <button
+        type="button"
+        [disabled]="
+          !pagination().hasNextPage ||
+          loading()
+        "
+        (click)="nextPage()"
+      >
+        Suivant
+      </button>
+
+    </nav>
+  }
+
+</section>
+
+@if (showCreateModal()) {
+
+  <div
+    class="modal-backdrop"
+    (click)="closeCreate()"
+  >
+
+    <section
+      class="modal-card"
+      role="dialog"
+      aria-modal="true"
+      (click)="$event.stopPropagation()"
+    >
+
+      <header class="modal-header">
+        <div>
+          <span class="eyebrow">
+            NOUVEAU PROJET
+          </span>
+
+          <h2>
+            Créer un projet
+          </h2>
+
+          <p>
+            Le projet servira de périmètre
+            pour vos repositories et scans.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="close-button"
+          [disabled]="creating()"
+          (click)="closeCreate()"
+        >
+          ×
+        </button>
+      </header>
+
+      <form
+        [formGroup]="createForm"
+        (ngSubmit)="createProject()"
+      >
+
+        <div class="form-group">
+          <label for="project-name">
+            Nom
+          </label>
+
+          <input
+            id="project-name"
+            type="text"
+            formControlName="name"
+            placeholder="Ex. SecureCode API"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="project-slug">
+            Slug
+            <span>
+              Optionnel
+            </span>
+          </label>
+
+          <input
+            id="project-slug"
+            type="text"
+            formControlName="slug"
+            placeholder="securecode-api"
+          />
+
+          @if (
+            createForm.controls.slug.touched &&
+            createForm.controls.slug.invalid
+          ) {
+            <small>
+              Minuscules, chiffres et tirets uniquement.
+            </small>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="project-description">
+            Description
+          </label>
+
+          <textarea
+            id="project-description"
+            rows="4"
+            formControlName="description"
+            placeholder="Décrivez brièvement ce projet..."
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="project-branch">
+            Branche par défaut
+          </label>
+
+          <input
+            id="project-branch"
+            type="text"
+            formControlName="defaultBranch"
+            placeholder="main"
+          />
+        </div>
+
+        <footer class="modal-actions">
+
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="creating()"
+            (click)="closeCreate()"
+          >
+            Annuler
+          </button>
+
+          <button
+            type="submit"
+            class="primary-button"
+            [disabled]="
+              createForm.invalid ||
+              creating()
+            "
+          >
+            {{
+              creating()
+                ? 'Création...'
+                : 'Créer le projet'
+            }}
+          </button>
+
+        </footer>
+
+      </form>
+
+    </section>
+
+  </div>
+}
+
+@if (showEditModal()) {
+
+  <div
+    class="modal-backdrop"
+    (click)="closeEdit()"
+  >
+
+    <section
+      class="modal-card"
+      role="dialog"
+      aria-modal="true"
+      (click)="$event.stopPropagation()"
+    >
+
+      <header class="modal-header">
+        <div>
+          <span class="eyebrow">
+            PROJET
+          </span>
+
+          <h2>
+            Modifier le projet
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          class="close-button"
+          [disabled]="updating()"
+          (click)="closeEdit()"
+        >
+          ×
+        </button>
+      </header>
+
+      <form
+        [formGroup]="editForm"
+        (ngSubmit)="updateProject()"
+      >
+
+        <div class="form-group">
+          <label>
+            Nom
+          </label>
+
+          <input
+            type="text"
+            formControlName="name"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>
+            Slug
+          </label>
+
+          <input
+            type="text"
+            formControlName="slug"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>
+            Description
+          </label>
+
+          <textarea
+            rows="4"
+            formControlName="description"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>
+            Branche par défaut
+          </label>
+
+          <input
+            type="text"
+            formControlName="defaultBranch"
+          />
+        </div>
+
+        <footer class="modal-actions">
+
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="updating()"
+            (click)="closeEdit()"
+          >
+            Annuler
+          </button>
+
+          <button
+            type="submit"
+            class="primary-button"
+            [disabled]="
+              editForm.invalid ||
+              updating()
+            "
+          >
+            {{
+              updating()
+                ? 'Enregistrement...'
+                : 'Enregistrer'
+            }}
+          </button>
+
+        </footer>
+
+      </form>
+
+    </section>
+
+  </div>
+}

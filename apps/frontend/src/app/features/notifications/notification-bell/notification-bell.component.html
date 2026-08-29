@@ -1,0 +1,115 @@
+<div class="notification-root">
+
+  <button
+    type="button"
+    class="bell"
+    (click)="toggle()"
+    aria-label="Notifications"
+  >
+    <span class="bell-label">
+      Notifications
+    </span>
+
+    @if (
+      notifications.unread() >
+      0
+    ) {
+      <span class="count">
+        {{
+          notifications.unread() >
+          99
+            ? '99+'
+            : notifications.unread()
+        }}
+      </span>
+    }
+  </button>
+
+  @if (
+    open()
+  ) {
+    <section class="panel">
+
+      <header>
+        <div>
+          <strong>
+            Notifications
+          </strong>
+
+          <small>
+            {{
+              notifications.unread()
+            }}
+            non lue(s)
+          </small>
+        </div>
+
+        @if (
+          notifications.unread() >
+          0
+        ) {
+          <button
+            type="button"
+            class="mark-all"
+            (click)="readAll()"
+          >
+            Tout lire
+          </button>
+        }
+      </header>
+
+      <div class="items">
+
+        @for (
+          item of notifications.items();
+          track item.id
+        ) {
+          <button
+            type="button"
+            class="notification"
+            [class.unread]="
+              !item.readAt
+            "
+            (click)="read(item)"
+          >
+            <span class="type">
+              {{
+                item.type
+                  .charAt(0)
+              }}
+            </span>
+
+            <span class="copy">
+              <strong>
+                {{
+                  item.title
+                }}
+              </strong>
+
+              <small class="message">
+                {{
+                  item.message
+                }}
+              </small>
+
+              <small>
+                {{
+                  item.createdAt
+                  | date:
+                    'dd/MM HH:mm'
+                }}
+              </small>
+            </span>
+          </button>
+        } @empty {
+          <div class="empty">
+            Aucune notification.
+          </div>
+        }
+
+      </div>
+
+    </section>
+  }
+
+</div>

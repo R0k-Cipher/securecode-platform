@@ -1,0 +1,333 @@
+<section class="workspace-page">
+
+  <header class="page-header">
+
+    <div class="heading-copy">
+      <span class="eyebrow">
+        ESPACES DE TRAVAIL
+      </span>
+
+      <h1>
+        Organisations
+      </h1>
+
+      <p>
+        Sélectionnez l’organisation dans laquelle
+        vous souhaitez travailler.
+      </p>
+    </div>
+
+  </header>
+
+
+  <section class="toolbar">
+
+    <div class="search-field">
+
+      <input
+        #searchInput
+        type="search"
+        placeholder="Rechercher une organisation..."
+        [value]="search()"
+        (input)="onSearch(searchInput.value)"
+      />
+
+    </div>
+
+    @if (!loading()) {
+
+      <span class="result-count">
+
+        {{ pagination().total }}
+
+        {{
+          pagination().total > 1
+            ? 'organisations'
+            : 'organisation'
+        }}
+
+      </span>
+
+    }
+
+  </section>
+
+
+  @if (error()) {
+
+    <div
+      class="alert alert-error"
+      role="alert"
+    >
+
+      <strong>
+        Une erreur est survenue
+      </strong>
+
+      <span>
+        {{ error() }}
+      </span>
+
+      <button
+        type="button"
+        (click)="load()"
+      >
+        Réessayer
+      </button>
+
+    </div>
+
+  }
+
+
+  @if (
+    loading() &&
+    organizations().length === 0
+  ) {
+
+    <div class="organizations-grid">
+
+      @for (
+        skeleton of [1, 2, 3, 4];
+        track skeleton
+      ) {
+
+        <div
+          class="organization-card skeleton-card"
+        >
+
+          <div
+            class="skeleton skeleton-avatar"
+          ></div>
+
+          <div class="skeleton-content">
+
+            <div
+              class="skeleton skeleton-title"
+            ></div>
+
+            <div
+              class="skeleton skeleton-line"
+            ></div>
+
+          </div>
+
+        </div>
+
+      }
+
+    </div>
+
+  }
+
+
+  @if (
+    !loading() &&
+    organizations().length === 0
+  ) {
+
+    <section class="empty-state">
+
+      <div class="empty-logo">
+        SC
+      </div>
+
+      @if (search()) {
+
+        <h2>
+          Aucun résultat
+        </h2>
+
+        <p>
+          Aucune organisation ne correspond à
+          « {{ search() }} ».
+        </p>
+
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="onSearch('')"
+        >
+          Effacer la recherche
+        </button>
+
+      } @else {
+
+        <h2>
+          Aucune organisation disponible
+        </h2>
+
+        <p>
+          Votre compte n’est actuellement membre
+          d’aucune organisation.
+        </p>
+
+        <p class="empty-state-hint">
+          Si vous avez été invité dans une organisation,
+          vérifiez votre invitation. Sinon, contactez
+          l’administrateur de votre organisation.
+        </p>
+
+      }
+
+    </section>
+
+  }
+
+
+  @if (
+    organizations().length > 0
+  ) {
+
+    <section class="organizations-grid">
+
+      @for (
+        organization of organizations();
+        track organization.id
+      ) {
+
+        <button
+          type="button"
+          class="organization-card"
+          (click)="open(organization)"
+        >
+
+          <div class="organization-avatar">
+
+            @if (organization.logoUrl) {
+
+              <img
+                [src]="organization.logoUrl"
+                [alt]="organization.name"
+              />
+
+            } @else {
+
+              <span>
+                {{ initials(organization) }}
+              </span>
+
+            }
+
+          </div>
+
+
+          <div class="organization-main">
+
+            <div class="organization-heading">
+
+              <h2>
+                {{ organization.name }}
+              </h2>
+
+              <span class="role-badge">
+                {{ roleLabel(organization) }}
+              </span>
+
+            </div>
+
+
+            <p class="slug">
+              {{ organization.slug }}
+            </p>
+
+
+            @if (organization.description) {
+
+              <p class="description">
+                {{ organization.description }}
+              </p>
+
+            }
+
+
+            <div class="organization-stats">
+
+              <span>
+                {{
+                  organization.projectsCount ??
+                  0
+                }}
+                projets
+              </span>
+
+              <span class="separator">
+                ·
+              </span>
+
+              <span>
+                {{
+                  organization.membersCount ??
+                  0
+                }}
+                membres
+              </span>
+
+            </div>
+
+          </div>
+
+
+          <div class="open-action">
+
+            Ouvrir
+
+            <span aria-hidden="true">
+              →
+            </span>
+
+          </div>
+
+        </button>
+
+      }
+
+    </section>
+
+  }
+
+
+  @if (
+    pagination().totalPages > 1
+  ) {
+
+    <nav class="pagination">
+
+      <button
+        type="button"
+        [disabled]="
+          !pagination().hasPreviousPage ||
+          loading()
+        "
+        (click)="previousPage()"
+      >
+        Précédent
+      </button>
+
+
+      <span>
+
+        Page
+        {{ pagination().page }}
+        sur
+        {{ pagination().totalPages }}
+
+      </span>
+
+
+      <button
+        type="button"
+        [disabled]="
+          !pagination().hasNextPage ||
+          loading()
+        "
+        (click)="nextPage()"
+      >
+        Suivant
+      </button>
+
+    </nav>
+
+  }
+
+</section>

@@ -7,8 +7,85 @@ import {
 } from '@securecode-platform/queue-contracts';
 
 import {
+  RepositoryWorkspaceService,
+} from '../services/repository-workspace.service';
+
+import {
+  GithubWorkerClientService,
+} from '../services/github-worker-client.service';
+
+import {
   RepositorySyncProcessor,
 } from '../processors/repository-sync.processor';
+
+import {
+  RepositoryDownloadService,
+} from '../services/repository-download.service';
+
+import {
+  SecurityScanProcessor,
+} from '../processors/security-scan.processor';
+
+import {
+  RepositoryStateResolverService,
+} from '../services/repository-state-resolver.service';
+
+import {
+  GithubCompareService,
+} from '../services/github-compare.service';
+
+import {
+  ChangeSetResolverService,
+} from '../services/change-set-resolver.service';
+
+import {
+  ScannerRuntimeService,
+} from '../services/scanner-runtime.service';
+
+import {
+  FileDiscoveryService,
+} from '../services/file-discovery.service';
+
+import {
+  RepositoryExtractionService,
+} from '../services/repository-extraction.service';
+
+import {
+  FindingPersistenceService,
+} from '../services/finding-persistence.service';
+import { FindingNormalizerService } from '../services/finding-normalizer.service';
+
+import {
+  FindingReconciliationService,
+} from '../services/finding-reconciliation.service';
+
+import {
+  SecurityScoreService,
+} from '../services/security-score.service';
+
+import {
+  OsvVulnerabilityProviderService,
+} from '../services/osv-vulnerability-provider.service';
+
+import {
+  ScannerFileCacheService,
+} from '../services/scanner-file-cache.service';
+
+import {
+  ScanExecutionSummaryService,
+} from '../services/scan-execution-summary.service';
+
+import {
+  OsvCacheService,
+} from '../services/osv-cache.service';
+
+import {
+  ExternalServiceCircuitBreakerService,
+} from '../services/external-service-circuit-breaker.service';
+
+import {
+  RepositoryLanguageSummaryService,
+} from '../services/repository-language-summary.service';
 
 @Module({
   imports: [
@@ -37,11 +114,40 @@ import {
 
     BullModule.registerQueue({
       name: QUEUE_NAMES.REPOSITORY_SYNC,
+    },
+    {
+    name:
+      QUEUE_NAMES.SECURITY_SCAN,
     }),
   ],
 
   providers: [
     RepositorySyncProcessor,
+    RepositoryWorkspaceService,
+
+    GithubWorkerClientService,
+    RepositoryDownloadService,
+    SecurityScanProcessor,
+
+    RepositoryStateResolverService,
+    GithubCompareService,
+    ChangeSetResolverService,
+
+    FileDiscoveryService,
+    RepositoryExtractionService,
+    FindingPersistenceService,
+    FindingNormalizerService,
+    FindingReconciliationService,
+    SecurityScoreService,
+
+    ScannerRuntimeService,
+    OsvVulnerabilityProviderService,
+    ScannerFileCacheService,
+    ScanExecutionSummaryService,
+    OsvCacheService,
+    ExternalServiceCircuitBreakerService,
+    RepositoryLanguageSummaryService,
+    OsvVulnerabilityProviderService,
   ],
 })
 export class WorkerQueuesModule {}

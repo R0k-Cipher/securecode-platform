@@ -1,0 +1,123 @@
+<section class="admin-page">
+
+  <header class="page-heading">
+    <div>
+      <h1>Utilisateurs</h1>
+      <p>
+        Administration des comptes, statuts d'accès et rôles plateforme.
+      </p>
+    </div>
+  </header>
+
+  <div class="card">
+
+    <div class="toolbar">
+      <input
+        class="search"
+        type="search"
+        placeholder="Rechercher par nom, email, rôle ou statut..."
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+      >
+
+      <span class="count">
+        {{ filteredUsers().length }} utilisateur(s)
+      </span>
+    </div>
+
+    @if (loading()) {
+      <div class="loading">
+        Chargement des utilisateurs...
+      </div>
+    } @else if (error()) {
+      <div class="error">
+        {{ error() }}
+      </div>
+    } @else if (!filteredUsers().length) {
+      <div class="empty">
+        Aucun utilisateur trouvé.
+      </div>
+    } @else {
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Utilisateur</th>
+              <th>Statut</th>
+              <th>Rôle plateforme</th>
+              <th>Organisations</th>
+              <th>Projets créés</th>
+              <th>Dernière connexion</th>
+              <th>Création</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (
+              user of filteredUsers();
+              track user.id
+            ) {
+              <tr>
+                <td>
+                  <span class="primary">
+                    {{ user.firstName }}
+                    {{ user.lastName }}
+                  </span>
+                  <span class="secondary">
+                    {{ user.email }}
+                  </span>
+                </td>
+
+                <td>
+                  <select
+                    [ngModel]="user.status"
+                    (ngModelChange)="changeStatus(user, $event)"
+                  >
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="INVITED">INVITED</option>
+                    <option value="SUSPENDED">SUSPENDED</option>
+                    <option value="DISABLED">DISABLED</option>
+                  </select>
+                </td>
+
+                <td>
+                  <select
+                    [ngModel]="user.platformRole"
+                    (ngModelChange)="changeRole(user, $event)"
+                  >
+                    <option value="USER">USER</option>
+                    <option value="PLATFORM_ADMIN">PLATFORM_ADMIN</option>
+                  </select>
+                </td>
+
+                <td>
+                  {{ user._count.organizationMemberships }}
+                </td>
+
+                <td>
+                  {{ user._count.createdProjects }}
+                </td>
+
+                <td>
+                  {{
+                    user.lastLoginAt
+                      ? (user.lastLoginAt | date:'dd/MM/yyyy HH:mm')
+                      : 'Jamais'
+                  }}
+                </td>
+
+                <td>
+                  {{ user.createdAt | date:'dd/MM/yyyy' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+    }
+
+  </div>
+
+</section>

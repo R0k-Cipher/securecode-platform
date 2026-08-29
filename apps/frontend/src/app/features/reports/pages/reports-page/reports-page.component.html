@@ -1,0 +1,188 @@
+<section class="reports-page">
+
+  <header class="page-header">
+
+    <div>
+      <span class="eyebrow">
+        REPORTING
+      </span>
+
+      <h1>
+        Rapports de sécurité
+      </h1>
+
+      <p>
+        Génération et historique des rapports du projet.
+        Le format PDF s'ouvre dans le dialogue d'impression
+        afin d'être enregistré directement en PDF.
+      </p>
+    </div>
+
+    <div class="actions">
+      <button
+        type="button"
+        class="primary"
+        [disabled]="creating() !== null"
+        (click)="create('PDF')"
+      >
+        {{
+          creating() === 'PDF'
+            ? 'Génération...'
+            : 'Nouveau rapport PDF'
+        }}
+      </button>
+
+      <button
+        type="button"
+        [disabled]="creating() !== null"
+        (click)="create('JSON')"
+      >
+        JSON
+      </button>
+
+      <button
+        type="button"
+        [disabled]="creating() !== null"
+        (click)="create('HTML')"
+      >
+        HTML
+      </button>
+    </div>
+
+  </header>
+
+  <section class="card">
+
+    <div class="card-header">
+      <div>
+        <strong>
+          Historique
+        </strong>
+
+        <small>
+          {{
+            reports().length
+          }}
+          rapport(s)
+        </small>
+      </div>
+
+      <button
+        type="button"
+        (click)="load()"
+      >
+        Actualiser
+      </button>
+    </div>
+
+    @if (
+      loading()
+    ) {
+      <div class="state">
+        Chargement...
+      </div>
+    } @else if (
+      !reports().length
+    ) {
+      <div class="state">
+        Aucun rapport généré.
+      </div>
+    } @else {
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Rapport</th>
+              <th>Format</th>
+              <th>Statut</th>
+              <th>Généré par</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (
+              report of reports();
+              track report.id
+            ) {
+              <tr>
+                <td>
+                  <strong>
+                    {{ report.name }}
+                  </strong>
+
+                  <small>
+                    {{
+                      report.scanId
+                        ? 'Scan ' +
+                          report.scanId.slice(
+                            0,
+                            8
+                          )
+                        : 'Projet'
+                    }}
+                  </small>
+                </td>
+
+                <td>
+                  <span class="badge">
+                    {{ report.format }}
+                  </span>
+                </td>
+
+                <td>
+                  <span
+                    class="badge"
+                    [class.ready]="
+                      report.status ===
+                      'READY'
+                    "
+                  >
+                    {{ report.status }}
+                  </span>
+                </td>
+
+                <td>
+                  {{
+                    report.requestedBy.email
+                  }}
+                </td>
+
+                <td>
+                  {{
+                    report.generatedAt
+                      | date:
+                        'dd/MM/yyyy HH:mm'
+                  }}
+                </td>
+
+                <td>
+                  <button
+                    type="button"
+                    [disabled]="
+                      report.status !==
+                      'READY'
+                    "
+                    (click)="open(report)"
+                  >
+                    {{
+                      report.format ===
+                      'PDF'
+                        ? 'Ouvrir / PDF'
+                        : 'Télécharger'
+                    }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+    }
+
+  </section>
+
+</section>

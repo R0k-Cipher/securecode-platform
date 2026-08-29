@@ -132,6 +132,45 @@ export class RepositoriesController {
     );
   }
 
+  @Get(':repositoryId/security-overview')
+  @RequirePermissions(
+    PERMISSION_CODES.REPOSITORY_READ,
+  )
+  @ApiOperation({
+    summary:
+      'Afficher la synthèse de sécurité d’un dépôt',
+  })
+  @ApiOkResponse({
+    description:
+      'Synthèse de sécurité du dépôt.',
+  })
+  securityOverview(
+    @Param(
+      'organizationId',
+      new ParseUUIDPipe(),
+    )
+    organizationId: string,
+
+    @Param(
+      'projectId',
+      new ParseUUIDPipe(),
+    )
+    projectId: string,
+
+    @Param(
+      'repositoryId',
+      new ParseUUIDPipe(),
+    )
+    repositoryId: string,
+  ) {
+    return this.repositoriesService
+      .securityOverview(
+        organizationId,
+        projectId,
+        repositoryId,
+      );
+  }
+
   @Get(':repositoryId')
   @RequirePermissions(
     PERMISSION_CODES.REPOSITORY_READ,

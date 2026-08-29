@@ -23,6 +23,11 @@ enum UserStatus {
   DISABLED
 }
 
+enum PlatformRole {
+  USER
+  PLATFORM_ADMIN
+}
+
 enum TokenType {
   REFRESH
   EMAIL_VERIFICATION
@@ -239,17 +244,18 @@ enum RepositorySyncTrigger {
 // ============================================================================
 
 model User {
-  id              String     @id @default(uuid()) @db.Uuid
-  email           String     @unique @db.VarChar(320)
-  passwordHash    String?    @db.VarChar(255)
-  firstName       String     @db.VarChar(100)
-  lastName        String     @db.VarChar(100)
-  avatarUrl       String?    @db.Text
-  status          UserStatus @default(INVITED)
-  emailVerifiedAt DateTime?  @db.Timestamptz(6)
-  lastLoginAt     DateTime?  @db.Timestamptz(6)
-  createdAt       DateTime   @default(now()) @db.Timestamptz(6)
-  updatedAt       DateTime   @updatedAt @db.Timestamptz(6)
+  id              String       @id @default(uuid()) @db.Uuid
+  email           String       @unique @db.VarChar(320)
+  passwordHash    String?      @db.VarChar(255)
+  firstName       String       @db.VarChar(100)
+  lastName        String       @db.VarChar(100)
+  avatarUrl       String?      @db.Text
+  status          UserStatus   @default(INVITED)
+  emailVerifiedAt DateTime?    @db.Timestamptz(6)
+  lastLoginAt     DateTime?    @db.Timestamptz(6)
+  platformRole    PlatformRole @default(USER)
+  createdAt       DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @db.Timestamptz(6)
 
   sessions                   Session[]
   securityTokens             SecurityToken[]
@@ -260,21 +266,23 @@ model User {
   createdProjects            Project[]            @relation("ProjectCreator")
   projectMemberships         ProjectMember[]      @relation("ProjectMemberUser")
   gitConnections             GitConnection[]      @relation("GitConnectionConnector")
-  
-  createdRepositories Repository[]     @relation("RepositoryCreator")
+
+  createdRepositories      Repository[]     @relation("RepositoryCreator")
   triggeredRepositorySyncs RepositorySync[] @relation("RepositorySyncTriggerUser")
 
-  requestedScans             Scan[]               @relation("ScanRequester")
-  findingComments            FindingComment[]     @relation("FindingCommentAuthor")
-  receivedAssignments        FindingAssignment[]  @relation("FindingAssignee")
-  createdAssignments         FindingAssignment[]  @relation("FindingAssigner")
-  ownedVulnerabilities       Vulnerability[]      @relation("VulnerabilityOwner")
-  requestedReports           Report[]             @relation("ReportRequester")
-  reviewedWstgControls       ProjectWstgControl[] @relation("WstgReviewer")
-  auditLogs                  AuditLog[]           @relation("AuditActor")
+  requestedScans             Scan[]                      @relation("ScanRequester")
+  findingComments            FindingComment[]            @relation("FindingCommentAuthor")
+  receivedAssignments        FindingAssignment[]         @relation("FindingAssignee")
+  createdAssignments         FindingAssignment[]         @relation("FindingAssigner")
+  ownedVulnerabilities       Vulnerability[]             @relation("VulnerabilityOwner")
+  requestedReports           Report[]                    @relation("ReportRequester")
+  reviewedWstgControls       ProjectWstgControl[]        @relation("WstgReviewer")
+  auditLogs                  AuditLog[]                  @relation("AuditActor")
   notifications              Notification[]
+  githubInstallationPendings GithubInstallationPending[]
 
   @@index([status])
+  @@index([platformRole])
   @@index([createdAt])
   @@map("users")
 }
@@ -377,10 +385,12 @@ model Organization {
   projects       Project[]
   gitConnections GitConnection[]
 
-  repositories     Repository[]
-  repositorySyncs  RepositorySync[]
+  repositories               Repository[]
+  repositorySyncs            RepositorySync[]
+  scannerFileCaches          ScannerFileCache[]
+  githubInstallationPendings GithubInstallationPending[]
 
-  auditLogs      AuditLog[]
+  auditLogs AuditLog[]
 
   @@index([createdById])
   @@index([createdAt])
@@ -445,16 +455,17 @@ model Project {
   updatedAt      DateTime      @updatedAt @db.Timestamptz(6)
   archivedAt     DateTime?     @db.Timestamptz(6)
 
-  organization    Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  createdBy       User                 @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  members         ProjectMember[]
-  repositories    Repository[]
-  scans           Scan[]
-  findings        Finding[]
-  vulnerabilities Vulnerability[]
-  wstgControls    ProjectWstgControl[]
-  reports         Report[]
-  auditLogs       AuditLog[]
+  organization               Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdBy                  User                        @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  members                    ProjectMember[]
+  repositories               Repository[]
+  scans                      Scan[]
+  findings                   Finding[]
+  vulnerabilities            Vulnerability[]
+  wstgControls               ProjectWstgControl[]
+  reports                    Report[]
+  auditLogs                  AuditLog[]
+  githubInstallationPendings GithubInstallationPending[]
 
   @@unique([organizationId, slug])
   @@index([organizationId, status])
@@ -485,25 +496,25 @@ model ProjectMember {
 // ============================================================================
 
 model GitConnection {
-  id                    String           @id @default(uuid()) @db.Uuid
-  organizationId        String           @db.Uuid
-  connectedById         String           @db.Uuid
-  provider              GitProvider
-  externalAccountId     String           @db.VarChar(255)
-  externalAccountName   String?          @db.VarChar(255)
+  id                  String      @id @default(uuid()) @db.Uuid
+  organizationId      String      @db.Uuid
+  connectedById       String      @db.Uuid
+  provider            GitProvider
+  externalAccountId   String      @db.VarChar(255)
+  externalAccountName String?     @db.VarChar(255)
 
-  installationId        String?          @db.VarChar(255)
-  repositorySelection   String?          @db.VarChar(50)
-  permissions           Json?
+  installationId      String? @db.VarChar(255)
+  repositorySelection String? @db.VarChar(50)
+  permissions         Json?
 
-  encryptedAccessToken  String?          @db.Text
-  encryptedRefreshToken String?          @db.Text
-  tokenExpiresAt        DateTime?        @db.Timestamptz(6)
+  encryptedAccessToken  String?   @db.Text
+  encryptedRefreshToken String?   @db.Text
+  tokenExpiresAt        DateTime? @db.Timestamptz(6)
 
-  status                ConnectionStatus @default(ACTIVE)
-  createdAt             DateTime         @default(now()) @db.Timestamptz(6)
-  updatedAt             DateTime         @updatedAt @db.Timestamptz(6)
-  revokedAt             DateTime?        @db.Timestamptz(6)
+  status    ConnectionStatus @default(ACTIVE)
+  createdAt DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime         @updatedAt @db.Timestamptz(6)
+  revokedAt DateTime?        @db.Timestamptz(6)
 
   organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   connectedBy   User           @relation("GitConnectionConnector", fields: [connectedById], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -517,59 +528,78 @@ model GitConnection {
   @@map("git_connections")
 }
 
+model GithubInstallationPending {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  projectId      String   @db.Uuid
+  userId         String   @db.Uuid
+  expiresAt      DateTime @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("github_installation_pendings")
+}
+
 model Repository {
-  id                  String               @id @default(uuid()) @db.Uuid
-  organizationId      String               @db.Uuid
-  projectId           String               @db.Uuid
-  gitConnectionId     String               @db.Uuid
-  createdById         String?              @db.Uuid
+  id              String @id @default(uuid()) @db.Uuid
+  organizationId  String @db.Uuid
+  projectId       String @db.Uuid
+  gitConnectionId String @db.Uuid
+  createdById     String @db.Uuid
 
-  provider            GitProvider
-  externalId          String               @db.VarChar(255)
-  nodeId              String?              @db.VarChar(255)
+  provider   GitProvider
+  externalId String      @db.VarChar(255)
+  nodeId     String?     @db.VarChar(255)
 
-  owner               String               @db.VarChar(255)
-  name                String               @db.VarChar(255)
-  fullName            String               @db.VarChar(500)
-  description         String?              @db.Text
+  owner       String  @db.VarChar(255)
+  name        String  @db.VarChar(255)
+  fullName    String  @db.VarChar(500)
+  description String? @db.Text
 
-  defaultBranch       String?              @db.VarChar(255)
-  cloneUrl            String?              @db.Text
-  sshUrl              String?              @db.Text
-  webUrl              String               @db.Text
+  defaultBranch String? @db.VarChar(255)
+  cloneUrl      String? @db.Text
+  sshUrl        String? @db.Text
+  webUrl        String  @db.Text
 
-  visibility          RepositoryVisibility @default(PRIVATE)
+  visibility RepositoryVisibility @default(PRIVATE)
 
-  isPrivate           Boolean              @default(true)
-  isFork              Boolean              @default(false)
-  isArchived          Boolean              @default(false)
+  isPrivate  Boolean @default(true)
+  isFork     Boolean @default(false)
+  isArchived Boolean @default(false)
 
-  primaryLanguage     String?              @db.VarChar(100)
-  lastRemoteCommitSha String?              @db.VarChar(64)
+  primaryLanguage     String? @db.VarChar(100)
+  lastRemoteCommitSha String? @db.VarChar(64)
 
-  syncStatus          RepositorySyncStatus @default(NOT_SYNCED)
-  lastSyncedAt        DateTime?            @db.Timestamptz(6)
+  syncStatus   RepositorySyncStatus @default(NOT_SYNCED)
+  lastSyncedAt DateTime?            @db.Timestamptz(6)
 
-  createdAt           DateTime             @default(now()) @db.Timestamptz(6)
-  updatedAt           DateTime             @updatedAt @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   gitConnection GitConnection @relation(fields: [gitConnectionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  createdBy    User?         @relation("RepositoryCreator", fields: [createdById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  createdBy User @relation("RepositoryCreator", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  syncs        RepositorySync[]
-  commits      Commit[]
-  pullRequests PullRequest[]
-  releases     Release[]
-  webhookEvents WebhookEvent[]
-  scans        Scan[]
-  findings     Finding[]
+  scannerFileCaches ScannerFileCache[]
+  syncs             RepositorySync[]
+  commits           Commit[]
+  pullRequests      PullRequest[]
+  releases          Release[]
+  webhookEvents     WebhookEvent[]
+  scans             Scan[]
+  findings          Finding[]
 
   @@unique([gitConnectionId, externalId])
   @@unique([projectId, fullName])
-
   @@index([organizationId])
   @@index([projectId])
   @@index([gitConnectionId])
@@ -577,40 +607,39 @@ model Repository {
   @@index([syncStatus])
   @@index([projectId, isArchived])
   @@index([organizationId, syncStatus])
-
   @@map("repositories")
 }
 
 model RepositorySync {
-  id             String                @id @default(uuid()) @db.Uuid
-  organizationId String                @db.Uuid
-  repositoryId   String                @db.Uuid
-  triggeredById  String?               @db.Uuid
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @db.Uuid
+  repositoryId   String  @db.Uuid
+  triggeredById  String? @db.Uuid
 
-  status         RepositorySyncStatus  @default(PENDING)
-  trigger        RepositorySyncTrigger
+  status  RepositorySyncStatus  @default(PENDING)
+  trigger RepositorySyncTrigger
 
-  branch         String?               @db.VarChar(255)
-  commitSha      String?               @db.VarChar(64)
+  branch    String? @db.VarChar(255)
+  commitSha String? @db.VarChar(64)
 
-  queueJobId     String?               @db.VarChar(255)
-  attempt        Int                   @default(0)
+  queueJobId String? @db.VarChar(255)
+  attempt    Int     @default(0)
 
-  errorMessage   String?               @db.Text
-  metadata       Json?
+  errorMessage String? @db.Text
+  metadata     Json?
 
-  startedAt      DateTime?             @db.Timestamptz(6)
-  completedAt    DateTime?             @db.Timestamptz(6)
-  failedAt       DateTime?             @db.Timestamptz(6)
+  startedAt   DateTime? @db.Timestamptz(6)
+  completedAt DateTime? @db.Timestamptz(6)
+  failedAt    DateTime? @db.Timestamptz(6)
 
-  createdAt      DateTime              @default(now()) @db.Timestamptz(6)
-  updatedAt      DateTime              @updatedAt @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
 
-  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  repository     Repository            @relation(fields: [repositoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  triggeredBy    User?                 @relation("RepositorySyncTriggerUser", fields: [triggeredById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  triggeredBy User? @relation("RepositorySyncTriggerUser", fields: [triggeredById], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([organizationId])
   @@index([repositoryId])
@@ -619,7 +648,6 @@ model RepositorySync {
   @@index([repositoryId, status])
   @@index([createdAt])
   @@index([queueJobId])
-
   @@map("repository_syncs")
 }
 
@@ -786,6 +814,34 @@ model ScanTechnology {
   @@unique([scanId, name, version, category])
   @@index([name, category])
   @@map("scan_technologies")
+}
+
+model ScannerFileCache {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  repositoryId   String @db.Uuid
+
+  fileHash String @db.VarChar(64)
+
+  scannerId      String @db.VarChar(150)
+  scannerVersion String @db.VarChar(50)
+  rulesetVersion String @db.VarChar(100)
+
+  findings Json
+
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(6)
+  lastUsedAt DateTime  @default(now()) @db.Timestamptz(6)
+  expiresAt  DateTime? @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([organizationId, repositoryId, fileHash, scannerId, scannerVersion, rulesetVersion], name: "scanner_file_cache_key")
+  @@index([organizationId, repositoryId])
+  @@index([expiresAt])
+  @@index([lastUsedAt])
+  @@map("scanner_file_caches")
 }
 
 model Finding {

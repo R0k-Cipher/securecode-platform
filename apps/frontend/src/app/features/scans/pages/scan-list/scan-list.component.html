@@ -1,0 +1,254 @@
+<section class="scan-list-page">
+
+  <header class="page-header">
+
+    <div>
+      <span class="eyebrow">
+        SECURITY ANALYSIS
+      </span>
+
+      <h1>
+        Scans
+      </h1>
+
+      <p>
+        Consultez l’historique des analyses
+        de sécurité exécutées sur le projet.
+      </p>
+    </div>
+
+  </header>
+
+  <section class="filters">
+
+    <div>
+
+      <label for="scan-status">
+        Statut
+      </label>
+
+      <select
+        id="scan-status"
+        [(ngModel)]="status"
+        (change)="filter()"
+      >
+
+        <option value="">
+          Tous les statuts
+        </option>
+
+        @for (
+          item of statuses;
+          track item
+        ) {
+          <option
+            [ngValue]="item"
+          >
+            {{
+              statusLabel(
+                item
+              )
+            }}
+          </option>
+        }
+
+      </select>
+
+    </div>
+
+    <button
+      type="button"
+      class="secondary-button"
+      (click)="reset()"
+    >
+      Réinitialiser
+    </button>
+
+  </section>
+
+  @if (error()) {
+    <div class="alert-error">
+      {{ error() }}
+    </div>
+  }
+
+  @if (loading()) {
+
+    <div class="loading-state">
+      Chargement des scans...
+    </div>
+
+  } @else if (
+    scans().length === 0
+  ) {
+
+    <div class="empty-state">
+
+      <h2>
+        Aucun scan disponible
+      </h2>
+
+      <p>
+        Les analyses exécutées sur les
+        repositories apparaîtront ici.
+      </p>
+
+    </div>
+
+  } @else {
+
+    <section class="table-card">
+
+      <div class="table-header">
+
+        <span>
+          Repository
+        </span>
+
+        <span>
+          Type
+        </span>
+
+        <span>
+          Statut
+        </span>
+
+        <span>
+          Progression
+        </span>
+
+        <span>
+          Score
+        </span>
+
+        <span>
+          Date
+        </span>
+
+      </div>
+
+      @for (
+        scan of scans();
+        track scan.id
+      ) {
+
+        <article
+          class="scan-row"
+          tabindex="0"
+          (click)="openScan(scan)"
+          (keydown.enter)="openScan(scan)"
+        >
+
+          <div class="repository">
+
+            <strong>
+              {{
+                scan.repository
+                  ?.fullName ||
+                'Repository'
+              }}
+            </strong>
+
+            @if (scan.branch) {
+              <small>
+                {{ scan.branch }}
+              </small>
+            }
+
+          </div>
+
+          <span>
+            {{ scan.type }}
+          </span>
+
+          <span
+            class="status"
+            [attr.data-status]="
+              scan.status
+            "
+          >
+            {{
+              statusLabel(
+                scan.status
+              )
+            }}
+          </span>
+
+          <div class="progress">
+
+            <div>
+              <span
+                [style.width.%]="
+                  scan.progress
+                "
+              ></span>
+            </div>
+
+            <small>
+              {{ scan.progress }} %
+            </small>
+
+          </div>
+
+          <strong class="score">
+            {{
+              scan.score ??
+              '—'
+            }}
+          </strong>
+
+          <span class="date">
+            {{
+              scan.createdAt
+                | date:
+                  'dd/MM/yyyy HH:mm'
+            }}
+          </span>
+
+        </article>
+
+      }
+
+    </section>
+
+    <footer class="pagination">
+
+      <span>
+        {{ total }}
+        résultat(s)
+      </span>
+
+      <div>
+
+        <button
+          type="button"
+          (click)="previousPage()"
+          [disabled]="
+            page <= 1
+          "
+        >
+          Précédent
+        </button>
+
+        <span>
+          Page {{ page }}
+          / {{ totalPages }}
+        </span>
+
+        <button
+          type="button"
+          (click)="nextPage()"
+          [disabled]="
+            page >= totalPages
+          "
+        >
+          Suivant
+        </button>
+
+      </div>
+
+    </footer>
+
+  }
+
+</section>

@@ -1,0 +1,56 @@
+<section class="callback-page">
+
+  <div class="callback-card">
+
+    @if (loading()) {
+
+      <div class="loader">
+        <span></span>
+      </div>
+
+      <span class="eyebrow">
+        GITHUB INTEGRATION
+      </span>
+
+      <h1>
+        Connexion GitHub
+      </h1>
+
+      <p>
+        Finalisation de l'installation GitHub
+        et préparation de vos repositories...
+      </p>
+
+      <div class="progress-line">
+        <span></span>
+      </div>
+
+      <small>
+        Cette opération peut prendre quelques secondes.
+      </small>
+
+    }
+
+    @if (error()) {
+
+      <div class="error-mark">
+        !
+      </div>
+
+      <span class="eyebrow error-label">
+        CONNECTION FAILED
+      </span>
+
+      <h1>
+        Erreur GitHub
+      </h1>
+
+      <p class="error-message">
+        {{ error() }}
+      </p>
+
+    }
+
+  </div>
+
+</section>

@@ -1,13 +1,23 @@
-import { Component } from '@angular/core';
-import { RouterModule } from '@angular/router';
-import { NxWelcome } from './nx-welcome';
+import {
+  Component,
+} from '@angular/core';
+
+import {
+  RouterOutlet,
+} from '@angular/router';
 
 @Component({
-  imports: [NxWelcome, RouterModule],
-  selector: 'sc-root',
-  templateUrl: './app.html',
-  styleUrl: './app.scss',
+  selector: 'app-root',
+  standalone: true,
+
+  imports: [
+    RouterOutlet,
+  ],
+
+  templateUrl:
+    './app.html',
+
+  styleUrl:
+    './app.scss',
 })
-export class App {
-  protected title = 'frontend';
-}
+export class App {}

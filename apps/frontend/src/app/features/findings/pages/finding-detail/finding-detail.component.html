@@ -1,0 +1,507 @@
+<section class="finding-page">
+
+  <button
+    type="button"
+    class="back-button"
+    (click)="back()"
+  >
+    Retour aux findings
+  </button>
+
+  @if (error()) {
+    <div class="alert-error">
+      {{ error() }}
+    </div>
+  }
+
+  @if (loading()) {
+
+    <div class="loading-state">
+      <span class="spinner"></span>
+
+      <span>
+        Chargement du finding...
+      </span>
+    </div>
+
+  } @else if (finding(); as item) {
+
+    <header class="finding-header">
+
+      <div class="finding-heading">
+
+        <div class="heading-badges">
+
+          <span
+            class="severity"
+            [class]="
+              'severity ' +
+              severityClass(
+                item.severity
+              )
+            "
+          >
+            {{ item.severity }}
+          </span>
+
+          <span class="status-badge">
+            {{
+              statusLabel(
+                item.status
+              )
+            }}
+          </span>
+
+        </div>
+
+        <h1>
+          {{ item.title }}
+        </h1>
+
+        <div class="heading-meta">
+
+          <span>
+            {{ item.ruleId }}
+          </span>
+
+          <span>
+            {{ item.scanner }}
+          </span>
+
+          @if (item.cweId) {
+            <span>
+              {{ item.cweId }}
+            </span>
+          }
+
+        </div>
+
+      </div>
+
+    </header>
+
+    <div class="finding-layout">
+
+      <main class="main-column">
+
+        <section class="card">
+
+          <div class="card-header">
+            <span class="section-label">
+              DESCRIPTION
+            </span>
+
+            <h2>
+              Vulnérabilité détectée
+            </h2>
+          </div>
+
+          <p class="description">
+            {{
+              item.description ||
+              'Aucune description détaillée disponible.'
+            }}
+          </p>
+
+        </section>
+
+        <section class="card">
+
+          <div class="card-header">
+            <span class="section-label">
+              LOCATION
+            </span>
+
+            <h2>
+              Emplacement dans le code
+            </h2>
+          </div>
+
+          <dl class="location-grid">
+
+            <div>
+              <dt>
+                Fichier
+              </dt>
+
+              <dd>
+                {{
+                  item.filePath ||
+                  'Finding global'
+                }}
+              </dd>
+            </div>
+
+            <div>
+              <dt>
+                Ligne début
+              </dt>
+
+              <dd>
+                {{
+                  item.startLine ??
+                  'N/A'
+                }}
+              </dd>
+            </div>
+
+            <div>
+              <dt>
+                Colonne
+              </dt>
+
+              <dd>
+                {{
+                  item.startColumn ??
+                  'N/A'
+                }}
+              </dd>
+            </div>
+
+            <div>
+              <dt>
+                Ligne fin
+              </dt>
+
+              <dd>
+                {{
+                  item.endLine ??
+                  'N/A'
+                }}
+              </dd>
+            </div>
+
+          </dl>
+
+        </section>
+
+        @if (item.codeSnippet) {
+
+          <section class="card">
+
+            <div class="card-header">
+              <span class="section-label">
+                SOURCE CODE
+              </span>
+
+              <h2>
+                Code concerné
+              </h2>
+            </div>
+
+            <pre><code>{{ item.codeSnippet }}</code></pre>
+
+          </section>
+
+        }
+
+        <section class="card recommendation-card">
+
+          <div class="card-header">
+            <span class="section-label">
+              REMEDIATION
+            </span>
+
+            <h2>
+              Recommandation
+            </h2>
+          </div>
+
+          <p>
+            {{
+              item.recommendation ||
+              'Aucune recommandation disponible pour ce finding.'
+            }}
+          </p>
+
+        </section>
+
+      </main>
+
+      <aside class="side-column">
+
+        <section class="card">
+
+          <div class="card-header">
+            <span class="section-label">
+              CLASSIFICATION
+            </span>
+
+            <h2>
+              Références sécurité
+            </h2>
+          </div>
+
+          <dl class="detail-list">
+
+            <div>
+              <dt>
+                Sévérité
+              </dt>
+
+              <dd>
+                <span
+                  class="severity"
+                  [class]="
+                    'severity ' +
+                    severityClass(
+                      item.severity
+                    )
+                  "
+                >
+                  {{ item.severity }}
+                </span>
+              </dd>
+            </div>
+
+            <div>
+              <dt>
+                CWE
+              </dt>
+
+              <dd>
+                {{
+                  item.cweId ||
+                  'N/A'
+                }}
+              </dd>
+            </div>
+
+            <div>
+              <dt>
+                OWASP
+              </dt>
+
+              <dd>
+                {{
+                  item.owaspCategory ||
+                  'N/A'
+                }}
+              </dd>
+            </div>
+
+            <div>
+              <dt>
+                Catégorie
+              </dt>
+
+              <dd>
+                {{
+                  item.category ||
+                  'N/A'
+                }}
+              </dd>
+            </div>
+
+            <div>
+              <dt>
+                Confiance
+              </dt>
+
+              <dd>
+                {{
+                  item.confidence ??
+                  'N/A'
+                }}
+              </dd>
+            </div>
+
+          </dl>
+
+        </section>
+
+        <section class="card">
+
+          <div class="card-header">
+            <span class="section-label">
+              CONTEXT
+            </span>
+
+            <h2>
+              Analyse associée
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            class="context-button"
+            (click)="openRepository()"
+          >
+            <span>
+              Repository
+            </span>
+
+            <strong>
+              {{
+                item.repository
+                  .fullName
+              }}
+            </strong>
+          </button>
+
+          <button
+            type="button"
+            class="context-button"
+            (click)="openScan()"
+          >
+            <span>
+              Scan
+            </span>
+
+            <strong>
+              {{
+                item.scan.id
+                  .slice(
+                    0,
+                    8
+                  )
+              }}
+            </strong>
+          </button>
+
+        </section>
+
+        <section class="card">
+
+          <div class="card-header">
+            <span class="section-label">
+              WORKFLOW
+            </span>
+
+            <h2>
+              Traitement du finding
+            </h2>
+          </div>
+
+          <label class="form-field">
+            <span>
+              Nouveau statut
+            </span>
+
+            <select
+              [(ngModel)]="
+                selectedStatus
+              "
+            >
+
+              @for (
+                status of statuses;
+                track status
+              ) {
+                <option
+                  [ngValue]="status"
+                >
+                  {{
+                    statusLabel(
+                      status
+                    )
+                  }}
+                </option>
+              }
+
+            </select>
+          </label>
+
+          <label class="form-field">
+            <span>
+              Commentaire
+            </span>
+
+            <textarea
+              [(ngModel)]="
+                comment
+              "
+              rows="4"
+              maxlength="2000"
+              placeholder="Commentaire facultatif..."
+            ></textarea>
+          </label>
+
+          <button
+            type="button"
+            class="save-button"
+            (click)="saveStatus()"
+            [disabled]="
+              saving() ||
+              selectedStatus ===
+                item.status
+            "
+          >
+            {{
+              saving()
+                ? 'Enregistrement...'
+                : 'Mettre à jour'
+            }}
+          </button>
+
+        </section>
+
+        <section class="card timeline-card">
+
+          <div class="card-header">
+            <span class="section-label">
+              HISTORY
+            </span>
+
+            <h2>
+              Détection
+            </h2>
+          </div>
+
+          <dl class="detail-list">
+
+            <div>
+              <dt>
+                Première détection
+              </dt>
+
+              <dd>
+                {{
+                  item.firstDetectedAt
+                    | date:
+                      'dd/MM/yyyy HH:mm'
+                }}
+              </dd>
+            </div>
+
+            <div>
+              <dt>
+                Dernière détection
+              </dt>
+
+              <dd>
+                {{
+                  item.lastDetectedAt
+                    | date:
+                      'dd/MM/yyyy HH:mm'
+                }}
+              </dd>
+            </div>
+
+            @if (item.resolvedAt) {
+              <div>
+                <dt>
+                  Résolution
+                </dt>
+
+                <dd>
+                  {{
+                    item.resolvedAt
+                      | date:
+                        'dd/MM/yyyy HH:mm'
+                  }}
+                </dd>
+              </div>
+            }
+
+          </dl>
+
+        </section>
+
+      </aside>
+
+    </div>
+
+  }
+
+</section>

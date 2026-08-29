@@ -1,0 +1,169 @@
+:host {
+  display: block;
+}
+
+.reports-page {
+  display: grid;
+  gap: 20px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: 7px;
+  color: #2563eb;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 25px;
+  letter-spacing: -.02em;
+}
+
+p {
+  max-width: 700px;
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+button {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button.primary {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: white;
+}
+
+button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.card {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 17px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.card-header > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header strong {
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.card-header small {
+  margin-top: 3px;
+  color: #94a3b8;
+  font-size: 9px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef2f7;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  background: #fbfcfe;
+  color: #64748b;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+td {
+  color: #334155;
+  font-size: 11px;
+}
+
+td strong {
+  display: block;
+  color: #0f172a;
+}
+
+td small {
+  display: block;
+  margin-top: 3px;
+  color: #94a3b8;
+  font-size: 9px;
+}
+
+.badge {
+  display: inline-flex;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.badge.ready {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.state {
+  padding: 34px;
+  color: #64748b;
+  text-align: center;
+  font-size: 11px;
+}
+
+@media(max-width:800px) {
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

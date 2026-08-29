@@ -1,0 +1,315 @@
+<section class="scan-page">
+
+  @if (error()) {
+
+    <div class="alert-error">
+      {{ error() }}
+    </div>
+
+  }
+
+  <header class="page-header">
+
+    <div>
+
+      <span class="eyebrow">
+        SECURITY ANALYSIS
+      </span>
+
+      <h1>
+        Security Scan
+      </h1>
+
+      @if (detail(); as scan) {
+
+        <div class="scan-meta">
+
+          <span>
+            {{ scan.type }}
+          </span>
+
+          <span>
+            {{
+              scan.branch ||
+              'Branche inconnue'
+            }}
+          </span>
+
+          <span class="commit">
+            {{
+              scan.commitSha
+                ? scan.commitSha.slice(0, 12)
+                : 'N/A'
+            }}
+          </span>
+
+        </div>
+
+      }
+
+    </div>
+
+    <div class="header-actions">
+
+      @if (canCancel()) {
+
+        <button
+          type="button"
+          class="danger-button"
+          (click)="cancel()"
+          [disabled]="cancelling()"
+        >
+          {{
+            cancelling()
+              ? 'Annulation...'
+              : 'Annuler'
+          }}
+        </button>
+
+      }
+
+      <button
+        type="button"
+        class="primary-button"
+        (click)="viewFindings()"
+      >
+        Voir les findings
+      </button>
+
+    </div>
+
+  </header>
+
+  @if (progress(); as current) {
+
+    <section
+      class="progress-card"
+      [attr.data-status]="
+        current.status
+      "
+    >
+
+      <div class="progress-header">
+
+        <div>
+
+          <span class="section-label">
+            SCAN STATUS
+          </span>
+
+          <h2>
+            {{ current.status }}
+          </h2>
+
+        </div>
+
+        <strong>
+          {{ current.progress }} %
+        </strong>
+
+      </div>
+
+      <div class="progress-track">
+
+        <span
+          [style.width.%]="
+            current.progress
+          "
+        ></span>
+
+      </div>
+
+      <div class="progress-footer">
+
+        <span>
+          Analyse de sécurité
+        </span>
+
+        @if (
+          current.score !== null
+        ) {
+
+          <strong>
+            Security Score :
+            {{ current.score }}
+          </strong>
+
+        }
+
+      </div>
+
+      @if (
+        current.errorMessage
+      ) {
+
+        <div class="scan-error">
+          {{ current.errorMessage }}
+        </div>
+
+      }
+
+    </section>
+
+  }
+
+  @if (detail(); as scan) {
+
+    <div class="content-grid">
+
+      <section class="card">
+
+        <div class="section-heading">
+
+          <span class="section-label">
+            INFORMATION
+          </span>
+
+          <h2>
+            Détails du scan
+          </h2>
+
+        </div>
+
+        <dl class="details-list">
+
+          <div>
+            <dt>
+              Statut
+            </dt>
+
+            <dd>
+              {{ scan.status }}
+            </dd>
+          </div>
+
+          <div>
+            <dt>
+              Type
+            </dt>
+
+            <dd>
+              {{ scan.type }}
+            </dd>
+          </div>
+
+          <div>
+            <dt>
+              Déclencheur
+            </dt>
+
+            <dd>
+              {{ scan.trigger }}
+            </dd>
+          </div>
+
+          <div>
+            <dt>
+              Score
+            </dt>
+
+            <dd class="score-value">
+              {{
+                scan.score ??
+                'N/A'
+              }}
+            </dd>
+          </div>
+
+        </dl>
+
+      </section>
+
+      @if (scan.statistics) {
+
+        <section class="card">
+
+          <div class="section-heading">
+
+            <span class="section-label">
+              ANALYSIS
+            </span>
+
+            <h2>
+              Statistiques
+            </h2>
+
+          </div>
+
+          <div class="statistics-grid">
+
+            <article>
+              <span>
+                Findings
+              </span>
+
+              <strong>
+                {{
+                  scan.statistics
+                    .findingsCount ?? 0
+                }}
+              </strong>
+            </article>
+
+            <article>
+              <span>
+                Nouveaux
+              </span>
+
+              <strong>
+                {{
+                  scan.statistics
+                    .newFindings ?? 0
+                }}
+              </strong>
+            </article>
+
+            <article>
+              <span>
+                Corrigés
+              </span>
+
+              <strong>
+                {{
+                  scan.statistics
+                    .fixedFindings ?? 0
+                }}
+              </strong>
+            </article>
+
+            <article>
+              <span>
+                Cache hits
+              </span>
+
+              <strong>
+                {{
+                  scan.statistics
+                    .cacheHits ?? 0
+                }}
+              </strong>
+            </article>
+
+            <article>
+              <span>
+                Cache misses
+              </span>
+
+              <strong>
+                {{
+                  scan.statistics
+                    .cacheMisses ?? 0
+                }}
+              </strong>
+            </article>
+
+          </div>
+
+        </section>
+
+      }
+
+    </div>
+
+  }
+
+</section>

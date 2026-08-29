@@ -1,3 +1,4 @@
+
 import {
   ConflictException,
   Injectable,
@@ -13,6 +14,11 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
+
+import type {
+  PlatformRole,
+} from '@prisma/client';
+
 
 interface RequestMetadata {
   ipAddress?: string;
@@ -35,8 +41,10 @@ interface SafeUser {
   status: string;
   emailVerifiedAt: Date | null;
   lastLoginAt: Date | null;
+  platformRole: PlatformRole;
   createdAt: Date;
   updatedAt: Date;
+
 }
 
 @Injectable()
@@ -55,6 +63,7 @@ export class AuthService {
     status: true,
     emailVerifiedAt: true,
     lastLoginAt: true,
+    platformRole: true,
     createdAt: true,
     updatedAt: true,
   } as const;
@@ -81,13 +90,36 @@ export class AuthService {
   async register(
     dto: RegisterDto,
     metadata: RequestMetadata = {},
-  ): Promise<{ user: SafeUser } & AuthTokens> {
-    const email = dto.email.trim().toLowerCase();
+  ): Promise<
+    {
+      user: SafeUser;
 
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email },
-      select: { id: true },
-    });
+      organization: {
+        id: string;
+        name: string;
+        slug: string;
+      };
+    } &
+      AuthTokens
+  > {
+    const email =
+      dto.email
+        .trim()
+        .toLowerCase();
+
+    const existingUser =
+      await this.prisma
+        .user
+        .findUnique({
+          where: {
+            email,
+          },
+
+          select: {
+            id:
+              true,
+          },
+        });
 
     if (existingUser) {
       throw new ConflictException(
@@ -95,27 +127,171 @@ export class AuthService {
       );
     }
 
-    const passwordHash = await this.hashValue(dto.password);
+    const passwordHash =
+      await this.hashValue(
+        dto.password,
+      );
 
-    const user = await this.prisma.user.create({
-      data: {
-        email,
-        passwordHash,
-        firstName: dto.firstName.trim(),
-        lastName: dto.lastName.trim(),
-        status: 'ACTIVE',
-      },
-      select: this.safeUserSelect,
-    });
+    const result =
+      await this.prisma
+        .$transaction(
+          async (
+            transaction,
+          ) => {
+            const ownerRole =
+              await transaction
+                .role
+                .findUnique({
+                  where: {
+                    code:
+                      'OWNER',
+                  },
 
-    const tokens = await this.createSessionAndTokens(
-      user.id,
-      user.email,
-      metadata,
-    );
+                  select: {
+                    id:
+                      true,
+                  },
+                });
+
+            if (!ownerRole) {
+              throw new ConflictException(
+                'Le rôle système OWNER est introuvable.',
+              );
+            }
+
+            const user =
+              await transaction
+                .user
+                .create({
+                  data: {
+                    email,
+
+                    passwordHash,
+
+                    firstName:
+                      dto.firstName
+                        .trim(),
+
+                    lastName:
+                      dto.lastName
+                        .trim(),
+
+                    status:
+                      'ACTIVE',
+
+                    platformRole:
+                      'USER',
+                  },
+
+                  select:
+                    this.safeUserSelect,
+                });
+
+            const baseSlug =
+              this.slugify(
+                dto.organizationName,
+              );
+
+            let slug =
+              baseSlug;
+
+            let suffix =
+              1;
+
+            while (
+              await transaction
+                .organization
+                .findUnique({
+                  where: {
+                    slug,
+                  },
+
+                  select: {
+                    id:
+                      true,
+                  },
+                })
+            ) {
+              suffix +=
+                1;
+
+              slug =
+                `${baseSlug}-${suffix}`;
+            }
+
+            const organization =
+              await transaction
+                .organization
+                .create({
+                  data: {
+                    name:
+                      dto.organizationName
+                        .trim(),
+
+                    slug,
+
+                    description:
+                      dto.organizationDescription
+                        ?.trim() ||
+                      null,
+
+                    createdById:
+                      user.id,
+                  },
+
+                  select: {
+                    id:
+                      true,
+
+                    name:
+                      true,
+
+                    slug:
+                      true,
+                  },
+                });
+
+            await transaction
+              .organizationMember
+              .create({
+                data: {
+                  organizationId:
+                    organization.id,
+
+                  userId:
+                    user.id,
+
+                  roleId:
+                    ownerRole.id,
+
+                  joinedAt:
+                    new Date(),
+                },
+              });
+
+            return {
+              user,
+              organization,
+            };
+          },
+        );
+
+    const tokens =
+      await this
+        .createSessionAndTokens(
+          result.user.id,
+          result.user.email,
+          result.user.platformRole,
+          metadata,
+        );
 
     return {
-      user,
+      user:
+        result.user,
+
+      organization:
+        result.organization,
+
       ...tokens,
     };
   }
@@ -167,6 +343,7 @@ export class AuthService {
     const tokens = await this.createSessionAndTokens(
       user.id,
       user.email,
+      user.platformRole,
       metadata,
     );
 
@@ -203,6 +380,7 @@ export class AuthService {
             id: true,
             email: true,
             status: true,
+            platformRole:true,
           },
         },
       },
@@ -273,6 +451,7 @@ export class AuthService {
       session.user.id,
       session.user.email,
       session.id,
+      session.user.platformRole,
     );
 
     const newRefreshTokenHash = await this.hashValue(
@@ -431,6 +610,7 @@ export class AuthService {
   private async createSessionAndTokens(
     userId: string,
     email: string,
+    platformRole: PlatformRole,
     metadata: RequestMetadata,
   ): Promise<AuthTokens> {
     const sessionId = randomUUID();
@@ -439,6 +619,7 @@ export class AuthService {
       userId,
       email,
       sessionId,
+      platformRole,
     );
 
     const refreshTokenHash = await this.hashValue(
@@ -465,12 +646,15 @@ export class AuthService {
     userId: string,
     email: string,
     sessionId: string,
+    platformRole: PlatformRole,
+
   ): Promise<AuthTokens> {
     const accessPayload: JwtPayload = {
       sub: userId,
       email,
       sessionId,
       tokenType: 'access',
+      platformRole,
     };
 
     const refreshPayload: JwtPayload = {
@@ -478,6 +662,7 @@ export class AuthService {
       email,
       sessionId,
       tokenType: 'refresh',
+      platformRole,
     };
 
     const [accessToken, refreshToken] = await Promise.all([
@@ -574,6 +759,31 @@ export class AuthService {
     ttlSeconds: number,
   ): Date {
     return new Date(Date.now() + ttlSeconds * 1000);
+  }
+
+  private slugify(
+    value: string,
+  ): string {
+    return value
+      .normalize('NFD')
+      .replace(
+        /[\u0300-\u036f]/g,
+        '',
+      )
+      .toLowerCase()
+      .trim()
+      .replace(
+        /[^a-z0-9]+/g,
+        '-',
+      )
+      .replace(
+        /^-+|-+$/g,
+        '',
+      )
+      .slice(
+        0,
+        80,
+      ) || 'organization';
   }
 
   private requiredConfig(key: string): string {

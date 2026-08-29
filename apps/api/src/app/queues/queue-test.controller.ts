@@ -29,14 +29,20 @@ export class QueueTestController {
       const correlationId = randomUUID();
 
       const jobData: RepositorySyncJobData = {
-        eventId: randomUUID(),
+        organizationId: randomUUID(),
         projectId: randomUUID(),
         repositoryId: randomUUID(),
+        repositorySyncId: randomUUID(),
+        gitConnectionId: randomUUID(),
         provider: 'GITHUB',
         repositoryExternalId: 'test-repository-id',
         repositoryFullName: 'securecode/test-repository',
-        commitSha: '0123456789abcdef',
         branch: 'main',
+        commitSha: '0123456789abcdef',
+        trigger: 'MANUAL',
+        eventType: null,
+        eventId: randomUUID(),
+        triggeredById: null,
         requestedAt: new Date().toISOString(),
         correlationId,
       };
@@ -45,7 +51,7 @@ export class QueueTestController {
         JOB_NAMES.SYNC_REPOSITORY,
         jobData,
         {
-          jobId: `repository-sync-${jobData.eventId}`,
+          jobId: `repository-sync:${jobData.repositorySyncId}`,
         },
       );
 

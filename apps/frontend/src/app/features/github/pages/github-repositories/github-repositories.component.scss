@@ -1,0 +1,347 @@
+:host {
+  display: block;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.github-page {
+  max-width: 1120px;
+
+  margin: 0 auto;
+
+  padding: 32px 34px 60px;
+}
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.eyebrow,
+.section-label {
+  display: block;
+
+  margin-bottom: 6px;
+
+  color: #3975c6;
+
+  font-size: 7px;
+  font-weight: 850;
+
+  letter-spacing: 0.15em;
+}
+
+.page-header h1 {
+  margin: 0;
+
+  color: #202b3c;
+
+  font-size: 26px;
+
+  letter-spacing: -0.03em;
+}
+
+.page-header p {
+  margin: 8px 0 0;
+
+  color: #818b99;
+
+  font-size: 9px;
+}
+
+.search-card {
+  margin-bottom: 14px;
+
+  padding: 12px;
+
+  display: flex;
+
+  gap: 8px;
+
+  border: 1px solid #e1e6ec;
+  border-radius: 9px;
+
+  background: #ffffff;
+}
+
+.search-card input {
+  height: 38px;
+
+  flex: 1;
+
+  padding: 0 12px;
+
+  border: 1px solid #dce2e9;
+  border-radius: 7px;
+
+  outline: none;
+
+  color: #344054;
+
+  font-size: 9px;
+}
+
+.search-card input:focus {
+  border-color: #8cacd6;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(57, 117, 198, 0.08);
+}
+
+.search-card button,
+.import-button,
+.pagination button {
+  min-height: 36px;
+
+  padding: 0 13px;
+
+  border-radius: 6px;
+
+  cursor: pointer;
+
+  font-size: 8px;
+  font-weight: 750;
+}
+
+.search-card button,
+.import-button {
+  border: 1px solid #2867bd;
+
+  background: #2867bd;
+
+  color: #ffffff;
+}
+
+button:disabled {
+  cursor: not-allowed;
+
+  opacity: 0.5;
+}
+
+.repository-container {
+  padding: 19px;
+
+  border: 1px solid #e1e6ec;
+  border-radius: 10px;
+
+  background: #ffffff;
+}
+
+.section-heading {
+  margin-bottom: 16px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 15px;
+}
+
+.section-heading h2 {
+  margin: 0;
+
+  color: #344054;
+
+  font-size: 12px;
+}
+
+.page-indicator {
+  color: #929baa;
+
+  font-size: 8px;
+}
+
+.repository-list {
+  display: grid;
+
+  gap: 6px;
+}
+
+.repository-row {
+  min-height: 84px;
+
+  padding: 12px;
+
+  display: grid;
+
+  grid-template-columns:
+    38px
+    minmax(0, 1fr)
+    auto;
+
+  align-items: center;
+
+  gap: 12px;
+
+  border: 1px solid #e6eaee;
+  border-radius: 8px;
+
+  transition: 130ms ease;
+}
+
+.repository-row:hover {
+  border-color: #c5d5e8;
+
+  background: #fafcff;
+}
+
+.repo-icon {
+  width: 36px;
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;
+
+  background: #202938;
+
+  color: #ffffff;
+
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.repo-content {
+  min-width: 0;
+}
+
+.repo-content h3 {
+  margin: 0;
+
+  overflow: hidden;
+
+  color: #344054;
+
+  font-size: 10px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repo-content p {
+  margin: 5px 0 7px;
+
+  overflow: hidden;
+
+  color: #8791a0;
+
+  font-size: 8px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repo-meta {
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 5px;
+}
+
+.repo-meta span {
+  padding: 3px 6px;
+
+  border-radius: 4px;
+
+  background: #f0f3f6;
+
+  color: #697586;
+
+  font-size: 7px;
+}
+
+.pagination {
+  margin-top: 16px;
+  padding-top: 14px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  border-top: 1px solid #edf0f4;
+}
+
+.pagination span {
+  color: #8a94a3;
+
+  font-size: 8px;
+}
+
+.pagination span strong {
+  color: #475467;
+}
+
+.pagination button {
+  border: 1px solid #dce2e9;
+
+  background: #ffffff;
+
+  color: #475467;
+}
+
+.loading-state,
+.empty-state {
+  min-height: 170px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 9px;
+
+  color: #8791a0;
+
+  font-size: 9px;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+
+  border: 2px solid #e1e7ee;
+  border-top-color: #2867bd;
+  border-radius: 50%;
+
+  animation: spin 700ms linear infinite;
+}
+
+.alert-error {
+  margin-bottom: 14px;
+
+  padding: 11px 13px;
+
+  border: 1px solid #efc8c8;
+  border-radius: 7px;
+
+  background: #fff5f5;
+
+  color: #a53d3d;
+
+  font-size: 9px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 650px) {
+  .github-page {
+    padding: 22px 16px 45px;
+  }
+
+  .repository-row {
+    grid-template-columns:
+      38px
+      minmax(0, 1fr);
+  }
+
+  .import-button {
+    grid-column: 1 / -1;
+  }
+}

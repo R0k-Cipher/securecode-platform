@@ -1,6 +1,7 @@
 export const JOB_NAMES = {
   SYNC_REPOSITORY: 'sync-repository',
   RUN_FULL_SCAN: 'run-full-scan',
+  SECURITY_SCAN:'security-scan',
   RUN_INCREMENTAL_SCAN: 'run-incremental-scan',
   RUN_PULL_REQUEST_SCAN: 'run-pull-request-scan',
   PROCESS_FINDINGS: 'process-findings',

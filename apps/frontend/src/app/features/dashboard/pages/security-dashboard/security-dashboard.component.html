@@ -1,0 +1,515 @@
+<section class="dashboard">
+
+  @if (loading()) {
+    <div class="state-card">
+      <div class="spinner"></div>
+      <p>Chargement du tableau de bord...</p>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="error-card">
+      <div>
+        <strong>Impossible de charger les données</strong>
+        <p>{{ error() }}</p>
+      </div>
+
+      <button
+        type="button"
+        (click)="load()"
+      >
+        Réessayer
+      </button>
+    </div>
+  }
+
+  @if (!loading() && dashboard(); as data) {
+
+    <header class="dashboard-header">
+
+      <div>
+        <span class="eyebrow">
+          SECURITY OVERVIEW
+        </span>
+
+        <h1>
+          {{ data.project.name }}
+        </h1>
+
+        <p>
+          {{
+            data.project.description ||
+            'Vue consolidée de la sécurité du projet.'
+          }}
+        </p>
+      </div>
+
+      <div class="header-actions">
+
+        <button
+          type="button"
+          class="button-secondary"
+          (click)="openFindings()"
+        >
+          Voir les findings
+        </button>
+
+        <button
+          type="button"
+          class="button-primary"
+          (click)="openRepositories()"
+        >
+          Repositories
+        </button>
+
+      </div>
+
+    </header>
+
+    <div class="metrics-grid">
+
+      <article class="metric-card score-card">
+
+        <div class="metric-header">
+          <span>
+            Security Score
+          </span>
+
+          <span class="metric-label">
+            Latest
+          </span>
+        </div>
+
+        <div
+          class="score-value"
+          [ngClass]="
+            scoreClass(
+              data.summary.securityScore
+            )
+          "
+        >
+          {{
+            data.summary.securityScore
+              ?? '—'
+          }}
+        </div>
+
+        <p>
+          Score du dernier scan disponible
+        </p>
+
+      </article>
+
+      <article class="metric-card">
+
+        <span class="metric-title">
+          Repositories
+        </span>
+
+        <strong>
+          {{ data.summary.repositories }}
+        </strong>
+
+        <p>
+          Dépôts actifs connectés
+        </p>
+
+      </article>
+
+      <article class="metric-card">
+
+        <span class="metric-title">
+          Scans
+        </span>
+
+        <strong>
+          {{ data.summary.scans }}
+        </strong>
+
+        <p>
+          Analyses enregistrées
+        </p>
+
+      </article>
+
+      <article class="metric-card">
+
+        <span class="metric-title">
+          Findings
+        </span>
+
+        <strong>
+          {{ data.summary.findings }}
+        </strong>
+
+        <p>
+          Vulnérabilités détectées
+        </p>
+
+      </article>
+
+    </div>
+
+    <div class="content-grid">
+
+      <article class="panel repositories-panel">
+
+        <div class="panel-header">
+
+          <div>
+            <span class="section-label">
+              REPOSITORIES
+            </span>
+
+            <h2>
+              Dépôts surveillés
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            class="text-button"
+            (click)="openRepositories()"
+          >
+            Voir tous
+          </button>
+
+        </div>
+
+        @if (
+          data.repositories.length === 0
+        ) {
+
+          <div class="empty-state">
+            <h3>
+              Aucun repository
+            </h3>
+
+            <p>
+              Connectez un repository GitHub
+              pour commencer l'analyse.
+            </p>
+
+            <button
+              type="button"
+              class="button-primary"
+              (click)="openRepositories()"
+            >
+              Connecter un repository
+            </button>
+          </div>
+
+        } @else {
+
+          <div class="repository-list">
+
+            @for (
+              repository of data.repositories;
+              track repository.id
+            ) {
+
+              <button
+                type="button"
+                class="repository-row"
+                (click)="
+                  openRepository(
+                    repository.id
+                  )
+                "
+              >
+
+                <div class="repository-main">
+
+                  <div class="provider-badge">
+                    {{
+                      repository.provider ===
+                      'GITHUB'
+                        ? 'GH'
+                        : 'GL'
+                    }}
+                  </div>
+
+                  <div>
+                    <strong>
+                      {{ repository.fullName }}
+                    </strong>
+
+                    <span>
+                      {{
+                        repository.primaryLanguage ||
+                        'Langage non détecté'
+                      }}
+                    </span>
+                  </div>
+
+                </div>
+
+                <div class="repository-status">
+
+                  <span
+                    class="status-badge"
+                    [ngClass]="
+                      statusClass(
+                        repository.syncStatus
+                      )
+                    "
+                  >
+                    {{ repository.syncStatus }}
+                  </span>
+
+                  <span class="arrow">
+                    ›
+                  </span>
+
+                </div>
+
+              </button>
+
+            }
+
+          </div>
+
+        }
+
+      </article>
+
+      <article class="panel latest-scan-panel">
+
+        <div class="panel-header">
+
+          <div>
+            <span class="section-label">
+              LAST ANALYSIS
+            </span>
+
+            <h2>
+              Dernier scan
+            </h2>
+          </div>
+
+        </div>
+
+        @if (data.latestScan; as scan) {
+
+          <div class="latest-scan">
+
+            <div class="scan-score">
+
+              <span>
+                Score
+              </span>
+
+              <strong
+                [ngClass]="
+                  scoreClass(
+                    scan.score
+                  )
+                "
+              >
+                {{ scan.score ?? '—' }}
+              </strong>
+
+            </div>
+
+            <div class="scan-info">
+
+              <div>
+                <span>
+                  Repository
+                </span>
+
+                <strong>
+                  {{ scan.repository.fullName }}
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Type
+                </span>
+
+                <strong>
+                  {{ scan.type }}
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Statut
+                </span>
+
+                <strong
+                  class="status-badge"
+                  [ngClass]="
+                    statusClass(
+                      scan.status
+                    )
+                  "
+                >
+                  {{ scan.status }}
+                </strong>
+              </div>
+
+            </div>
+
+            <button
+              type="button"
+              class="button-secondary full-width"
+              (click)="openScan(scan.id)"
+            >
+              Consulter le scan
+            </button>
+
+          </div>
+
+        } @else {
+
+          <div class="empty-state compact">
+            <h3>
+              Aucun scan disponible
+            </h3>
+
+            <p>
+              Le premier scan apparaîtra ici.
+            </p>
+          </div>
+
+        }
+
+      </article>
+
+    </div>
+
+    <article class="panel scans-panel">
+
+      <div class="panel-header">
+
+        <div>
+          <span class="section-label">
+            ACTIVITY
+          </span>
+
+          <h2>
+            Analyses récentes
+          </h2>
+        </div>
+
+      </div>
+
+      @if (
+        data.recentScans.length === 0
+      ) {
+
+        <div class="empty-state compact">
+          <p>
+            Aucun historique de scan.
+          </p>
+        </div>
+
+      } @else {
+
+        <div class="table-wrapper">
+
+          <table>
+
+            <thead>
+              <tr>
+                <th>Repository</th>
+                <th>Type</th>
+                <th>Statut</th>
+                <th>Findings</th>
+                <th>Score</th>
+                <th>Date</th>
+                <th></th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              @for (
+                scan of data.recentScans;
+                track scan.id
+              ) {
+
+                <tr>
+
+                  <td>
+                    <strong>
+                      {{ scan.repository.fullName }}
+                    </strong>
+                  </td>
+
+                  <td>
+                    {{ scan.type }}
+                  </td>
+
+                  <td>
+                    <span
+                      class="status-badge"
+                      [ngClass]="
+                        statusClass(
+                          scan.status
+                        )
+                      "
+                    >
+                      {{ scan.status }}
+                    </span>
+                  </td>
+
+                  <td>
+                    {{
+                      scan._count?.findings
+                      ?? 0
+                    }}
+                  </td>
+
+                  <td>
+                    <strong
+                      [ngClass]="
+                        scoreClass(
+                          scan.score
+                        )
+                      "
+                    >
+                      {{ scan.score ?? '—' }}
+                    </strong>
+                  </td>
+
+                  <td>
+                    {{
+                      scan.createdAt
+                        | date:'dd/MM/yyyy HH:mm'
+                    }}
+                  </td>
+
+                  <td>
+                    <button
+                      type="button"
+                      class="table-action"
+                      (click)="
+                        openScan(
+                          scan.id
+                        )
+                      "
+                    >
+                      Ouvrir
+                    </button>
+                  </td>
+
+                </tr>
+
+              }
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      }
+
+    </article>
+
+  }
+
+</section>

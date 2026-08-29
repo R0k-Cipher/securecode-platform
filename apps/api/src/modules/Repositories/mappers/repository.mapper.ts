@@ -38,20 +38,81 @@ export class RepositoryMapper {
   ): RepositoryResponse {
     return {
       id: repository.id,
-      projectId: repository.projectId,
-      gitConnectionId: repository.gitConnectionId,
-      provider: repository.provider,
-      externalId: repository.externalId,
-      name: repository.name,
-      fullName: repository.fullName,
-      cloneUrl: repository.cloneUrl,
-      webUrl: repository.webUrl,
-      defaultBranch: repository.defaultBranch,
-      visibility: repository.visibility,
-      isArchived: repository.isArchived,
-      lastSyncedAt: repository.lastSyncedAt,
-      createdAt: repository.createdAt,
-      updatedAt: repository.updatedAt,
+
+      organizationId:
+        repository.organizationId,
+
+      projectId:
+        repository.projectId,
+
+      gitConnectionId:
+        repository.gitConnectionId,
+
+      createdById:
+        repository.createdById,
+
+      provider:
+        repository.provider,
+
+      externalId:
+        repository.externalId,
+
+      nodeId:
+        repository.nodeId,
+
+      owner:
+        repository.owner,
+
+      name:
+        repository.name,
+
+      fullName:
+        repository.fullName,
+
+      description:
+        repository.description,
+
+      defaultBranch:
+        repository.defaultBranch,
+
+      cloneUrl:
+        repository.cloneUrl,
+
+      sshUrl:
+        repository.sshUrl,
+
+      webUrl:
+        repository.webUrl,
+
+      visibility:
+        repository.visibility,
+
+      isPrivate:
+        repository.isPrivate,
+
+      isFork:
+        repository.isFork,
+
+      isArchived:
+        repository.isArchived,
+
+      primaryLanguage:
+        repository.primaryLanguage,
+
+      lastRemoteCommitSha:
+        repository.lastRemoteCommitSha,
+
+      syncStatus:
+        repository.syncStatus,
+
+      lastSyncedAt:
+        repository.lastSyncedAt,
+
+      createdAt:
+        repository.createdAt,
+
+      updatedAt:
+        repository.updatedAt,
     };
   }
 

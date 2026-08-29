@@ -91,7 +91,7 @@ export const environmentValidationSchema = Joi.object({
     .allow('')
     .optional(),
 
-  GITHUB_PRIVATE_KEY_BASE64: Joi.string()
+  GITHUB_APP_PRIVATE_KEY_BASE64: Joi.string()
     .allow('')
     .optional(),
 

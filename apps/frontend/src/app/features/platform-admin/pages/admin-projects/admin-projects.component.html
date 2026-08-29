@@ -1,0 +1,74 @@
+<section class="admin-page">
+  <header class="page-heading">
+    <div>
+      <h1>Projets</h1>
+      <p>
+        Inventaire global des projets SecureCode et de leur activité sécurité.
+      </p>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="toolbar">
+      <input
+        class="search"
+        type="search"
+        placeholder="Rechercher un projet ou une organisation..."
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+      >
+
+      <span class="count">
+        {{ filtered().length }} projet(s)
+      </span>
+    </div>
+
+    @if (loading()) {
+      <div class="loading">Chargement...</div>
+    } @else if (error()) {
+      <div class="error">{{ error() }}</div>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Projet</th>
+              <th>Organisation</th>
+              <th>Statut</th>
+              <th>Repositories</th>
+              <th>Scans</th>
+              <th>Findings</th>
+              <th>Membres</th>
+              <th>Création</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (project of filtered(); track project.id) {
+              <tr>
+                <td>
+                  <span class="primary">{{ project.name }}</span>
+                  <span class="secondary">{{ project.slug }}</span>
+                </td>
+                <td>{{ project.organization.name }}</td>
+                <td>
+                  <span
+                    class="badge"
+                    [class.success]="project.status === 'ACTIVE'"
+                    [class.warning]="project.status === 'SUSPENDED'"
+                  >
+                    {{ project.status }}
+                  </span>
+                </td>
+                <td>{{ project._count.repositories }}</td>
+                <td>{{ project._count.scans }}</td>
+                <td>{{ project._count.findings }}</td>
+                <td>{{ project._count.members }}</td>
+                <td>{{ project.createdAt | date:'dd/MM/yyyy' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</section>

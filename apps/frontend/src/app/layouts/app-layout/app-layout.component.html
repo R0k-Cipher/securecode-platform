@@ -1,0 +1,569 @@
+<div class="application-shell">
+
+  <aside
+    class="sidebar"
+    [class.open]="mobileMenuOpen()"
+  >
+
+    <div class="sidebar-header">
+
+      <a
+        class="product-brand"
+        routerLink="/organizations"
+        (click)="closeMobileMenu()"
+      >
+
+        <span class="brand-symbol">
+          SC
+        </span>
+
+        <span class="brand-copy">
+
+          <strong>
+            SecureCode
+          </strong>
+
+          <small>
+            SECURITY PLATFORM
+          </small>
+
+        </span>
+
+      </a>
+
+    </div>
+
+    @if (
+      isPlatformAdmin()
+    ) {
+
+      <div class="mode-switcher">
+
+        <button
+          type="button"
+          class="mode-button"
+          [class.active]="
+            !isPlatformArea()
+          "
+          (click)="goToWorkspace()"
+        >
+
+          <span class="mode-code">
+            W
+          </span>
+
+          <span>
+            <strong>
+              Workspace
+            </strong>
+
+            <small>
+              Organisations et projets
+            </small>
+          </span>
+
+        </button>
+
+        <button
+          type="button"
+          class="mode-button admin"
+          [class.active]="
+            isPlatformArea()
+          "
+          (click)="goToPlatformAdmin()"
+        >
+
+          <span class="mode-code">
+            A
+          </span>
+
+          <span>
+            <strong>
+              Administration
+            </strong>
+
+            <small>
+              Gestion de la plateforme
+            </small>
+          </span>
+
+        </button>
+
+      </div>
+
+    }
+
+    @if (
+      !isPlatformArea() &&
+      organization()
+    ) {
+
+      <div class="workspace-selector">
+
+        <span class="selector-label">
+          ORGANISATION ACTIVE
+        </span>
+
+        <a
+          routerLink="/organizations"
+          (click)="closeMobileMenu()"
+        >
+
+          <span class="workspace-avatar">
+            {{
+              organization()!
+                .name
+                .charAt(0)
+                .toUpperCase()
+            }}
+          </span>
+
+          <span class="workspace-information">
+
+            <strong>
+              {{ organization()!.name }}
+            </strong>
+
+            <small>
+              Changer d'organisation
+            </small>
+
+          </span>
+
+        </a>
+
+      </div>
+
+    }
+
+    <nav class="navigation">
+
+      @if (
+        isPlatformArea() &&
+        isPlatformAdmin()
+      ) {
+
+        <div class="nav-section">
+
+          <span class="nav-title">
+            PLATEFORME
+          </span>
+
+          <a
+            routerLink="/platform-admin"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{
+              exact: true
+            }"
+          >
+            <span class="nav-glyph">
+              D
+            </span>
+
+            Vue d'ensemble
+          </a>
+
+          <a
+            routerLink="/platform-admin/users"
+            routerLinkActive="active"
+          >
+            <span class="nav-glyph">
+              U
+            </span>
+
+            Utilisateurs
+          </a>
+
+          <a
+            routerLink="/platform-admin/organizations"
+            routerLinkActive="active"
+          >
+            <span class="nav-glyph">
+              O
+            </span>
+
+            Organisations
+          </a>
+
+          <a
+            routerLink="/platform-admin/projects"
+            routerLinkActive="active"
+          >
+            <span class="nav-glyph">
+              P
+            </span>
+
+            Projets
+          </a>
+
+        </div>
+
+        <div class="nav-section">
+
+          <span class="nav-title">
+            SUPERVISION
+          </span>
+
+          <a
+            routerLink="/platform-admin/audit-logs"
+            routerLinkActive="active"
+          >
+            <span class="nav-glyph">
+              L
+            </span>
+
+            Journaux d'audit
+          </a>
+
+          <a
+            routerLink="/platform-admin/scans"
+            routerLinkActive="active"
+          >
+            <span class="nav-glyph">
+              S
+            </span>
+
+            Scans plateforme
+          </a>
+
+          <a
+            routerLink="/platform-admin/system"
+            routerLinkActive="active"
+          >
+            <span class="nav-glyph">
+              H
+            </span>
+
+            État du système
+          </a>
+
+        </div>
+
+      } @else {
+
+        <div class="nav-section">
+
+          <span class="nav-title">
+            WORKSPACE
+          </span>
+
+          <a
+            routerLink="/organizations"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{
+              exact: true
+            }"
+          >
+
+            <span class="nav-glyph">
+              O
+            </span>
+
+            Organisations
+          </a>
+
+          @if (
+            hasOrganization()
+          ) {
+
+            <a
+              [routerLink]="
+                projectsUrl()
+              "
+              routerLinkActive="active"
+            >
+
+              <span class="nav-glyph">
+                P
+              </span>
+
+              Projets
+            </a>
+
+            <a
+              [routerLink]="
+                membersUrl()
+              "
+              routerLinkActive="active"
+            >
+
+              <span class="nav-glyph">
+                M
+              </span>
+
+              Membres
+            </a>
+
+            <a
+              [routerLink]="
+                '/organizations/' +
+                organization()!.id +
+                '/audit-logs'
+              "
+              routerLinkActive="active"
+            >
+              <span class="nav-glyph">
+                L
+              </span>
+
+              Audit logs
+            </a>
+
+          }
+
+        </div>
+
+        @if (
+          hasProject() &&
+          projectBase()
+        ) {
+
+          <div class="nav-section">
+
+            <span class="nav-title">
+              SÉCURITÉ DU CODE
+            </span>
+
+            <a
+              [routerLink]="
+                projectBase() +
+                '/dashboard'
+              "
+              routerLinkActive="active"
+            >
+
+              <span class="nav-glyph">
+                D
+              </span>
+
+              Dashboard
+            </a>
+
+            <a
+              [routerLink]="
+                projectBase() +
+                '/repositories'
+              "
+              routerLinkActive="active"
+            >
+
+              <span class="nav-glyph">
+                R
+              </span>
+
+              Repositories
+            </a>
+
+            <a
+              [routerLink]="
+                projectBase() +
+                '/scans'
+              "
+              routerLinkActive="active"
+            >
+
+              <span class="nav-glyph">
+                S
+              </span>
+
+              Scans
+            </a>
+
+            <a
+              [routerLink]="
+                projectBase() +
+                '/findings'
+              "
+              routerLinkActive="active"
+            >
+
+              <span class="nav-glyph">
+                F
+              </span>
+
+              Findings
+            </a>
+
+            <a
+              [routerLink]="
+                projectBase() +
+                '/reports'
+              "
+              routerLinkActive="active"
+            >
+
+              <span class="nav-glyph">
+                RP
+              </span>
+
+              Rapports
+            </a>
+
+          </div>
+
+        }
+
+      }
+
+    </nav>
+
+    <footer class="sidebar-footer">
+
+      <div class="user-card">
+
+        <span class="user-avatar">
+          {{ initials() }}
+        </span>
+
+        <div class="user-details">
+
+          <strong>
+            {{ displayName() }}
+          </strong>
+
+          <small>
+            {{ user()?.email }}
+          </small>
+
+          @if (
+            isPlatformAdmin()
+          ) {
+
+            <span class="platform-role">
+              PLATFORM ADMIN
+            </span>
+
+          }
+
+        </div>
+
+      </div>
+
+      <button
+        type="button"
+        class="logout-button"
+        (click)="logout()"
+      >
+        Déconnexion
+      </button>
+
+    </footer>
+
+  </aside>
+
+  @if (
+    mobileMenuOpen()
+  ) {
+
+    <button
+      type="button"
+      class="sidebar-overlay"
+      aria-label="Fermer le menu"
+      (click)="closeMobileMenu()"
+    ></button>
+
+  }
+
+  <div class="application-main">
+
+    <header class="topbar">
+
+      <div class="topbar-start">
+
+        <button
+          type="button"
+          class="mobile-menu-button"
+          (click)="toggleMobileMenu()"
+        >
+          Menu
+        </button>
+
+        <div class="context">
+
+          @if (
+            isPlatformArea()
+          ) {
+
+            <span class="context-type">
+              Administration
+            </span>
+
+            <strong>
+              SecureCode Platform
+            </strong>
+
+          } @else {
+
+            @if (
+              organization()
+            ) {
+
+              <span>
+                {{ organization()!.name }}
+              </span>
+
+            }
+
+            @if (
+              project()
+            ) {
+
+              <span class="context-separator">
+                /
+              </span>
+
+              <strong>
+                {{ project()!.name }}
+              </strong>
+
+            }
+
+          }
+
+        </div>
+
+      </div>
+
+      <div class="topbar-actions">
+
+        <div class="topbar-divider"></div>
+
+        <div class="topbar-user">
+
+        <div class="notification-area">
+          <app-notification-bell />
+        </div>
+
+
+          <span class="status-dot"></span>
+
+
+          <div class="topbar-user-copy">
+
+
+            <strong>
+              {{ displayName() }}
+            </strong>
+
+            <small>
+              {{ user()?.email }}
+            </small>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+    </header>
+
+    <main class="page-content">
+
+      <router-outlet />
+
+    </main>
+
+  </div>
+
+</div>

@@ -1,0 +1,339 @@
+<section class="repository-detail-page">
+
+  @if (loading()) {
+
+    <div class="loading-state">
+      <span class="spinner"></span>
+
+      Chargement du repository...
+    </div>
+
+  }
+
+  @if (error()) {
+
+    <div class="alert-error">
+      {{ error() }}
+    </div>
+
+  }
+
+  @if (overview(); as data) {
+
+    <header class="page-header">
+
+      <div>
+
+        <span class="eyebrow">
+          REPOSITORY SECURITY
+        </span>
+
+        <h1>
+          {{ data.repository.fullName }}
+        </h1>
+
+        <div class="repository-meta">
+
+          <span>
+            {{ data.repository.provider }}
+          </span>
+
+          <span>
+            {{
+              data.repository.defaultBranch
+                || 'Branche inconnue'
+            }}
+          </span>
+
+          <span>
+            {{
+              data.repository.primaryLanguage
+                || 'Langage inconnu'
+            }}
+          </span>
+
+          <span
+            class="sync-badge"
+            [attr.data-status]="
+              data.repository.syncStatus
+            "
+          >
+            {{ data.repository.syncStatus }}
+          </span>
+
+        </div>
+
+      </div>
+
+      <div class="header-actions">
+
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="openFindings()"
+        >
+          Voir les findings
+        </button>
+
+        <button
+          type="button"
+          class="primary-button"
+          (click)="startScan()"
+          [disabled]="startingScan()"
+        >
+          {{
+            startingScan()
+              ? 'Planification...'
+              : 'Lancer un scan'
+          }}
+        </button>
+
+      </div>
+
+    </header>
+
+    <section class="metrics-grid">
+
+      <article class="metric-card score-card">
+
+        <span class="metric-label">
+          SECURITY SCORE
+        </span>
+
+        <strong class="score">
+          {{
+            data.security.score ??
+            'N/A'
+          }}
+        </strong>
+
+        @if (
+          data.security.scoreReliable === false
+        ) {
+          <small>
+            Score partiel
+          </small>
+        } @else {
+          <small>
+            Score de sécurité
+          </small>
+        }
+
+      </article>
+
+      <article class="metric-card">
+
+        <span class="metric-label">
+          FINDINGS ACTIFS
+        </span>
+
+        <strong>
+          {{ data.security.activeFindings }}
+        </strong>
+
+        <small>
+          Vulnérabilités ouvertes
+        </small>
+
+      </article>
+
+      <article class="metric-card">
+
+        <span class="metric-label">
+          SYNCHRONISATION
+        </span>
+
+        <strong class="status-value">
+          {{ data.repository.syncStatus }}
+        </strong>
+
+        <small>
+          État du repository
+        </small>
+
+      </article>
+
+    </section>
+
+    <section class="severity-card">
+
+      <div class="section-heading">
+
+        <div>
+          <span class="section-label">
+            SECURITY
+          </span>
+
+          <h2>
+            Répartition par sévérité
+          </h2>
+        </div>
+
+      </div>
+
+      <div class="severity-grid">
+
+        <article class="severity-item critical">
+
+          <span>
+            Critical
+          </span>
+
+          <strong>
+            {{
+              data.security.bySeverity
+                ?.CRITICAL ?? 0
+            }}
+          </strong>
+
+        </article>
+
+        <article class="severity-item high">
+
+          <span>
+            High
+          </span>
+
+          <strong>
+            {{
+              data.security.bySeverity
+                ?.HIGH ?? 0
+            }}
+          </strong>
+
+        </article>
+
+        <article class="severity-item medium">
+
+          <span>
+            Medium
+          </span>
+
+          <strong>
+            {{
+              data.security.bySeverity
+                ?.MEDIUM ?? 0
+            }}
+          </strong>
+
+        </article>
+
+        <article class="severity-item low">
+
+          <span>
+            Low
+          </span>
+
+          <strong>
+            {{
+              data.security.bySeverity
+                ?.LOW ?? 0
+            }}
+          </strong>
+
+        </article>
+
+      </div>
+
+    </section>
+
+  }
+
+  <section class="history-card">
+
+    <div class="section-heading">
+
+      <div>
+        <span class="section-label">
+          HISTORY
+        </span>
+
+        <h2>
+          Historique des scans
+        </h2>
+      </div>
+
+      <span class="count-badge">
+        {{ scanHistory().length }}
+      </span>
+
+    </div>
+
+    @if (
+      scanHistory().length === 0
+    ) {
+
+      <div class="history-empty">
+        Aucun scan effectué sur ce repository.
+      </div>
+
+    } @else {
+
+      <div class="scan-list">
+
+        @for (
+          scan of scanHistory();
+          track scan.id
+        ) {
+
+          <article
+            class="scan-row"
+            tabindex="0"
+            (click)="openScan(scan.id)"
+            (keydown.enter)="openScan(scan.id)"
+          >
+
+            <div class="scan-main">
+
+              <strong>
+                {{ scan.type }}
+              </strong>
+
+              <span>
+                {{ scan.status }}
+              </span>
+
+            </div>
+
+            <div class="progress-cell">
+
+              <div class="mini-progress">
+
+                <span
+                  [style.width.%]="
+                    scan.progress
+                  "
+                ></span>
+
+              </div>
+
+              <small>
+                {{ scan.progress }} %
+              </small>
+
+            </div>
+
+            <div class="score-cell">
+              <span>
+                Score
+              </span>
+
+              <strong>
+                {{
+                  scan.score ??
+                  'N/A'
+                }}
+              </strong>
+            </div>
+
+          </article>
+
+        }
+
+      </div>
+
+    }
+
+  </section>
+
+</section>
