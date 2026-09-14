@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { Octokit } from '@octokit/rest';
 
+import { ConfigService } from '@nestjs/config';
+import * as jwt from 'jsonwebtoken';
 import type {
   GithubInstallationRepository,
   GithubRepositoryPage,
@@ -46,12 +48,87 @@ export class GithubClientService {
    * - installation ID
    * - @octokit/auth-app
    */
+    constructor(
+      private readonly configService: ConfigService,
+    ) {}
+
   private async createInstallationClient(
     installationId: number,
   ): Promise<Octokit> {
-    throw new Error(
-      `createInstallationClient(${installationId}) doit utiliser ton système d’authentification GitHub App existant.`,
+    const appId =
+      this.configService.get<string>(
+        'GITHUB_APP_ID',
+      );
+
+    const privateKeyBase64 =
+      this.configService.get<string>(
+        'GITHUB_APP_PRIVATE_KEY_BASE64',
+      );
+
+    if (!appId || !privateKeyBase64) {
+      throw new ServiceUnavailableException(
+        'La configuration GitHub App est incomplète.',
+      );
+    }
+
+    const privateKey = Buffer.from(
+      privateKeyBase64,
+      'base64',
+    ).toString('utf8');
+
+    const now = Math.floor(
+      Date.now() / 1000,
     );
+
+    const appJwt = jwt.sign(
+      {
+        iat: now - 60,
+        exp: now + 9 * 60,
+        iss: appId,
+      },
+      privateKey,
+      {
+        algorithm: 'RS256',
+      },
+    );
+
+    const response = await fetch(
+      `https://api.github.com/app/installations/${installationId}/access_tokens`,
+      {
+        method: 'POST',
+
+        headers: {
+          Accept:
+            'application/vnd.github+json',
+
+          Authorization:
+            `Bearer ${appJwt}`,
+
+          'X-GitHub-Api-Version':
+            this.configService.get<string>(
+              'GITHUB_API_VERSION',
+            ) ?? '2022-11-28',
+
+          'User-Agent':
+            'SecureCode-AI',
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw new ServiceUnavailableException(
+        `Impossible de générer le token GitHub pour l'installation ${installationId}.`,
+      );
+    }
+
+    const data = (await response.json()) as {
+      token: string;
+      expires_at: string;
+    };
+
+    return new Octokit({
+      auth: data.token,
+    });
   }
 
   async listInstallationRepositories(
@@ -195,6 +272,34 @@ export class GithubClientService {
     } catch (error) {
       throw new ServiceUnavailableException(
         `Impossible de récupérer la branche "${branch}" depuis GitHub.`,
+        {
+          cause: error,
+        },
+      );
+    }
+  }
+
+  async resolveCommitSha(
+    installationId: number,
+    owner: string,
+    repository: string,
+    ref: string,
+  ): Promise<string> {
+    const octokit =
+      await this.createInstallationClient(installationId);
+
+    try {
+      const response =
+        await octokit.rest.repos.getCommit({
+          owner,
+          repo: repository,
+          ref,
+        });
+
+      return response.data.sha;
+    } catch (error) {
+      throw new ServiceUnavailableException(
+        `Impossible de résoudre la révision "${ref}" depuis GitHub.`,
         {
           cause: error,
         },

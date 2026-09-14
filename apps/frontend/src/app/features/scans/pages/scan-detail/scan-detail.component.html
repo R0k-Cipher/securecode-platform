@@ -1,0 +1,852 @@
+<section class="scan-page">
+
+  @if (
+    error()
+  ) {
+    <div class="alert-error">
+
+      <span class="alert-symbol">
+        !
+      </span>
+
+      <span>
+        {{ error() }}
+      </span>
+
+    </div>
+  }
+
+
+  @if (
+    detail();
+    as scan
+  ) {
+
+    <!-- ================================================= -->
+    <!-- HEADER -->
+    <!-- ================================================= -->
+
+    <header class="scan-header">
+
+      <div class="scan-heading">
+
+        <div class="eyebrow-line">
+
+          <span class="eyebrow-dot"></span>
+
+          SECURITY ANALYSIS
+
+        </div>
+
+        <h1>
+          Security Scan
+        </h1>
+
+        <div class="scan-meta">
+
+          <span>
+            {{ typeLabel(scan.type) }}
+          </span>
+
+          <span>
+            {{
+              scan.branch ||
+              'Branche inconnue'
+            }}
+          </span>
+
+          <span class="commit">
+            {{
+              scan.commitSha
+                ? scan.commitSha.slice(0, 12)
+                : 'N/A'
+            }}
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <div class="header-actions">
+
+        @if (
+          canCancel()
+        ) {
+          <button
+            type="button"
+            class="danger-button"
+            [disabled]="cancelling()"
+            (click)="cancel()"
+          >
+            {{
+              cancelling()
+                ? 'Annulation...'
+                : 'Annuler le scan'
+            }}
+          </button>
+        }
+
+
+        @if (
+          scan.status ===
+            'COMPLETED' &&
+          canExportReport()
+        ) {
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="generatingReport()"
+            (click)="downloadReport('PDF')"
+          >
+            {{
+              generatingReport()
+                ? 'Génération...'
+                : 'Exporter le rapport'
+            }}
+          </button>
+        }
+
+
+        @if (
+          canReadFindings()
+        ) {
+          <button
+            type="button"
+            class="primary-button"
+            (click)="viewFindings()"
+          >
+            Voir les findings
+          </button>
+        }
+
+      </div>
+
+    </header>
+
+
+    <!-- ================================================= -->
+    <!-- STATUS / SCORE -->
+    <!-- ================================================= -->
+
+    <section
+      class="scan-overview"
+      [attr.data-status]="
+        scanStatus()
+      "
+    >
+
+      <div class="overview-main">
+
+        <div class="overview-header">
+
+          <div>
+
+            <span class="section-label">
+              SCAN STATUS
+            </span>
+
+            <div class="status-line">
+
+              <span
+                class="status-badge"
+                [attr.data-status]="
+                  scanStatus()
+                "
+              >
+                <span class="status-dot"></span>
+
+                {{
+                  statusLabel(
+                    scanStatus()
+                  )
+                }}
+              </span>
+
+              <span class="progress-value">
+                {{
+                  progressValue()
+                }}%
+              </span>
+
+            </div>
+
+          </div>
+
+          <div class="score-block">
+
+            <span>
+              SECURITY SCORE
+            </span>
+
+            <div>
+
+              <strong>
+                {{
+                  securityScore() ??
+                  '—'
+                }}
+              </strong>
+
+              <small>
+                /100
+              </small>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="progress-track">
+
+          <span
+            [style.width.%]="
+              progressValue()
+            "
+          ></span>
+
+        </div>
+
+
+        <div class="overview-footer">
+
+          <span>
+            {{
+              scan.repository
+                ?.fullName ||
+              scan.repository
+                ?.name ||
+              'Repository'
+            }}
+          </span>
+
+          @if (
+            progress()
+              ?.updatedAt
+          ) {
+            <span>
+              Dernière mise à jour :
+              {{
+                progress()!
+                  .updatedAt
+                  | date:
+                    'dd/MM/yyyy HH:mm'
+              }}
+            </span>
+          }
+
+        </div>
+
+      </div>
+
+
+      <div class="score-summary">
+
+        <span class="score-summary-label">
+          FINDINGS ACTIFS
+        </span>
+
+        <strong>
+          {{ severityTotal() }}
+        </strong>
+
+        <small>
+          vulnérabilité(s)
+          actuellement ouverte(s)
+        </small>
+
+      </div>
+
+
+      @if (
+        progress()
+          ?.errorMessage
+      ) {
+        <div class="scan-error">
+          {{
+            progress()!
+              .errorMessage
+          }}
+        </div>
+      }
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- SCAN DETAILS -->
+    <!-- ================================================= -->
+
+    <section class="overview-grid">
+
+      <article class="dashboard-card">
+
+        <header class="card-header">
+
+          <div>
+            <span class="section-label">
+              INFORMATION
+            </span>
+
+            <h2>
+              Détails du scan
+            </h2>
+
+            <p>
+              Informations techniques
+              et état de l'analyse.
+            </p>
+          </div>
+
+        </header>
+
+
+        <div class="details-grid">
+
+          <div class="detail-item">
+
+            <span>
+              Statut
+            </span>
+
+            <strong>
+              {{
+                statusLabel(
+                  scan.status
+                )
+              }}
+            </strong>
+
+          </div>
+
+
+          <div class="detail-item">
+
+            <span>
+              Type
+            </span>
+
+            <strong>
+              {{
+                typeLabel(
+                  scan.type
+                )
+              }}
+            </strong>
+
+          </div>
+
+
+          <div class="detail-item">
+
+            <span>
+              Déclencheur
+            </span>
+
+            <strong>
+              {{
+                triggerLabel(
+                  scan.trigger
+                )
+              }}
+            </strong>
+
+          </div>
+
+
+          <div class="detail-item">
+
+            <span>
+              Branche
+            </span>
+
+            <strong>
+              {{
+                scan.branch ||
+                '—'
+              }}
+            </strong>
+
+          </div>
+
+
+          <div class="detail-item">
+
+            <span>
+              Commit
+            </span>
+
+            <strong class="commit-value">
+              {{
+                scan.commitSha
+                  ? scan.commitSha.slice(
+                      0,
+                      12
+                    )
+                  : '—'
+              }}
+            </strong>
+
+          </div>
+
+
+          <div class="detail-item">
+
+            <span>
+              Score
+            </span>
+
+            <strong class="detail-score">
+              {{
+                scan.score ??
+                '—'
+              }}
+            </strong>
+
+          </div>
+
+
+          <div class="detail-item">
+
+            <span>
+              Démarré
+            </span>
+
+            <strong>
+              {{
+                scan.startedAt
+                  ? (
+                      scan.startedAt
+                      | date:
+                        'dd/MM/yyyy HH:mm'
+                    )
+                  : '—'
+              }}
+            </strong>
+
+          </div>
+
+
+          <div class="detail-item">
+
+            <span>
+              Terminé
+            </span>
+
+            <strong>
+              {{
+                scan.completedAt
+                  ? (
+                      scan.completedAt
+                      | date:
+                        'dd/MM/yyyy HH:mm'
+                    )
+                  : '—'
+              }}
+            </strong>
+
+          </div>
+
+        </div>
+
+      </article>
+
+
+      <!-- ================================================= -->
+      <!-- SEVERITY -->
+      <!-- ================================================= -->
+
+      <article class="dashboard-card">
+
+        <header class="card-header">
+
+          <div>
+            <span class="section-label">
+              RISK DISTRIBUTION
+            </span>
+
+            <h2>
+              Findings actifs par sévérité
+            </h2>
+
+            <p>
+              Répartition des vulnérabilités
+              détectées par ce scan.
+            </p>
+          </div>
+
+          <div class="card-total">
+
+            <strong>
+              {{ severityTotal() }}
+            </strong>
+
+            <span>
+              actifs
+            </span>
+
+          </div>
+
+        </header>
+
+
+        <div class="severity-grid">
+
+          <article class="severity critical">
+
+            <span>
+              Critical
+            </span>
+
+            <strong>
+              {{
+                scan.statistics
+                  ?.activeCritical ??
+                0
+              }}
+            </strong>
+
+          </article>
+
+
+          <article class="severity high">
+
+            <span>
+              High
+            </span>
+
+            <strong>
+              {{
+                scan.statistics
+                  ?.activeHigh ??
+                0
+              }}
+            </strong>
+
+          </article>
+
+
+          <article class="severity medium">
+
+            <span>
+              Medium
+            </span>
+
+            <strong>
+              {{
+                scan.statistics
+                  ?.activeMedium ??
+                0
+              }}
+            </strong>
+
+          </article>
+
+
+          <article class="severity low">
+
+            <span>
+              Low
+            </span>
+
+            <strong>
+              {{
+                scan.statistics
+                  ?.activeLow ??
+                0
+              }}
+            </strong>
+
+          </article>
+
+
+          <article class="severity info">
+
+            <span>
+              Info
+            </span>
+
+            <strong>
+              {{
+                scan.statistics
+                  ?.activeInfo ??
+                0
+              }}
+            </strong>
+
+          </article>
+
+        </div>
+
+      </article>
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- ANALYSIS METRICS -->
+    <!-- ================================================= -->
+
+    @if (
+      scan.statistics
+    ) {
+
+      <section class="dashboard-card">
+
+        <header class="card-header">
+
+          <div>
+            <span class="section-label">
+              ANALYSIS METRICS
+            </span>
+
+            <h2>
+              Statistiques du scan
+            </h2>
+
+            <p>
+              Résumé des findings,
+              fichiers et mécanismes de cache.
+            </p>
+          </div>
+
+        </header>
+
+
+        <div class="statistics-grid">
+
+          <article>
+
+            <span class="metric-icon">
+              F
+            </span>
+
+            <div>
+
+              <span>
+                Findings
+              </span>
+
+              <strong>
+                {{
+                  scan.statistics
+                    .findingsCount ??
+                  0
+                }}
+              </strong>
+
+            </div>
+
+          </article>
+
+
+          <article>
+
+            <span class="metric-icon positive">
+              N
+            </span>
+
+            <div>
+
+              <span>
+                Nouveaux
+              </span>
+
+              <strong>
+                {{
+                  scan.statistics
+                    .newFindings ??
+                  0
+                }}
+              </strong>
+
+            </div>
+
+          </article>
+
+
+          <article>
+
+            <span class="metric-icon neutral">
+              E
+            </span>
+
+            <div>
+
+              <span>
+                Existants
+              </span>
+
+              <strong>
+                {{
+                  scan.statistics
+                    .existingFindings ??
+                  0
+                }}
+              </strong>
+
+            </div>
+
+          </article>
+
+
+          <article>
+
+            <span class="metric-icon warning">
+              R
+            </span>
+
+            <div>
+
+              <span>
+                Réouverts
+              </span>
+
+              <strong>
+                {{
+                  scan.statistics
+                    .reopenedFindings ??
+                  0
+                }}
+              </strong>
+
+            </div>
+
+          </article>
+
+
+          <article>
+
+            <span class="metric-icon success">
+              ✓
+            </span>
+
+            <div>
+
+              <span>
+                Corrigés
+              </span>
+
+              <strong>
+                {{
+                  scan.statistics
+                    .fixedFindings ??
+                  0
+                }}
+              </strong>
+
+            </div>
+
+          </article>
+
+
+          <article>
+
+            <span class="metric-icon cache">
+              C
+            </span>
+
+            <div>
+
+              <span>
+                Cache hits
+              </span>
+
+              <strong>
+                {{
+                  scan.statistics
+                    .cacheHits ??
+                  0
+                }}
+              </strong>
+
+            </div>
+
+          </article>
+
+
+          <article>
+
+            <span class="metric-icon cache">
+              C
+            </span>
+
+            <div>
+
+              <span>
+                Cache misses
+              </span>
+
+              <strong>
+                {{
+                  scan.statistics
+                    .cacheMisses ??
+                  0
+                }}
+              </strong>
+
+            </div>
+
+          </article>
+
+
+          <article>
+
+            <span class="metric-icon file">
+              FI
+            </span>
+
+            <div>
+
+              <span>
+                Fichiers inventoriés
+              </span>
+
+              <strong>
+                {{
+                  scan.statistics
+                    .inventoryFileCount ??
+                  0
+                }}
+              </strong>
+
+            </div>
+
+          </article>
+
+
+          <article>
+
+            <span class="metric-icon file">
+              Δ
+            </span>
+
+            <div>
+
+              <span>
+                Fichiers modifiés
+              </span>
+
+              <strong>
+                {{
+                  scan.statistics
+                    .changedFileCount ??
+                  0
+                }}
+              </strong>
+
+            </div>
+
+          </article>
+
+        </div>
+
+      </section>
+
+    }
+
+  }
+
+</section>

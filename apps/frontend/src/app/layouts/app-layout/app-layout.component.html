@@ -1,0 +1,528 @@
+<div class="application-shell">
+
+  <aside
+    class="sidebar"
+    [class.open]="mobileMenuOpen()"
+  >
+
+    <div class="sidebar-header">
+
+      <a
+        class="product-brand"
+        [routerLink]="
+          isPlatformAdmin()
+            ? '/platform-admin'
+            : '/organizations'
+        "
+        (click)="closeMobileMenu()"
+      >
+        <span class="brand-symbol">
+          SC
+        </span>
+
+        <span class="brand-copy">
+          <strong>
+            SecureCode
+          </strong>
+
+          <small>
+            SECURITY PLATFORM
+          </small>
+        </span>
+      </a>
+
+    </div>
+
+    @if (
+      !isPlatformAdmin() &&
+      organization()
+    ) {
+
+      <div class="workspace-selector">
+
+        <span class="selector-label">
+          ORGANISATION ACTIVE
+        </span>
+
+        <a
+          routerLink="/organizations"
+          (click)="closeMobileMenu()"
+        >
+          <span class="workspace-avatar">
+            {{
+              organization()!
+                .name
+                .charAt(0)
+                .toUpperCase()
+            }}
+          </span>
+
+          <span class="workspace-information">
+            <strong>
+              {{ organization()!.name }}
+            </strong>
+
+            <small>
+              Espace de travail
+            </small>
+          </span>
+        </a>
+
+      </div>
+
+    }
+
+    <nav class="navigation">
+
+      @if (
+        isPlatformAdmin()
+      ) {
+
+        <div class="nav-section">
+
+          <span class="nav-title">
+            ADMINISTRATION PLATEFORME
+          </span>
+
+          <a
+            routerLink="/platform-admin"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{
+              exact: true
+            }"
+            (click)="closeMobileMenu()"
+          >
+            <span class="nav-glyph">
+              D
+            </span>
+
+            Vue d'ensemble
+          </a>
+
+          <a
+            routerLink="/platform-admin/users"
+            routerLinkActive="active"
+            (click)="closeMobileMenu()"
+          >
+            <span class="nav-glyph">
+              U
+            </span>
+
+            Utilisateurs
+          </a>
+
+          <a
+            routerLink="/platform-admin/organizations"
+            routerLinkActive="active"
+            (click)="closeMobileMenu()"
+          >
+            <span class="nav-glyph">
+              O
+            </span>
+
+            Organisations
+          </a>
+
+        </div>
+
+        <div class="nav-section">
+
+          <span class="nav-title">
+            SUPERVISION
+          </span>
+
+          <a
+            routerLink="/platform-admin/audit-logs"
+            routerLinkActive="active"
+            (click)="closeMobileMenu()"
+          >
+            <span class="nav-glyph">
+              L
+            </span>
+
+            Journaux d'audit
+          </a>
+
+          <a
+            routerLink="/platform-admin/system"
+            routerLinkActive="active"
+            (click)="closeMobileMenu()"
+          >
+            <span class="nav-glyph">
+              H
+            </span>
+
+            État du système
+          </a>
+
+        </div>
+
+      } @else {
+
+        <div class="nav-section">
+
+          <span class="nav-title">
+            WORKSPACE
+          </span>
+
+          <a
+            routerLink="/organizations"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{
+              exact: true
+            }"
+            (click)="closeMobileMenu()"
+          >
+            <span class="nav-glyph">
+              O
+            </span>
+
+            Organisations
+          </a>
+
+          @if (
+            hasOrganization()
+          ) {
+            @if (
+              canSeeOrganizationDashboard()
+            ) {
+              <a
+                [routerLink]="organizationDashboardUrl()"
+                routerLinkActive="active"
+                [routerLinkActiveOptions]="{
+                  exact: true
+                }"
+                (click)="closeMobileMenu()"
+              >
+                <span class="nav-glyph">
+                  D
+                </span>
+
+                Dashboard général
+              </a>
+            }
+
+            <a
+              [routerLink]="projectsUrl()"
+              routerLinkActive="active"
+              (click)="closeMobileMenu()"
+            >
+              <span class="nav-glyph">
+                P
+              </span>
+
+              Projets
+            </a>
+
+            @if (
+              canReadMembers()
+            ) {
+              <a
+                [routerLink]="membersUrl()"
+                routerLinkActive="active"
+                (click)="closeMobileMenu()"
+              >
+                <span class="nav-glyph">
+                  M
+                </span>
+
+                Membres organisation
+              </a>
+            }
+
+            @if (
+              canReadAudit()
+            ) {
+              <a
+                [routerLink]="
+                  '/organizations/' +
+                  organization()!.id +
+                  '/audit-logs'
+                "
+                routerLinkActive="active"
+                (click)="closeMobileMenu()"
+              >
+                <span class="nav-glyph">
+                  L
+                </span>
+
+                Audit logs
+              </a>
+            }
+
+          }
+
+        </div>
+
+        @if (
+          hasProject() &&
+          projectBase()
+        ) {
+
+          <div class="nav-section">
+
+            <span class="nav-title">
+              PROJET
+            </span>
+
+            <a
+              [routerLink]="
+                projectBase() +
+                '/dashboard'
+              "
+              routerLinkActive="active"
+              (click)="closeMobileMenu()"
+            >
+              <span class="nav-glyph">
+                D
+              </span>
+
+              Dashboard sécurité
+            </a>
+
+            @if (
+              canReadRepositories()
+            ) {
+              <a
+                [routerLink]="
+                  projectBase() +
+                  '/repositories'
+                "
+                routerLinkActive="active"
+                (click)="closeMobileMenu()"
+              >
+                <span class="nav-glyph">
+                  R
+                </span>
+
+                Repositories
+              </a>
+            }
+
+            @if (
+              canReadScans()
+            ) {
+              <a
+                [routerLink]="
+                  projectBase() +
+                  '/scans'
+                "
+                routerLinkActive="active"
+                (click)="closeMobileMenu()"
+              >
+                <span class="nav-glyph">
+                  S
+                </span>
+
+                Scans
+              </a>
+            }
+
+            @if (
+              canReadFindings()
+            ) {
+              <a
+                [routerLink]="
+                  projectBase() +
+                  '/findings'
+                "
+                routerLinkActive="active"
+                (click)="closeMobileMenu()"
+              >
+                <span class="nav-glyph">
+                  F
+                </span>
+
+                Findings
+              </a>
+
+              <a
+                [routerLink]="
+                  projectBase() +
+                  '/my-tasks'
+                "
+                routerLinkActive="active"
+                (click)="closeMobileMenu()"
+              >
+                <span class="nav-glyph">
+                  T
+                </span>
+
+                Mes tâches
+              </a>
+            }
+
+            @if (
+              canReadReports()
+            ) {
+              <a
+                [routerLink]="
+                  projectBase() +
+                  '/reports'
+                "
+                routerLinkActive="active"
+                (click)="closeMobileMenu()"
+              >
+                <span class="nav-glyph">
+                  RP
+                </span>
+
+                Rapports
+              </a>
+            }
+
+          </div>
+
+        }
+
+      }
+
+    </nav>
+
+    <footer class="sidebar-footer">
+
+      <div class="user-card">
+
+        <span class="user-avatar">
+          {{ initials() }}
+        </span>
+
+        <div class="user-details">
+
+          <strong>
+            {{ displayName() }}
+          </strong>
+
+          <small>
+            {{ user()?.email }}
+          </small>
+
+          @if (
+            isPlatformAdmin()
+          ) {
+            <span class="platform-role">
+              PLATFORM ADMIN
+            </span>
+          }
+
+        </div>
+
+      </div>
+
+      <button
+        type="button"
+        class="logout-button"
+        (click)="logout()"
+      >
+        Déconnexion
+      </button>
+
+    </footer>
+
+  </aside>
+
+  @if (
+    mobileMenuOpen()
+  ) {
+    <button
+      type="button"
+      class="sidebar-overlay"
+      aria-label="Fermer le menu"
+      (click)="closeMobileMenu()"
+    ></button>
+  }
+
+  <div class="application-main">
+
+    <header class="topbar">
+
+      <div class="topbar-start">
+
+        <button
+          type="button"
+          class="mobile-menu-button"
+          (click)="toggleMobileMenu()"
+        >
+          Menu
+        </button>
+
+        <div class="context">
+
+          @if (
+            isPlatformAdmin()
+          ) {
+
+            <span class="context-type">
+              Administration
+            </span>
+
+            <strong>
+              SecureCode Platform
+            </strong>
+
+          } @else {
+
+            @if (
+              organization()
+            ) {
+              <span>
+                {{ organization()!.name }}
+              </span>
+            }
+
+            @if (
+              project()
+            ) {
+              <span class="context-separator">
+                /
+              </span>
+
+              <strong>
+                {{ project()!.name }}
+              </strong>
+            }
+
+          }
+
+        </div>
+
+      </div>
+
+      <div class="topbar-actions">
+
+
+
+        <div class="topbar-divider"></div>
+
+
+        <div class="topbar-user">
+
+        <div class="notification-area">
+          <app-notification-bell />
+        </div>
+
+          <span class="status-dot"></span>
+
+          <div class="topbar-user-copy">
+            <strong>
+              {{ displayName() }}
+            </strong>
+
+            <small>
+              {{ user()?.email }}
+            </small>
+          </div>
+
+        </div>
+
+      </div>
+
+    </header>
+
+    <main class="page-content">
+      <router-outlet />
+    </main>
+
+  </div>
+
+</div>

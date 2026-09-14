@@ -1,0 +1,1000 @@
+<section class="members-page">
+
+  <header class="page-heading">
+
+    <div>
+      <span class="eyebrow">
+        ORGANISATION
+      </span>
+
+      <h1>
+        Membres et invitations
+      </h1>
+
+      <p>
+        Gérez les accès à l'organisation,
+        les rôles et les projets accessibles
+        à chaque collaborateur.
+      </p>
+    </div>
+
+    @if (
+      canInviteMembers() &&
+      !inviteOpen()
+    ) {
+      <button
+        type="button"
+        class="invite-trigger"
+        (click)="openInviteModal()"
+      >
+        <span class="button-icon">
+          +
+        </span>
+
+        Inviter un membre
+      </button>
+    }
+
+  </header>
+
+
+  @if (
+    message()
+  ) {
+
+    <div class="feedback-message">
+
+      <span>
+        {{ message() }}
+      </span>
+
+      @if (
+        devToken()
+      ) {
+        <small>
+          Token DEV :
+          {{ devToken() }}
+        </small>
+      }
+
+    </div>
+
+  }
+
+
+  @if (
+    inviteOpen() &&
+    canInviteMembers()
+  ) {
+
+    <section class="invite-panel">
+
+      <div class="invite-panel-header">
+
+        <div class="invite-icon">
+          ✉
+        </div>
+
+        <div>
+          <h2>
+            Inviter un membre
+          </h2>
+
+          <p>
+            Ajoutez un collaborateur et
+            définissez précisément ses accès.
+          </p>
+        </div>
+
+      </div>
+
+
+      <div class="invite-form-grid">
+
+          <label class="field">
+
+            <span class="field-label">
+              Prénom
+            </span>
+
+            <input
+              type="text"
+              placeholder="Ex. Karim"
+              autocomplete="given-name"
+              [ngModel]="firstName()"
+              (ngModelChange)="firstName.set($event)"
+            >
+
+          </label>
+
+
+          <label class="field">
+
+            <span class="field-label">
+              Nom
+            </span>
+
+            <input
+              type="text"
+              placeholder="Ex. Rokiya"
+              autocomplete="family-name"
+              [ngModel]="lastName()"
+              (ngModelChange)="lastName.set($event)"
+            >
+
+          </label>
+
+
+        <label class="field">
+
+          <span class="field-label">
+            Adresse email
+          </span>
+
+          <input
+            type="email"
+            placeholder="exemple@entreprise.com"
+            autocomplete="email"
+            [ngModel]="email()"
+            (ngModelChange)="email.set($event)"
+          >
+
+        </label>
+
+
+        <label class="field">
+
+          <span class="field-label">
+            Rôle dans l'organisation
+          </span>
+
+          <select
+            [ngModel]="roleId()"
+            (ngModelChange)="roleId.set($event)"
+          >
+
+            <option
+              value=""
+              disabled
+            >
+              Sélectionner un rôle
+            </option>
+
+            @for (
+              role of invitationRoles();
+              track role.id
+            ) {
+              <option
+                [value]="role.id"
+              >
+                {{ role.name }}
+              </option>
+            }
+
+          </select>
+
+          <small class="field-help">
+            Ce rôle contrôle les permissions
+            au niveau de l'organisation.
+          </small>
+
+        </label>
+
+      </div>
+
+
+      <div class="project-permissions">
+
+  <div class="project-permissions-heading">
+
+    <div>
+      <span class="section-label">
+        ACCÈS PROJETS
+      </span>
+
+      <h3>
+        Projets accessibles
+      </h3>
+
+      <p>
+        Ajoutez uniquement les projets auxquels
+        ce membre doit avoir accès.
+        Aucun accès projet n'est accordé automatiquement.
+      </p>
+    </div>
+
+    @if (
+      selectedProjectsCount() >
+      0
+    ) {
+      <span class="selection-count">
+        {{
+          selectedProjectsCount()
+        }}
+        projet(s) sélectionné(s)
+      </span>
+    }
+
+  </div>
+
+
+  <!-- =================================================== -->
+  <!-- RECHERCHE PROJET -->
+  <!-- =================================================== -->
+
+  <div class="project-search">
+
+    <div class="project-search-field">
+
+      <span class="search-icon">
+        ⌕
+      </span>
+
+      <input
+        type="search"
+        placeholder="Rechercher un projet par nom ou slug..."
+        autocomplete="off"
+        [ngModel]="projectSearch()"
+        (ngModelChange)="
+          projectSearch.set($event);
+          selectedProjectId.set('')
+        "
+      >
+
+      @if (
+        projectSearch()
+      ) {
+        <button
+          type="button"
+          class="clear-search"
+          title="Effacer la recherche"
+          (click)="
+            projectSearch.set('');
+            selectedProjectId.set('')
+          "
+        >
+          ×
+        </button>
+      }
+
+    </div>
+
+
+    @if (
+      projectSearch()
+    ) {
+
+      <span class="search-result-count">
+
+        {{
+          projectSearchResultCount()
+        }}
+
+        @if (
+          projectSearchResultCount() === 1
+        ) {
+          projet trouvé
+        } @else {
+          projets trouvés
+        }
+
+      </span>
+
+    }
+
+  </div>
+
+
+  <!-- =================================================== -->
+  <!-- SELECT PROJET + ROLE -->
+  <!-- =================================================== -->
+
+  <div class="project-selector-card">
+
+    <label class="field">
+
+      <span class="field-label">
+        Projet
+      </span>
+
+      <select
+        [ngModel]="selectedProjectId()"
+        (ngModelChange)="
+          selectedProjectId.set($event)
+        "
+      >
+
+        <option
+          value=""
+        >
+          Sélectionner un projet
+        </option>
+
+        @for (
+          project of availableProjects();
+          track project.id
+        ) {
+
+          <option
+            [value]="project.id"
+          >
+            {{ project.name }}
+
+            @if (
+              project.slug
+            ) {
+              — {{ project.slug }}
+            }
+          </option>
+
+        }
+
+      </select>
+
+
+      @if (
+        projectSearch() &&
+        availableProjects().length === 0
+      ) {
+
+        <small class="no-search-result">
+          Aucun projet ne correspond à
+          « {{ projectSearch() }} »
+        </small>
+
+      }
+
+    </label>
+
+
+    <label class="field">
+
+      <span class="field-label">
+        Rôle sur ce projet
+      </span>
+
+      <select
+        [ngModel]="selectedProjectRoleCode()"
+        (ngModelChange)="
+          selectedProjectRoleCode.set(
+            $event
+          )
+        "
+      >
+
+        @for (
+          role of projectRoles;
+          track role.code
+        ) {
+
+          <option
+            [value]="role.code"
+          >
+            {{ role.name }}
+          </option>
+
+        }
+
+      </select>
+
+    </label>
+
+
+    <button
+      type="button"
+      class="add-project-button"
+      [disabled]="
+        !selectedProjectId()
+      "
+      (click)="addProjectAccess()"
+    >
+      Ajouter le projet
+    </button>
+
+  </div>
+
+
+        @if (
+          selectedProjectEntries().length >
+          0
+        ) {
+
+          <div class="selected-project-list">
+
+            @for (
+              item of selectedProjectEntries();
+              track item.projectId
+            ) {
+
+              <article class="selected-project">
+
+                <div class="project-symbol">
+                  P
+                </div>
+
+                <div class="project-copy">
+
+                  <strong>
+                    {{ item.projectName }}
+                  </strong>
+
+                  @if (
+                    item.projectSlug
+                  ) {
+                    <small>
+                      {{ item.projectSlug }}
+                    </small>
+                  }
+
+                </div>
+
+                <select
+                  class="project-role-select"
+                  [ngModel]="item.roleCode"
+                  (ngModelChange)="
+                    updateSelectedProjectRole(
+                      item.projectId,
+                      $event
+                    )
+                  "
+                >
+
+                  @for (
+                    role of projectRoles;
+                    track role.code
+                  ) {
+                    <option
+                      [value]="role.code"
+                    >
+                      {{ role.name }}
+                    </option>
+                  }
+
+                </select>
+
+                <button
+                  type="button"
+                  class="remove-project-button"
+                  title="Retirer ce projet"
+                  (click)="
+                    removeProjectAccess(
+                      item.projectId
+                    )
+                  "
+                >
+                  ×
+                </button>
+
+              </article>
+
+            }
+
+          </div>
+
+        } @else {
+
+          <div class="no-project-selection">
+
+            <span class="empty-project-icon">
+              P
+            </span>
+
+            <div>
+              <strong>
+                Aucun projet sélectionné
+              </strong>
+
+              <p>
+                Le membre n'aura aucun accès projet
+                tant qu'un projet n'est pas ajouté.
+              </p>
+            </div>
+
+          </div>
+
+        }
+
+      </div>
+
+
+      <footer class="invite-actions">
+
+        <button
+          type="button"
+          class="secondary-button"
+          [disabled]="sending()"
+          (click)="closeInviteModal()"
+        >
+          Annuler
+        </button>
+
+        <button
+          type="button"
+          class="primary-button"
+          [disabled]="
+            sending() ||
+            !email().trim() ||
+            !firstName().trim() ||
+            !lastName().trim() ||
+            !roleId()
+          "
+          (click)="sendInvitation()"
+        >
+
+          @if (
+            sending()
+          ) {
+            Envoi...
+          } @else {
+            Envoyer l'invitation
+          }
+
+        </button>
+
+      </footer>
+
+    </section>
+
+  }
+
+
+  @if (
+    canReadMembers()
+  ) {
+
+    <section class="data-card">
+
+      <header class="card-heading">
+
+        <div class="card-title-group">
+
+          <span class="card-icon">
+            M
+          </span>
+
+          <div>
+            <div class="title-line">
+              <h2>
+                Membres actifs
+              </h2>
+
+              <span class="count-badge">
+                {{
+                  activeMembersCount()
+                }}
+              </span>
+            </div>
+
+            <p>
+              Utilisateurs ayant accès
+              à cette organisation.
+            </p>
+          </div>
+
+        </div>
+
+      </header>
+
+
+      <div class="table-wrapper">
+
+        <table>
+
+          <thead>
+            <tr>
+              <th>
+                Utilisateur
+              </th>
+
+              <th>
+                Rôle
+              </th>
+
+              <th>
+                Statut
+              </th>
+
+              <th>
+                Dernière connexion
+              </th>
+
+              <th class="actions-column">
+                Actions
+              </th>
+            </tr>
+          </thead>
+
+
+          <tbody>
+
+            @for (
+              member of members();
+              track member.id
+            ) {
+
+              <tr>
+
+                <td>
+
+                  <div class="member-cell">
+
+                    <span class="member-avatar">
+                      {{
+                        memberInitials(
+                          member
+                        )
+                      }}
+                    </span>
+
+                    <div>
+                      <strong>
+                        {{
+                          member.user.firstName
+                        }}
+                        {{
+                          member.user.lastName
+                        }}
+                      </strong>
+
+                      <small>
+                        {{
+                          member.user.email
+                        }}
+                      </small>
+                    </div>
+
+                  </div>
+
+                </td>
+
+
+                <td>
+
+                  @if (
+                    member.role.code ===
+                    'OWNER'
+                  ) {
+
+                    <span class="role-badge owner">
+                      {{ member.role.name }}
+                    </span>
+
+                  } @else if (
+                    canUpdateMembers()
+                  ) {
+
+                    <select
+                      class="inline-role-select"
+                      [ngModel]="member.role.id"
+                      (ngModelChange)="
+                        changeRole(
+                          member,
+                          $event
+                        )
+                      "
+                    >
+
+                      @for (
+                        role of invitationRoles();
+                        track role.id
+                      ) {
+                        <option
+                          [value]="role.id"
+                        >
+                          {{ role.name }}
+                        </option>
+                      }
+
+                    </select>
+
+                  } @else {
+
+                    <span class="role-badge">
+                      {{ member.role.name }}
+                    </span>
+
+                  }
+
+                </td>
+
+
+                <td>
+                  <span
+                    class="status-badge"
+                    [class.active]="
+                      member.user.status ===
+                      'ACTIVE'
+                    "
+                  >
+                    <span class="status-dot"></span>
+
+                    {{
+                      member.user.status
+                    }}
+                  </span>
+                </td>
+
+
+                <td>
+                  <span class="date-value">
+                    {{
+                      member.user.lastLoginAt
+                        ? (
+                            member.user.lastLoginAt
+                            | date:
+                              'dd/MM/yyyy HH:mm'
+                          )
+                        : 'Jamais'
+                    }}
+                  </span>
+                </td>
+
+
+                <td class="actions-column">
+
+                  @if (
+                    member.role.code !==
+                      'OWNER' &&
+                    canDeleteMembers()
+                  ) {
+                    <button
+                      type="button"
+                      class="danger-action"
+                      (click)="remove(member)"
+                    >
+                      Retirer
+                    </button>
+                  }
+
+                </td>
+
+              </tr>
+
+            }
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+  }
+
+
+  @if (
+    canReadInvitations()
+  ) {
+
+    <section class="data-card">
+
+      <header class="card-heading">
+
+        <div class="card-title-group">
+
+          <span class="card-icon invitation">
+            I
+          </span>
+
+          <div>
+
+            <div class="title-line">
+
+              <h2>
+                Invitations
+              </h2>
+
+              @if (
+                pendingInvitationsCount() >
+                0
+              ) {
+                <span class="count-badge warning">
+                  {{
+                    pendingInvitationsCount()
+                  }}
+                  en attente
+                </span>
+              }
+
+            </div>
+
+            <p>
+              Invitations envoyées
+              et état de traitement.
+            </p>
+
+          </div>
+
+        </div>
+
+      </header>
+
+
+      <div class="table-wrapper">
+
+        <table>
+
+          <thead>
+            <tr>
+              <th>
+                Email
+              </th>
+
+              <th>
+                Rôle
+              </th>
+
+              <th>
+                Projets
+              </th>
+
+              <th>
+                Statut
+              </th>
+
+              <th>
+                Expiration
+              </th>
+
+              <th>
+                Invité par
+              </th>
+
+              <th class="actions-column">
+                Actions
+              </th>
+            </tr>
+          </thead>
+
+
+          <tbody>
+
+            @for (
+              invitation of invitations();
+              track invitation.id
+            ) {
+
+              <tr>
+
+                <td>
+                  <strong>
+                    {{
+                      invitation.email
+                    }}
+                  </strong>
+                </td>
+
+
+                <td>
+                  {{
+                    invitation.role.name
+                  }}
+                </td>
+
+
+                <td>
+
+                  @if (
+                    invitation
+                      .projectAssignments
+                      ?.length
+                  ) {
+
+                    <div class="project-tags">
+
+                      @for (
+                        assignment of
+                          invitation
+                            .projectAssignments!;
+                        track assignment.projectId
+                      ) {
+
+                        <span class="project-tag">
+
+                          {{
+                            assignment.project
+                              ?.name ??
+                            assignment.projectId
+                          }}
+
+                          <small>
+                            {{
+                              assignment.role.name
+                            }}
+                          </small>
+
+                        </span>
+
+                      }
+
+                    </div>
+
+                  } @else {
+
+                    <span class="muted">
+                      Aucun projet
+                    </span>
+
+                  }
+
+                </td>
+
+
+                <td>
+
+                  <span
+                    class="invitation-status"
+                    [attr.data-status]="
+                      invitationStatus(
+                        invitation
+                      )
+                    "
+                  >
+                    {{
+                      invitationStatus(
+                        invitation
+                      )
+                    }}
+                  </span>
+
+                </td>
+
+
+                <td>
+                  {{
+                    invitation.expiresAt
+                      | date:
+                        'dd/MM/yyyy HH:mm'
+                  }}
+                </td>
+
+
+                <td>
+                  {{
+                    invitation.invitedBy.email
+                  }}
+                </td>
+
+
+                <td class="actions-column">
+
+                  @if (
+                    invitationStatus(
+                      invitation
+                    ) ===
+                      'EN ATTENTE' &&
+                    canCancelInvitations()
+                  ) {
+
+                    <button
+                      type="button"
+                      class="danger-action"
+                      (click)="
+                        cancelInvitation(
+                          invitation
+                        )
+                      "
+                    >
+                      Annuler
+                    </button>
+
+                  }
+
+                </td>
+
+              </tr>
+
+            }
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+  }
+
+</section>

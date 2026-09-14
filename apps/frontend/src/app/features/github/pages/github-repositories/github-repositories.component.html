@@ -1,0 +1,284 @@
+<section class="github-page">
+
+  <header class="page-header">
+
+    <div>
+
+      <span class="eyebrow">
+        GITHUB INTEGRATION
+      </span>
+
+      <h1>
+        Importer un repository
+      </h1>
+
+      <p>
+        Sélectionnez un repository GitHub
+        à synchroniser avec SecureCode-AI.
+      </p>
+
+    </div>
+
+  </header>
+
+  @if (installation()) {
+
+  <section class="github-access-card">
+
+    <div class="github-access-content">
+
+      <span class="section-label">
+        CONNEXION GITHUB
+      </span>
+
+      <h2>
+        {{ installation()?.accountName || 'GitHub' }}
+      </h2>
+
+      <p>
+        {{
+          installation()?.repositorySelection === 'all'
+            ? 'Tous les repositories autorisés par GitHub sont accessibles.'
+            : 'Seuls les repositories sélectionnés dans l’installation GitHub sont accessibles.'
+        }}
+      </p>
+
+    </div>
+
+    <div class="github-access-actions">
+
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="manageGithubInstallation()"
+      >
+        Gérer l’accès GitHub
+      </button>
+
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="loadRepositories()"
+        [disabled]="loading()"
+      >
+        Actualiser
+      </button>
+
+    </div>
+
+  </section>
+
+}
+
+  <section class="search-card">
+
+    <input
+      type="search"
+      [(ngModel)]="search"
+      placeholder="Rechercher un repository..."
+      (keyup.enter)="searchRepositories()"
+    />
+
+    <button
+      type="button"
+      (click)="searchRepositories()"
+      [disabled]="loading()"
+    >
+      Rechercher
+    </button>
+
+  </section>
+
+  @if (error()) {
+
+    <div class="alert-error">
+      {{ error() }}
+    </div>
+
+  }
+
+  @if (loading()) {
+
+    <div class="loading-state">
+
+      <span class="spinner"></span>
+
+      Chargement des repositories GitHub...
+
+    </div>
+
+  } @else {
+
+    <section class="repository-container">
+
+      <div class="section-heading">
+
+        <div>
+
+          <span class="section-label">
+            AVAILABLE REPOSITORIES
+          </span>
+
+          <h2>
+            Repositories GitHub
+          </h2>
+
+        </div>
+
+        <span class="page-indicator">
+          Page {{ page }}
+          / {{ totalPages }}
+        </span>
+
+      </div>
+
+      @if (
+        repositories().length === 0
+      ) {
+
+        <div class="empty-state">
+          Aucun repository trouvé.
+        </div>
+
+      } @else {
+
+        <div class="repository-list">
+
+          @for (
+            repository of repositories();
+            track repository.id
+          ) {
+
+            <article class="repository-row">
+
+              <div class="repo-icon">
+                GH
+              </div>
+
+              <div class="repo-content">
+
+                <h3>
+                  {{ repository.fullName }}
+                </h3>
+
+                <p>
+                  {{
+                    repository.description
+                      || 'Aucune description'
+                  }}
+                </p>
+
+                <div class="repo-meta">
+
+                  <span>
+                    {{
+                      repository.language
+                        || 'Langage inconnu'
+                    }}
+                  </span>
+
+                  <span>
+                    {{
+                      repository.defaultBranch
+                        || 'Branche inconnue'
+                    }}
+                  </span>
+
+                  <span>
+                    {{
+                      repository.private
+                        ? 'Private'
+                        : 'Public'
+                    }}
+                  </span>
+
+                  @if (repository.imported) {
+
+                    <span class="repo-imported">
+                      {{
+                        repository.projectId === projectId
+                          ? 'Déjà dans ce projet'
+                          : 'Déjà utilisé par un autre projet'
+                      }}
+                    </span>
+
+                  }
+
+                </div>
+
+              </div>
+
+              <button
+                type="button"
+                class="import-button"
+                (click)="
+                  importRepository(
+                    repository
+                  )
+                "
+                [disabled]="
+                  repository.imported ||
+                  importingRepositoryId()
+                    === repository.id
+                "
+              >
+                {{
+                  importingRepositoryId()
+                    === repository.id
+                    ? 'Importation...'
+                    : repository.imported
+                      ? 'Déjà utilisé'
+                      : 'Importer'
+                }}
+              </button>
+
+            </article>
+
+          }
+
+        </div>
+
+      }
+
+      <footer class="pagination">
+
+        <button
+          type="button"
+          (click)="previousPage()"
+          [disabled]="
+            page <= 1 ||
+            loading()
+          "
+        >
+          Précédent
+        </button>
+
+        <span>
+          Page
+          <strong>
+            {{ page }}
+          </strong>
+          sur
+          <strong>
+            {{ totalPages }}
+          </strong>
+        </span>
+
+        <button
+          type="button"
+          (click)="nextPage()"
+          [disabled]="
+            page >= totalPages ||
+            loading()
+          "
+        >
+          Suivant
+        </button>
+
+      </footer>
+
+    </section>
+
+  }
+
+</section>

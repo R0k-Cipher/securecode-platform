@@ -1,5 +1,10 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ApiProperty,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
+
+import {
+  IsEmail,
   IsOptional,
   IsString,
   IsUrl,
@@ -22,7 +27,7 @@ export class CreateOrganizationDto {
 
   @ApiPropertyOptional({
     description:
-      "Identifiant lisible utilisé dans les URLs. S'il n'est pas fourni, il sera généré automatiquement depuis le nom.",
+      "Identifiant utilisé dans les URLs. S'il n'est pas fourni, il est généré depuis le nom.",
     example: 'optizaworks',
     minLength: 2,
     maxLength: 100,
@@ -50,17 +55,62 @@ export class CreateOrganizationDto {
 
   @ApiPropertyOptional({
     description: "URL du logo de l'organisation",
-    example: 'https://example.com/logos/optizaworks.png',
+    example:
+      'https://example.com/logos/optizaworks.png',
   })
   @IsOptional()
   @IsUrl(
     {
-      protocols: ['http', 'https'],
+      protocols: [
+        'http',
+        'https',
+      ],
       require_protocol: true,
     },
     {
-      message: 'logoUrl doit être une URL HTTP ou HTTPS valide',
+      message:
+        'logoUrl doit être une URL HTTP ou HTTPS valide',
     },
   )
   logoUrl?: string;
+
+  /*
+  |--------------------------------------------------------------------------
+  | Organization Owner
+  |--------------------------------------------------------------------------
+  */
+
+  @ApiProperty({
+    description:
+      "Adresse email réelle du propriétaire de l'organisation",
+    example:
+      'owner@optizaworks.com',
+  })
+  @IsEmail()
+  @MaxLength(320)
+  ownerEmail!: string;
+
+  @ApiProperty({
+    description:
+      "Prénom du propriétaire de l'organisation",
+    example: 'Mohamed',
+    minLength: 2,
+    maxLength: 100,
+  })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  ownerFirstName!: string;
+
+  @ApiProperty({
+    description:
+      "Nom du propriétaire de l'organisation",
+    example: 'Boulajine',
+    minLength: 2,
+    maxLength: 100,
+  })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  ownerLastName!: string;
 }

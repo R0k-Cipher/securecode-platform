@@ -1,0 +1,100 @@
+<section class="admin-page">
+  <header class="page-heading">
+    <div>
+      <h1>État du système</h1>
+      <p>
+        Supervision opérationnelle de l'API, de la base et des traitements asynchrones.
+      </p>
+    </div>
+
+    <button
+      class="action-button"
+      type="button"
+      (click)="load()"
+    >
+      Actualiser
+    </button>
+  </header>
+
+  @if (loading()) {
+    <div class="card loading">
+      Vérification du système...
+    </div>
+  } @else if (error()) {
+    <div class="card error">
+      {{ error() }}
+    </div>
+  } @else if (status()) {
+
+    <div class="metric-grid">
+      <article class="metric">
+        <span>État global</span>
+        <strong>{{ status()!.status }}</strong>
+      </article>
+
+      <article class="metric">
+        <span>Base de données</span>
+        <strong>{{ status()!.database.status }}</strong>
+      </article>
+
+      <article class="metric">
+        <span>Uptime API</span>
+        <strong>
+          {{ (status()!.uptimeSeconds / 60) | number:'1.0-0' }} min
+        </strong>
+      </article>
+
+      <article class="metric">
+        <span>Scans échoués</span>
+        <strong>{{ status()!.scans.failed }}</strong>
+      </article>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Composant</th>
+              <th>En attente</th>
+              <th>En cours</th>
+              <th>Échecs</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="primary">Security scans</td>
+              <td>{{ status()!.scans.queued }}</td>
+              <td>{{ status()!.scans.running }}</td>
+              <td>{{ status()!.scans.failed }}</td>
+            </tr>
+
+            <tr>
+              <td class="primary">Repository sync</td>
+              <td>{{ status()!.repositorySyncs.queued }}</td>
+              <td>{{ status()!.repositorySyncs.running }}</td>
+              <td>{{ status()!.repositorySyncs.failed }}</td>
+            </tr>
+
+            <tr>
+              <td class="primary">Webhooks</td>
+              <td>{{ status()!.webhooks.received }}</td>
+              <td>—</td>
+              <td>{{ status()!.webhooks.failed }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <span class="count">
+          Dernière vérification :
+          {{ status()!.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}
+        </span>
+      </div>
+    </div>
+
+  }
+</section>

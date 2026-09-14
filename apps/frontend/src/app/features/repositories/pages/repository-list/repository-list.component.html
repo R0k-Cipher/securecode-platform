@@ -1,0 +1,186 @@
+<section class="repository-page">
+
+  <header class="page-header">
+
+    <div>
+      <span class="eyebrow">
+        SOURCE CODE
+      </span>
+
+      <h1>
+        Repositories
+      </h1>
+
+      <p>
+        Gérez les repositories associés à ce projet
+        et lancez leurs analyses de sécurité.
+      </p>
+    </div>
+    @if (canConnectGithub()) {
+      <button
+        type="button"
+        class="primary-button"
+        (click)="connectGithub()"
+        [disabled]="connectingGithub()"
+      >
+        {{
+          connectingGithub()
+            ? 'Connexion...'
+            : 'Connecter GitHub'
+        }}
+      </button>
+    }
+
+  </header>
+
+  @if (error()) {
+
+    <div class="alert-error">
+      {{ error() }}
+    </div>
+
+  }
+
+  @if (loading()) {
+
+    <div class="loading-state">
+
+      <span class="spinner"></span>
+
+      <span>
+        Chargement des repositories...
+      </span>
+
+    </div>
+
+  } @else if (
+    repositories().length === 0
+  ) {
+
+    <section class="empty-state">
+
+      <div class="empty-visual">
+        &lt;/&gt;
+      </div>
+
+      <h2>
+        Aucun repository importé
+      </h2>
+
+      <p>
+        Connectez votre compte GitHub puis
+        sélectionnez le repository que vous
+        souhaitez analyser avec SecureCode-AI.
+      </p>
+
+      @if (canConnectGithub()) {
+        <button
+          type="button"
+          class="primary-button"
+          (click)="connectGithub()"
+          [disabled]="connectingGithub()"
+        >
+          {{
+            connectingGithub()
+              ? 'Connexion...'
+              : 'Connecter GitHub'
+          }}
+        </button>
+      }
+
+    </section>
+
+  } @else {
+
+    <section class="repository-section">
+
+      <div class="section-heading">
+
+        <div>
+          <span class="section-label">
+            REPOSITORIES
+          </span>
+
+          <h2>
+            Repositories importés
+          </h2>
+        </div>
+
+        <span class="repository-count">
+          {{ repositories().length }}
+        </span>
+
+      </div>
+
+      <div class="repository-grid">
+
+        @for (
+          repository of repositories();
+          track repository.id
+        ) {
+
+          <article
+            class="repository-card"
+            tabindex="0"
+            (click)="openRepository(repository)"
+            (keydown.enter)="openRepository(repository)"
+          >
+
+            <div class="repository-top">
+
+              <div class="repository-icon">
+                &lt;/&gt;
+              </div>
+
+              <span
+                class="sync-status"
+                [attr.data-status]="
+                  repository.syncStatus
+                "
+              >
+                {{ repository.syncStatus }}
+              </span>
+
+            </div>
+
+            <div class="repository-content">
+
+              <h3>
+                {{ repository.fullName }}
+              </h3>
+
+              <p>
+                {{
+                  repository.primaryLanguage
+                    || 'Langage non détecté'
+                }}
+              </p>
+
+            </div>
+
+            <div class="repository-footer">
+
+              <span>
+                {{
+                  repository.provider
+                    || 'GITHUB'
+                }}
+              </span>
+
+              <strong>
+                Ouvrir
+              </strong>
+
+            </div>
+
+          </article>
+
+        }
+
+      </div>
+
+    </section>
+
+  }
+
+</section>

@@ -23,12 +23,24 @@ import helmet from 'helmet';
 import { AppModule } from './app/app.module';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, {
-    logger: new ConsoleLogger({
-      json: process.env['NODE_ENV'] === 'production',
-      timestamp: true,
+  const app = await NestFactory.create(
+    AppModule,
+     {
+      rawBody: true,
+      logger: new ConsoleLogger({
+        json: process.env['NODE_ENV'] === 'production',
+        timestamp: true,
     }),
   });
+
+  const expressApp =
+    app.getHttpAdapter()
+      .getInstance();
+
+  expressApp.set(
+    'trust proxy',
+    1,
+  );
 
   const configService = app.get(ConfigService);
 

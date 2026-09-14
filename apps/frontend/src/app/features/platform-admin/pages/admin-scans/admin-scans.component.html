@@ -1,0 +1,79 @@
+<section class="admin-page">
+  <header class="page-heading">
+    <div>
+      <h1>Scans plateforme</h1>
+      <p>
+        Supervision des scans exécutés sur l'ensemble des organisations et repositories.
+      </p>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="toolbar">
+      <input
+        class="search"
+        type="search"
+        placeholder="Repository, projet, trigger, statut, commit..."
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+      >
+
+      <span class="count">
+        {{ filtered().length }} scan(s)
+      </span>
+    </div>
+
+    @if (loading()) {
+      <div class="loading">Chargement...</div>
+    } @else if (error()) {
+      <div class="error">{{ error() }}</div>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Repository</th>
+              <th>Projet</th>
+              <th>Trigger</th>
+              <th>Statut</th>
+              <th>Score</th>
+              <th>Findings</th>
+              <th>Progression</th>
+              <th>Création</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (scan of filtered(); track scan.id) {
+              <tr>
+                <td>
+                  <span class="primary">
+                    {{ scan.repository.fullName }}
+                  </span>
+                  <span class="secondary">
+                    {{ scan.commitSha | slice:0:10 }}
+                  </span>
+                </td>
+                <td>{{ scan.project.name }}</td>
+                <td>{{ scan.trigger }}</td>
+                <td>
+                  <span
+                    class="badge"
+                    [ngClass]="statusClass(scan.status)"
+                  >
+                    {{ scan.status }}
+                  </span>
+                </td>
+                <td>
+                  {{ scan.score ?? '—' }}
+                </td>
+                <td>{{ scan._count.findings }}</td>
+                <td>{{ scan.progress }} %</td>
+                <td>{{ scan.queuedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</section>

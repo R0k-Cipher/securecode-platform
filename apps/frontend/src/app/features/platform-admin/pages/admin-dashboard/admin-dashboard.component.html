@@ -1,0 +1,278 @@
+<section class="admin">
+
+  <header class="admin-header">
+
+    <div>
+      <span class="eyebrow">
+        PLATFORM ADMIN
+      </span>
+
+      <h1>
+        Supervision SecureCode
+      </h1>
+
+      <p>
+        Vue opérationnelle de la plateforme,
+        des tenants, des accès et de l'activité
+        d'administration.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      class="refresh-button"
+      [disabled]="loading()"
+      (click)="refresh()"
+    >
+      {{
+        loading()
+          ? 'Actualisation...'
+          : 'Actualiser'
+      }}
+    </button>
+
+  </header>
+
+  @if (error()) {
+    <div class="admin-error">
+      {{ error() }}
+    </div>
+  }
+
+  @if (
+    loading() &&
+    !data()
+  ) {
+    <div class="loading-card">
+      Chargement de la supervision plateforme...
+    </div>
+  }
+
+  @if (
+    data();
+    as d
+  ) {
+
+    <section class="metrics">
+
+      @for (
+        metric of metrics();
+        track metric.label
+      ) {
+
+        <article
+          [class.critical]="
+            metric.critical
+          "
+        >
+          <span>
+            {{ metric.label }}
+          </span>
+
+          <strong>
+            {{ metric.value }}
+          </strong>
+
+          <small>
+            {{ metric.helper }}
+          </small>
+        </article>
+
+      }
+
+    </section>
+
+    <section class="overview-grid">
+
+      <article class="card">
+
+        <div class="card-header">
+
+          <div>
+            <span class="section-label">
+              AUDIT
+            </span>
+
+            <h2>
+              Activité récente
+            </h2>
+          </div>
+
+          <span class="record-count">
+            {{
+              d.latestAuditLogs
+                ?.length ??
+              0
+            }}
+            événements
+          </span>
+
+        </div>
+
+        @if (
+          d.latestAuditLogs
+            ?.length
+        ) {
+
+          <div class="activity-list">
+
+            @for (
+              log of
+                d.latestAuditLogs;
+              track log.id
+            ) {
+
+              <div class="activity-item">
+
+                <div class="avatar">
+                  {{
+                    log.actor
+                      ?.firstName
+                      ?.charAt(0) ||
+                    'S'
+                  }}
+                </div>
+
+                <div>
+
+                  <strong>
+                    {{
+                      log.description ||
+                      (
+                        log.action +
+                        ' ' +
+                        log.resourceType
+                      )
+                    }}
+                  </strong>
+
+                  <small>
+                    {{
+                      log.actor
+                        ?.email ||
+                      'Système'
+                    }}
+
+                    @if (
+                      log.organization
+                        ?.name
+                    ) {
+                      •
+                      {{
+                        log.organization
+                          .name
+                      }}
+                    }
+
+                    @if (
+                      log.project
+                        ?.name
+                    ) {
+                      •
+                      {{
+                        log.project
+                          .name
+                      }}
+                    }
+                  </small>
+
+                </div>
+
+                <small>
+                  {{
+                    log.createdAt
+                      | date:
+                        'dd/MM HH:mm'
+                  }}
+                </small>
+
+              </div>
+
+            }
+
+          </div>
+
+        } @else {
+
+          <div class="empty-state">
+            Aucun événement récent.
+          </div>
+
+        }
+
+      </article>
+
+      <article class="card">
+
+        <div class="card-header">
+          <div>
+            <span class="section-label">
+              USERS
+            </span>
+
+            <h2>
+              Nouveaux utilisateurs
+            </h2>
+          </div>
+        </div>
+
+        <div class="activity-list">
+
+          @for (
+            user of
+              d.latestUsers;
+            track user.id
+          ) {
+
+            <div class="activity-item">
+
+              <div class="avatar">
+                {{
+                  user.firstName
+                    ?.charAt(0)
+                }}
+                {{
+                  user.lastName
+                    ?.charAt(0)
+                }}
+              </div>
+
+              <div>
+                <strong>
+                  {{
+                    user.firstName
+                  }}
+                  {{
+                    user.lastName
+                  }}
+                </strong>
+
+                <small>
+                  {{ user.email }}
+                </small>
+              </div>
+
+              <span
+                class="status-badge"
+                [ngClass]="
+                  statusClass(
+                    user.status
+                  )
+                "
+              >
+                {{ user.status }}
+              </span>
+
+            </div>
+
+          }
+
+        </div>
+
+      </article>
+
+    </section>
+
+  }
+
+</section>

@@ -1,34 +1,47 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsIn,
   IsOptional,
   IsString,
-  MinLength,
+  IsUUID,
+  Matches,
 } from 'class-validator';
+
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
 
 export class GithubInstallationCallbackDto {
   @ApiProperty({
-    description: "Identifiant de l'installation GitHub App",
-    example: '12345678',
+    example: '157146420',
+    description:
+      "Identifiant de l'installation GitHub App.",
   })
   @IsString()
-  @MinLength(1)
+  @Matches(/^\d+$/)
   installation_id!: string;
 
-  @ApiPropertyOptional({
-    description: "Action effectuée sur l'installation",
-    enum: ['install', 'update'],
-    example: 'install',
-  })
-  @IsOptional()
-  @IsIn(['install', 'update'])
-  setup_action?: 'install' | 'update';
-
   @ApiProperty({
+    example:
+      '54f629b8-5be4-4b83-a2de-b5d7ae747b6e',
     description:
-      "État sécurisé généré avant la redirection vers GitHub",
+      "État sécurisé créé avant l'installation GitHub.",
   })
   @IsString()
-  @MinLength(20)
+  @IsUUID()
   state!: string;
+
+  @ApiPropertyOptional({
+    enum: [
+      'install',
+      'update',
+    ],
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn([
+    'install',
+    'update',
+  ])
+  setup_action?: string;
 }

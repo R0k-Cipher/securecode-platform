@@ -1,0 +1,180 @@
+.tasks-page {
+  padding: 28px;
+  display: grid;
+  gap: 20px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  color: #6b7280;
+}
+
+h1 {
+  margin: 6px 0;
+  color: #172033;
+}
+
+.page-header p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.secondary-button {
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid #dfe3eb;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.tasks-list {
+  display: grid;
+  gap: 12px;
+}
+
+.task-card {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    130px
+    170px
+    auto;
+  gap: 18px;
+  align-items: center;
+
+  padding: 17px 18px;
+
+  border:
+    1px solid #e5e7eb;
+
+  border-radius: 14px;
+
+  background: #fff;
+
+  cursor: pointer;
+}
+
+.task-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fixed-button {
+  min-height: 38px;
+  padding: 0 15px;
+
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+
+  background: #16a34a;
+
+  border: 0;
+  border-radius: 9px;
+
+  cursor: pointer;
+
+  transition:
+    background 150ms ease,
+    transform 150ms ease;
+}
+
+.fixed-button:hover:not(:disabled) {
+  background: #15803d;
+  transform: translateY(-1px);
+}
+
+.fixed-button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.waiting-validation {
+  display: inline-flex;
+  padding: 7px 11px;
+
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 700;
+
+  background: #fef3c7;
+  border-radius: 999px;
+}
+
+.alert-success {
+  padding: 13px 15px;
+
+  color: #166534;
+
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+}
+
+.task-card:hover {
+  border-color: #bac2ce;
+}
+
+.task-main {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+}
+
+.task-main div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.task-main small,
+.task-date,
+.task-status {
+  color: #697282;
+  font-size: 12px;
+}
+
+.severity {
+  min-width: 72px;
+  text-align: center;
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: #eef1f5;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.empty-state,
+.loading-state {
+  padding: 45px;
+  text-align: center;
+  border:
+    1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  color: #727b8a;
+}
+
+.alert-error {
+  padding: 13px 15px;
+  border-radius: 10px;
+  background: #fff1f2;
+  color: #9f1239;
+}
+
+@media (
+  max-width: 800px
+) {
+  .task-card {
+    grid-template-columns: 1fr;
+  }
+}
+

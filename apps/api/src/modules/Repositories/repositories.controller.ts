@@ -32,6 +32,8 @@ import { CreateRepositoryDto } from './dto/create-repository.dto';
 import { RepositoryQueryDto } from './dto/repository-query.dto';
 import { UpdateRepositoryDto } from './dto/update-repository.dto';
 import { RepositoriesService } from './repositories.service';
+import { RepositorySyncDispatcherService } from './repository-sync-dispatcher.service';
+
 
 @ApiTags('Repositories')
 @ApiBearerAuth()
@@ -46,6 +48,8 @@ export class RepositoriesController {
   constructor(
     private readonly repositoriesService:
       RepositoriesService,
+    private readonly repositorySyncDispatcher:
+      RepositorySyncDispatcherService,
   ) {}
 
   @Post()
@@ -130,6 +134,45 @@ export class RepositoriesController {
       projectId,
       query,
     );
+  }
+
+  @Get(':repositoryId/security-overview')
+  @RequirePermissions(
+    PERMISSION_CODES.REPOSITORY_READ,
+  )
+  @ApiOperation({
+    summary:
+      'Afficher la synthèse de sécurité d’un dépôt',
+  })
+  @ApiOkResponse({
+    description:
+      'Synthèse de sécurité du dépôt.',
+  })
+  securityOverview(
+    @Param(
+      'organizationId',
+      new ParseUUIDPipe(),
+    )
+    organizationId: string,
+
+    @Param(
+      'projectId',
+      new ParseUUIDPipe(),
+    )
+    projectId: string,
+
+    @Param(
+      'repositoryId',
+      new ParseUUIDPipe(),
+    )
+    repositoryId: string,
+  ) {
+    return this.repositoriesService
+      .securityOverview(
+        organizationId,
+        projectId,
+        repositoryId,
+      );
   }
 
   @Get(':repositoryId')
@@ -297,7 +340,7 @@ export class RepositoriesController {
   )
   @ApiOperation({
     summary:
-      'Enregistrer la synchronisation d’un dépôt',
+      'Déclencher une synchronisation réelle du dépôt',
   })
   sync(
     @Param(
@@ -321,8 +364,8 @@ export class RepositoriesController {
     @CurrentUser()
     user: AuthenticatedUser,
   ) {
-    return this.repositoriesService
-      .markAsSynchronized(
+    return this.repositorySyncDispatcher
+      .requestManualSync(
         organizationId,
         projectId,
         repositoryId,

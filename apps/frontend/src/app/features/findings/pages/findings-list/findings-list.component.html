@@ -1,0 +1,305 @@
+<section class="findings-page">
+
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">
+        SECURITY ANALYSIS
+      </span>
+
+      <h1>Findings</h1>
+
+      <p>
+        Vulnérabilités détectées dans le code
+        source du projet.
+      </p>
+    </div>
+
+    @if (scanId) {
+      <div class="scan-filter">
+        Résultats du scan
+        <strong>{{ scanId.slice(0, 8) }}</strong>
+      </div>
+    }
+  </header>
+
+  @if (overview(); as stats) {
+    <div class="statistics">
+
+      <article>
+        <span>Actifs</span>
+        <strong>
+          {{ stats.totalActive }}
+        </strong>
+      </article>
+
+      <article class="critical">
+        <span>Critical</span>
+        <strong>
+          {{ stats.bySeverity.CRITICAL || 0 }}
+        </strong>
+      </article>
+
+      <article class="high">
+        <span>High</span>
+        <strong>
+          {{ stats.bySeverity.HIGH || 0 }}
+        </strong>
+      </article>
+
+      <article class="medium">
+        <span>Medium</span>
+        <strong>
+          {{ stats.bySeverity.MEDIUM || 0 }}
+        </strong>
+      </article>
+
+      <article>
+        <span>Low</span>
+        <strong>
+          {{ stats.bySeverity.LOW || 0 }}
+        </strong>
+      </article>
+
+    </div>
+  }
+
+  <div class="filters">
+
+    <input
+      type="search"
+      [(ngModel)]="search"
+      placeholder="Titre, règle, fichier..."
+      (keyup.enter)="applyFilters()"
+    />
+
+    <select [(ngModel)]="severity">
+      <option value="">
+        Toutes les sévérités
+      </option>
+
+      <option value="CRITICAL">
+        Critical
+      </option>
+
+      <option value="HIGH">
+        High
+      </option>
+
+      <option value="MEDIUM">
+        Medium
+      </option>
+
+      <option value="LOW">
+        Low
+      </option>
+
+      <option value="INFO">
+        Info
+      </option>
+    </select>
+
+    <select [(ngModel)]="status">
+      <option value="">
+        Tous les statuts
+      </option>
+
+      <option value="DETECTED">
+        Détecté
+      </option>
+
+      <option value="TO_REVIEW">
+        À vérifier
+      </option>
+
+      <option value="CONFIRMED">
+        Confirmé
+      </option>
+
+      <option value="ASSIGNED">
+        Assigné
+      </option>
+
+      <option value="IN_PROGRESS">
+        En cours
+      </option>
+
+      <option value="READY_FOR_RETEST">
+        Prêt pour retest
+      </option>
+
+      <option value="FALSE_POSITIVE">
+        Faux positif
+      </option>
+
+      <option value="ACCEPTED_RISK">
+        Risque accepté
+      </option>
+
+      <option value="FIXED">
+        Corrigé
+      </option>
+
+      <option value="REOPENED">
+        Réouvert
+      </option>
+
+      <option value="CLOSED">
+        Fermé
+      </option>
+    </select>
+
+    <button
+      type="button"
+      class="primary"
+      (click)="applyFilters()"
+    >
+      Filtrer
+    </button>
+
+    <button
+      type="button"
+      class="secondary"
+      (click)="resetFilters()"
+    >
+      Réinitialiser
+    </button>
+
+  </div>
+
+  @if (error()) {
+    <div class="error-message">
+      {{ error() }}
+    </div>
+  }
+
+  @if (loading()) {
+
+    <div class="state">
+      Chargement des vulnérabilités...
+    </div>
+
+  } @else if (findings().length === 0) {
+
+    <div class="state empty">
+      <strong>
+        Aucun finding
+      </strong>
+
+      <p>
+        Aucun résultat ne correspond aux
+        critères sélectionnés.
+      </p>
+    </div>
+
+  } @else {
+
+    <div class="findings-table">
+
+      <div class="table-header">
+        <span>Sévérité</span>
+        <span>Finding</span>
+        <span>Repository</span>
+        <span>Emplacement</span>
+        <span>Statut</span>
+      </div>
+
+      @for (
+        finding of findings();
+        track finding.id
+      ) {
+
+        <article
+          class="finding-row"
+          tabindex="0"
+          (click)="open(finding)"
+          (keydown.enter)="open(finding)"
+        >
+
+          <div>
+            <span
+              class="severity"
+              [class]="
+                'severity ' +
+                finding.severity.toLowerCase()
+              "
+            >
+              {{ finding.severity }}
+            </span>
+          </div>
+
+          <div class="finding-name">
+            <strong>
+              {{ finding.title }}
+            </strong>
+
+            <small>
+              {{ finding.ruleId }}
+              ·
+              {{ finding.scanner }}
+            </small>
+          </div>
+
+          <div>
+            {{
+              finding.repository?.fullName ||
+              'N/A'
+            }}
+          </div>
+
+          <div class="location">
+            {{
+              finding.filePath ||
+              'Finding global'
+            }}
+
+            @if (finding.startLine) {
+              <small>
+                ligne {{ finding.startLine }}
+              </small>
+            }
+          </div>
+
+          <div>
+            <span class="status">
+              {{ finding.status }}
+            </span>
+          </div>
+
+        </article>
+      }
+
+    </div>
+
+    <footer class="pagination">
+
+      <span>
+        {{ total }} résultat(s)
+      </span>
+
+      <div>
+        <button
+          type="button"
+          (click)="previousPage()"
+          [disabled]="page <= 1"
+        >
+          Précédent
+        </button>
+
+        <span>
+          {{ page }} / {{ totalPages }}
+        </span>
+
+        <button
+          type="button"
+          (click)="nextPage()"
+          [disabled]="page >= totalPages"
+        >
+          Suivant
+        </button>
+      </div>
+
+    </footer>
+
+  }
+
+</section>

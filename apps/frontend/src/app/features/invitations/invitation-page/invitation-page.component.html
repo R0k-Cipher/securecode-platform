@@ -1,0 +1,291 @@
+<div class="invitation-shell">
+
+  <section class="invitation-card">
+
+    <div class="brand">
+      <span>
+        SC
+      </span>
+
+      <div>
+        <strong>
+          SecureCode
+        </strong>
+
+        <small>
+          CODE SECURITY PLATFORM
+        </small>
+      </div>
+    </div>
+
+    @if (loading()) {
+
+      <div class="state">
+        Vérification de l'invitation...
+      </div>
+
+    } @else if (
+      error() &&
+      !preview()
+    ) {
+
+      <div class="error">
+        {{ error() }}
+      </div>
+
+      <a
+        routerLink="/login"
+        class="secondary-link"
+      >
+        Retour à la connexion
+      </a>
+
+    } @else if (
+      preview();
+      as invitation
+    ) {
+
+      <span class="eyebrow">
+        ACTIVATION DU COMPTE
+      </span>
+
+      <h1>
+        Rejoindre
+        {{ invitation.organization.name }}
+      </h1>
+
+      <p class="intro">
+        {{
+          invitation.invitedBy.firstName
+        }}
+        {{
+          invitation.invitedBy.lastName
+        }}
+        vous invite à rejoindre cette organisation
+        comme
+
+        <strong>
+          {{ invitation.organizationRole.name }}
+        </strong>.
+      </p>
+
+      <div class="details">
+
+        <div>
+          <span>
+            Email
+          </span>
+
+          <strong>
+            {{ invitation.email }}
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            Rôle organisation
+          </span>
+
+          <strong>
+            {{ invitation.organizationRole.name }}
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            Login SecureCode
+          </span>
+
+          <strong>
+            {{
+              invitation.login ||
+              'Sera disponible après activation'
+            }}
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            Expiration
+          </span>
+
+          <strong>
+            {{
+              invitation.expiresAt
+                | date:
+                  'dd/MM/yyyy HH:mm'
+            }}
+          </strong>
+        </div>
+
+      </div>
+
+      <section class="projects-section">
+
+        <div class="section-heading">
+          <span class="section-label">
+            ACCÈS PROJETS
+          </span>
+
+          <h2>
+            Projets attribués
+          </h2>
+        </div>
+
+        @if (
+          invitation.projects.length >
+          0
+        ) {
+
+          <div class="project-list">
+
+            @for (
+              assignment of invitation.projects;
+              track assignment.project.id
+            ) {
+
+              <article class="project-row">
+
+                <div class="project-icon">
+                  P
+                </div>
+
+                <div class="project-copy">
+                  <strong>
+                    {{ assignment.project.name }}
+                  </strong>
+
+                  <small>
+                    {{ assignment.project.slug }}
+                  </small>
+                </div>
+
+                <span class="project-role">
+                  {{ assignment.role.name }}
+                </span>
+
+              </article>
+
+            }
+
+          </div>
+
+        } @else {
+
+          <div class="empty-projects">
+            Aucun projet n'est encore attribué.
+          </div>
+
+        }
+
+      </section>
+
+      @if (error()) {
+        <div class="error">
+          {{ error() }}
+        </div>
+      }
+
+      <section class="activation-form">
+
+        <div class="section-title">
+          Définir votre mot de passe
+        </div>
+
+        <p class="activation-help">
+          Ce mot de passe remplacera le mot de passe temporaire
+          reçu dans votre invitation.
+        </p>
+
+        <div class="name-grid">
+
+          <label>
+            <span>
+              Prénom
+            </span>
+
+            <input
+              type="text"
+              autocomplete="given-name"
+              [ngModel]="firstName()"
+              (ngModelChange)="firstName.set($event)"
+            >
+          </label>
+
+          <label>
+            <span>
+              Nom
+            </span>
+
+            <input
+              type="text"
+              autocomplete="family-name"
+              [ngModel]="lastName()"
+              (ngModelChange)="lastName.set($event)"
+            >
+          </label>
+
+        </div>
+
+        <label>
+          <span>
+            Mot de passe temporaire
+          </span>
+
+          <input
+            type="password"
+            autocomplete="current-password"
+            placeholder="Reçu dans votre email"
+            [ngModel]="temporaryPassword()"
+            (ngModelChange)="temporaryPassword.set($event)"
+          >
+        </label>
+
+        <label>
+          <span>
+            Nouveau mot de passe
+          </span>
+
+          <input
+            type="password"
+            autocomplete="new-password"
+            placeholder="12 caractères minimum"
+            [ngModel]="password()"
+            (ngModelChange)="password.set($event)"
+          >
+        </label>
+
+        <label>
+          <span>
+            Confirmer le mot de passe
+          </span>
+
+          <input
+            type="password"
+            autocomplete="new-password"
+            placeholder="Confirmez votre mot de passe"
+            [ngModel]="passwordConfirmation()"
+            (ngModelChange)="passwordConfirmation.set($event)"
+          >
+        </label>
+
+        <button
+          type="button"
+          class="primary"
+          [disabled]="submitting()"
+          (click)="activate()"
+        >
+          {{
+            submitting()
+              ? 'Activation...'
+              : 'Activer mon compte'
+          }}
+        </button>
+
+      </section>
+
+    }
+
+  </section>
+
+</div>

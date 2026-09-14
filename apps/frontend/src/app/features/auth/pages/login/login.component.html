@@ -1,0 +1,211 @@
+<div class="login-page">
+
+  <section class="login-visual">
+
+    <div class="brand">
+
+      <div class="brand-mark">
+        SC
+      </div>
+
+      <div>
+        <strong>
+          SecureCode
+        </strong>
+
+        <span>
+          Application Security Platform
+        </span>
+      </div>
+
+    </div>
+
+    <div class="visual-content">
+
+      <p class="eyebrow">
+        CODE SECURITY PLATFORM
+      </p>
+
+      <h1>
+        Sécurisez votre code
+        avant sa mise en production.
+      </h1>
+
+      <p class="description">
+        Centralisez l’analyse de vos repositories,
+        vulnérabilités, dépendances et configurations
+        de sécurité dans un seul espace.
+      </p>
+
+      <div class="feature-list">
+
+        <div>
+          <span class="feature-dot"></span>
+
+          <p>
+            Analyse automatique des repositories
+          </p>
+        </div>
+
+        <div>
+          <span class="feature-dot"></span>
+
+          <p>
+            SAST, secrets et dépendances vulnérables
+          </p>
+        </div>
+
+        <div>
+          <span class="feature-dot"></span>
+
+          <p>
+            Suivi centralisé des findings
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+
+    <footer>
+      SecureCode
+    </footer>
+
+  </section>
+
+  <main class="login-container">
+
+    <div class="login-card">
+
+      <header>
+
+        <span class="mobile-brand">
+          SecureCode
+        </span>
+
+        <h2>
+          Connexion
+        </h2>
+
+        <p>
+          Accédez à votre espace de sécurité.
+        </p>
+
+      </header>
+
+      @if (error()) {
+
+        <div
+          class="alert"
+          role="alert"
+        >
+          {{ error() }}
+        </div>
+
+      }
+
+      <form
+        [formGroup]="form"
+        (ngSubmit)="submit()"
+      >
+
+  <div class="form-group">
+
+    <label for="identifier">
+      Identifiant professionnel
+    </label>
+
+    <input
+      id="identifier"
+      type="text"
+      formControlName="identifier"
+      placeholder="votre.identifiant"
+      autocomplete="username"
+    />
+
+    @if (
+      form.controls.identifier.touched &&
+      form.controls.identifier.invalid
+    ) {
+
+      <small>
+        Saisissez votre identifiant professionnel.
+      </small>
+
+    }
+
+  </div>
+
+    <div class="form-group">
+
+          <label for="password">
+            Mot de passe
+          </label>
+
+          <div class="password-field">
+
+            <input
+              id="password"
+              [type]="
+                showPassword()
+                  ? 'text'
+                  : 'password'
+              "
+              formControlName="password"
+              placeholder="Votre mot de passe"
+              autocomplete="current-password"
+            />
+
+            <button
+              class="password-toggle"
+              type="button"
+              (click)="togglePassword()"
+            >
+              {{
+                showPassword()
+                  ? 'Masquer'
+                  : 'Afficher'
+              }}
+            </button>
+
+          </div>
+
+          @if (
+            form.controls.password.touched &&
+            form.controls.password.invalid
+          ) {
+
+            <small>
+              Le mot de passe est obligatoire.
+            </small>
+
+          }
+
+    </div>
+
+        <button
+          class="submit-button"
+          type="submit"
+          [disabled]="
+            form.invalid ||
+            loading()
+          "
+        >
+          {{
+            loading()
+              ? 'Connexion en cours...'
+              : 'Se connecter'
+          }}
+        </button>
+
+      </form>
+
+      <div class="security-note">
+        Accès sécurisé à votre environnement SecureCode.
+      </div>
+
+    </div>
+
+  </main>
+
+</div>

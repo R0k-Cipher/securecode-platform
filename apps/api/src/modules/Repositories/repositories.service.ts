@@ -7,6 +7,8 @@ import {
   AuditAction,
   ConnectionStatus,
   Prisma,
+  RepositorySyncStatus,
+  RepositoryVisibility,
   ScanStatus,
 } from '@prisma/client';
 
@@ -68,12 +70,26 @@ export class RepositoriesService {
     const externalId = dto.externalId.trim();
     const fullName = dto.fullName.trim();
 
+
+    const owner =
+      fullName.split('/')[0]?.trim();
+
+    if (!owner) {
+      throw new ConflictException(
+        'Le propriétaire du dépôt est invalide.',
+      );
+    }
+
+    const visibility =
+      dto.visibility ??
+      RepositoryVisibility.PRIVATE;
     const existingRepository =
       await this.prisma.repository.findFirst({
         where: {
           OR: [
             {
-              provider: dto.provider,
+              gitConnectionId:
+                gitConnection.id,
               externalId,
             },
             {
@@ -102,19 +118,71 @@ export class RepositoriesService {
             const createdRepository =
               await transaction.repository.create({
                 data: {
+                  organizationId,
+
                   projectId,
+
                   gitConnectionId:
                     gitConnection.id,
-                  provider: dto.provider,
+
+                  createdById:
+                    currentUserId,
+
+                  provider:
+                    dto.provider,
+
                   externalId,
-                  name: dto.name.trim(),
+
+                  nodeId:
+                    null,
+
+                  owner,
+
+                  name:
+                    dto.name.trim(),
+
                   fullName,
-                  cloneUrl: dto.cloneUrl.trim(),
-                  webUrl: dto.webUrl.trim(),
+
+                  description:
+                    null,
+
                   defaultBranch:
                     dto.defaultBranch.trim(),
-                  visibility: dto.visibility,
+
+                  cloneUrl:
+                    dto.cloneUrl.trim(),
+
+                  sshUrl:
+                    null,
+
+                  webUrl:
+                    dto.webUrl.trim(),
+
+                  visibility,
+
+                  isPrivate:
+                    visibility ===
+                    RepositoryVisibility.PRIVATE,
+
+                  isFork:
+                    false,
+
+                  isArchived:
+                    false,
+
+                  primaryLanguage:
+                    null,
+
+                  lastRemoteCommitSha:
+                    null,
+
+                  syncStatus:
+                    RepositorySyncStatus.NOT_SYNCED,
+
+                  lastSyncedAt:
+                    null,
                 },
+
                 include:
                   REPOSITORY_RESPONSE_INCLUDE,
               });
@@ -304,6 +372,133 @@ export class RepositoriesService {
     return RepositoryMapper.withRelations(
       repository,
     );
+  }
+
+  async securityOverview(
+    organizationId: string,
+    projectId: string,
+    repositoryId: string,
+  ) {
+    const repository =
+      await this.ensureRepositoryExists(
+        organizationId,
+        projectId,
+        repositoryId,
+      );
+
+    const [
+      latestScan,
+      scansCount,
+      findingsCount,
+    ] =
+      await this.prisma.$transaction([
+        this.prisma.scan.findFirst({
+          where: {
+            repositoryId,
+            projectId,
+          },
+
+          orderBy: {
+            createdAt: 'desc',
+          },
+
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            progress: true,
+
+            score: true,
+
+            startedAt: true,
+            completedAt: true,
+            failedAt: true,
+
+            errorMessage: true,
+
+            statistics: true,
+
+            createdAt: true,
+            updatedAt: true,
+
+            _count: {
+              select: {
+                findings: true,
+              },
+            },
+          },
+        }),
+
+        this.prisma.scan.count({
+          where: {
+            repositoryId,
+            projectId,
+          },
+        }),
+
+        this.prisma.finding.count({
+          where: {
+            repositoryId,
+            projectId,
+          },
+        }),
+      ]);
+
+    return {
+      repository: {
+        id:
+          repository.id,
+
+        provider:
+          repository.provider,
+
+        owner:
+          repository.owner,
+
+        name:
+          repository.name,
+
+        fullName:
+          repository.fullName,
+
+        defaultBranch:
+          repository.defaultBranch,
+
+        webUrl:
+          repository.webUrl,
+
+        visibility:
+          repository.visibility,
+
+        isPrivate:
+          repository.isPrivate,
+
+        isArchived:
+          repository.isArchived,
+
+        primaryLanguage:
+          repository.primaryLanguage,
+
+        syncStatus:
+          repository.syncStatus,
+
+        lastSyncedAt:
+          repository.lastSyncedAt,
+
+        lastRemoteCommitSha:
+          repository.lastRemoteCommitSha,
+      },
+
+      latestScan,
+
+      counters: {
+        scans:
+          scansCount,
+
+        findings:
+          findingsCount,
+      },
+    };
   }
 
   async update(

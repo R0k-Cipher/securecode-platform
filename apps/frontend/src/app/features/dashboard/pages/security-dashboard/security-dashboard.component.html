@@ -1,0 +1,693 @@
+@if (loading()) {
+  <section class="dashboard-state">
+    <div class="state-loader"></div>
+
+    <h2>Chargement du dashboard</h2>
+
+    <p>Récupération des informations de sécurité du projet...</p>
+  </section>
+} @else if (error()) {
+  <section class="dashboard-state error-state">
+    <div class="state-symbol">!</div>
+
+    <h2>Dashboard indisponible</h2>
+
+    <p>{{ error() }}</p>
+
+    <button type="button" (click)="load()">Réessayer</button>
+  </section>
+} @else if (data(); as d) {
+  <section class="dashboard">
+    <!-- ================================================= -->
+    <!-- HEADER -->
+    <!-- ================================================= -->
+
+    <header class="dashboard-header">
+      <div class="dashboard-title">
+        <div class="title-eyebrow">
+          <span class="eyebrow-dot"></span>
+
+          SECURITY OVERVIEW
+        </div>
+
+        <h1>{{ d.project.name }}</h1>
+
+        <p>
+          Vue consolidée de l'état de sécurité, des scans et des vulnérabilités
+          du projet.
+        </p>
+      </div>
+
+      <div class="header-actions">
+        <button
+          type="button"
+          class="secondary-action"
+          (click)="goToOrganizationDashboard()"
+        >
+          Vue organisation
+        </button>
+
+        @if (canReadScans()) {
+          <button type="button" class="secondary-action" (click)="go('scans')">
+            Scans
+          </button>
+        }
+        @if (canReadReports()) {
+          <button type="button" class="primary-action" (click)="go('reports')">
+            Rapports
+          </button>
+        }
+      </div>
+    </header>
+
+    <!-- ================================================= -->
+    <!-- EMPTY PROJECT INFORMATION -->
+    <!-- ================================================= -->
+
+    @if (!hasSecurityData()) {
+      <section class="getting-started">
+        <div class="getting-started-icon">SC</div>
+
+        <div class="getting-started-copy">
+          <span class="section-kicker"> DÉMARRAGE </span>
+
+          <h2>Aucune donnée de sécurité disponible</h2>
+
+          <p>
+            Ce projet n'a pas encore produit de résultats de sécurité. Connectez
+            un repository puis exécutez un premier scan pour alimenter
+            automatiquement ce dashboard.
+          </p>
+        </div>
+
+        <div class="getting-started-actions">
+          @if (canReadRepositories()) {
+            <button
+              type="button"
+              class="primary-action"
+              (click)="go('repositories')"
+            >
+              Voir les repositories
+            </button>
+          }
+          @if (canReadScans()) {
+            <button
+              type="button"
+              class="secondary-action"
+              (click)="go('scans')"
+            >
+              Voir les scans
+            </button>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- ================================================= -->
+    <!-- KPI -->
+    <!-- ================================================= -->
+
+    <section class="kpi-grid">
+      <article class="kpi-card score-card">
+        <div class="kpi-header">
+          <span class="kpi-icon"> S </span>
+
+          <span class="kpi-label"> SECURITY SCORE </span>
+        </div>
+
+        <div class="score-value">
+          <strong> {{ d.summary.securityScore ?? "—" }} </strong>
+
+          <span> /100 </span>
+        </div>
+
+        <div class="kpi-footer">
+          <span> Grade </span>
+
+          <strong> {{ d.summary.grade ?? "—" }} </strong>
+        </div>
+      </article>
+
+      <article
+        class="kpi-card"
+        [class.clickable]="canReadRepositories()"
+        (click)="canReadRepositories() ? go('repositories') : null"
+      >
+        <div class="kpi-header">
+          <span class="kpi-icon repository-icon"> R </span>
+
+          <span class="kpi-label"> REPOSITORIES </span>
+        </div>
+
+        <strong class="kpi-value"> {{ d.summary.repositories }} </strong>
+
+        <p>Repository(s) attaché(s) au projet</p>
+      </article>
+
+      <article
+        class="kpi-card"
+        [class.clickable]="canReadScans()"
+        (click)="canReadScans() ? go('scans') : null"
+      >
+        <div class="kpi-header">
+          <span class="kpi-icon scan-icon"> A </span>
+
+          <span class="kpi-label"> SCANS </span>
+        </div>
+
+        <strong class="kpi-value"> {{ d.summary.scans }} </strong>
+
+        <div class="kpi-meta">
+          <span> {{ d.summary.failedScans }} échec(s) </span>
+        </div>
+      </article>
+
+      <article
+        class="kpi-card"
+        [class.clickable]="canReadFindings()"
+        (click)="canReadFindings() ? go('findings') : null"
+      >
+        <div class="kpi-header">
+          <span class="kpi-icon finding-icon"> F </span>
+
+          <span class="kpi-label"> FINDINGS OUVERTS </span>
+        </div>
+
+        <strong class="kpi-value"> {{ d.summary.openFindings }} </strong>
+
+        <div class="kpi-meta">
+          <span> {{ d.summary.findings }} total </span>
+
+          @if (criticalAndHigh() > 0) {
+            <strong class="danger-text">
+              {{ criticalAndHigh() }} critique/high
+            </strong>
+          }
+        </div>
+      </article>
+    </section>
+
+    <!-- ================================================= -->
+    <!-- SEVERITY -->
+    <!-- ================================================= -->
+
+    <section class="dashboard-card severity-card">
+      <header class="card-header">
+        <div>
+          <span class="section-kicker"> RISK DISTRIBUTION </span>
+
+          <h2>Findings par sévérité</h2>
+
+          <p>Répartition des vulnérabilités détectées.</p>
+        </div>
+
+        <div class="card-total">
+          <strong> {{ severityTotal() }} </strong>
+
+          <span> findings </span>
+        </div>
+      </header>
+
+      <div class="severity-grid">
+        <button
+          type="button"
+          class="severity-item critical"
+          [disabled]="!canReadFindings()"
+          (click)="
+            go('findings', {
+              severity: 'CRITICAL',
+            })
+          "
+        >
+          <span class="severity-name"> Critical </span>
+
+          <strong> {{ d.severity.CRITICAL }} </strong>
+
+          <small> {{ severityPercentage(d.severity.CRITICAL) }}% </small>
+        </button>
+
+        <button
+          type="button"
+          class="severity-item high"
+          [disabled]="!canReadFindings()"
+          (click)="
+            go('findings', {
+              severity: 'HIGH',
+            })
+          "
+        >
+          <span class="severity-name"> High </span>
+
+          <strong> {{ d.severity.HIGH }} </strong>
+
+          <small> {{ severityPercentage(d.severity.HIGH) }}% </small>
+        </button>
+
+        <button
+          type="button"
+          class="severity-item medium"
+          [disabled]="!canReadFindings()"
+          (click)="
+            go('findings', {
+              severity: 'MEDIUM',
+            })
+          "
+        >
+          <span class="severity-name"> Medium </span>
+
+          <strong> {{ d.severity.MEDIUM }} </strong>
+
+          <small> {{ severityPercentage(d.severity.MEDIUM) }}% </small>
+        </button>
+
+        <button
+          type="button"
+          class="severity-item low"
+          [disabled]="!canReadFindings()"
+          (click)="
+            go('findings', {
+              severity: 'LOW',
+            })
+          "
+        >
+          <span class="severity-name"> Low </span>
+
+          <strong> {{ d.severity.LOW }} </strong>
+
+          <small> {{ severityPercentage(d.severity.LOW) }}% </small>
+        </button>
+
+        <button
+          type="button"
+          class="severity-item info"
+          [disabled]="!canReadFindings()"
+          (click)="
+            go('findings', {
+              severity: 'INFO',
+            })
+          "
+        >
+          <span class="severity-name"> Info </span>
+
+          <strong> {{ d.severity.INFO }} </strong>
+
+          <small> {{ severityPercentage(d.severity.INFO) }}% </small>
+        </button>
+      </div>
+    </section>
+
+    <!-- ================================================= -->
+    <!-- OWASP + SCORE HISTORY -->
+    <!-- ================================================= -->
+
+    <section class="analytics-grid">
+      <article class="dashboard-card">
+        <header class="card-header">
+          <div>
+            <span class="section-kicker"> OWASP </span>
+
+            <h2>Catégories OWASP</h2>
+
+            <p>Vulnérabilités regroupées par catégorie.</p>
+          </div>
+        </header>
+
+        @if (hasOwaspData()) {
+          <div class="owasp-list">
+            @for (item of d.owasp; track item.category) {
+              <div class="owasp-row">
+                <div class="owasp-info">
+                  <span> {{ item.category }} </span>
+
+                  <strong> {{ item.count }} </strong>
+                </div>
+
+                <div class="progress-track">
+                  <span [style.width.%]="owaspPercentage(item.count)"></span>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-card-state">
+            <span class="empty-symbol"> O </span>
+
+            <strong> Aucune donnée OWASP </strong>
+
+            <p>
+              Les catégories apparaîtront après l'analyse des premières
+              vulnérabilités.
+            </p>
+          </div>
+        }
+      </article>
+
+      <article class="dashboard-card">
+        <header class="card-header">
+          <div>
+            <span class="section-kicker"> SECURITY TREND </span>
+
+            <h2>Évolution du score</h2>
+
+            <p>Historique du score des scans terminés.</p>
+          </div>
+        </header>
+
+        @if (hasScoreHistory()) {
+          <div class="score-chart">
+            @for (item of d.scoreHistory; track item.id) {
+              <div class="score-column">
+                <div class="score-bar-area">
+                  <span
+                    class="score-bar"
+                    [style.height.%]="scoreBarHeight(item.score)"
+                  ></span>
+                </div>
+
+                <strong> {{ item.score ?? "—" }} </strong>
+
+                <small> {{ item.createdAt | date: "dd/MM" }} </small>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-card-state">
+            <span class="empty-symbol"> T </span>
+
+            <strong> Aucun historique </strong>
+
+            <p>
+              L'évolution du score sera visible après plusieurs scans terminés.
+            </p>
+          </div>
+        }
+      </article>
+    </section>
+
+    <!-- ================================================= -->
+    <!-- CWE + PERFORMANCE -->
+    <!-- ================================================= -->
+
+    <article class="dashboard-card">
+      <header class="card-header">
+        <div>
+          <span class="section-kicker"> CWE </span>
+
+          <h2>Faiblesses CWE</h2>
+
+          <p>Vulnérabilités regroupées par faiblesse.</p>
+        </div>
+      </header>
+
+      @if (hasCweData()) {
+        <div class="severity-grid">
+          @for (item of d.cwe; track item.category) {
+            <article class="severity-item low">
+              <span class="severity-name"> {{ item.category }} </span>
+
+              <strong> {{ item.count }} </strong>
+
+              <small>
+                {{ item.count > 1 ? "findings" : "finding" }}
+              </small>
+            </article>
+          }
+        </div>
+      } @else {
+        <div class="empty-card-state">
+          <span class="empty-symbol"> C </span>
+
+          <strong> Aucune donnée CWE </strong>
+
+          <p>
+            Les catégories CWE apparaîtront après l’analyse des vulnérabilités.
+          </p>
+        </div>
+      }
+    </article>
+
+    <!-- ================================================= -->
+    <!-- WSTG + PERFORMANCE -->
+    <!-- ================================================= -->
+
+    <section class="analytics-grid">
+      <article class="dashboard-card">
+        <header class="card-header">
+          <div>
+            <span class="section-kicker"> SECURITY TESTING </span>
+
+            <h2>OWASP WSTG</h2>
+
+            <p>Web Security Testing Guide</p>
+          </div>
+
+          <div class="wstg-overall">
+            <strong> {{ d.wstg?.score ?? "—" }} </strong>
+
+            <span> /100 </span>
+
+            <small> Grade {{ d.wstg?.grade ?? "—" }} </small>
+          </div>
+        </header>
+
+        @if (d.wstg?.categories?.length) {
+          <div class="wstg-list">
+            @for (item of d.wstg!.categories; track item.code) {
+              <div class="wstg-row">
+                <div class="wstg-copy">
+                  <strong> {{ item.code }} </strong>
+
+                  <span> {{ item.name }} </span>
+                </div>
+
+                <div class="wstg-progress">
+                  <div>
+                    <span [style.width.%]="item.score"></span>
+                  </div>
+
+                  <strong> {{ item.score }} </strong>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-card-state">
+            <span class="empty-symbol"> W </span>
+
+            <strong> Aucun résultat WSTG </strong>
+
+            <p>
+              Les contrôles WSTG apparaîtront lorsqu'ils auront été évalués.
+            </p>
+          </div>
+        }
+      </article>
+
+      <article class="dashboard-card">
+        <header class="card-header">
+          <div>
+            <span class="section-kicker"> SCAN HEALTH </span>
+
+            <h2>Performance des scans</h2>
+
+            <p>Qualité et stabilité des analyses.</p>
+          </div>
+        </header>
+
+        <div class="performance-grid">
+          <div class="performance-item">
+            <span> Score moyen </span>
+
+            <strong> {{ d.scanPerformance?.averageScore ?? "—" }} </strong>
+          </div>
+
+          <div class="performance-item">
+            <span> Taux de réussite </span>
+
+            <strong> {{ d.scanPerformance?.successRate ?? 0 }}% </strong>
+          </div>
+
+          <div class="performance-item">
+            <span> Scans terminés </span>
+
+            <strong> {{ d.scanPerformance?.completedScans ?? 0 }} </strong>
+          </div>
+
+          <div class="performance-item">
+            <span> Tendance </span>
+
+            <strong
+              class="trend-value"
+              [attr.data-trend]="d.scanPerformance?.trend ?? 'STABLE'"
+            >
+              @switch (d.scanPerformance?.trend) {
+                @case ("UP") {
+                  ↑ Hausse
+                }
+                @case ("DOWN") {
+                  ↓ Baisse
+                }
+                @default {
+                  → Stable
+                }
+              }
+            </strong>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ================================================= -->
+    <!-- PRIORITY FINDINGS -->
+    <!-- ================================================= -->
+
+    <section class="dashboard-card">
+      <header class="card-header">
+        <div>
+          <span class="section-kicker"> PRIORITY QUEUE </span>
+
+          <h2>Findings prioritaires</h2>
+
+          <p>
+            Vulnérabilités Critical et High nécessitant une attention rapide.
+          </p>
+        </div>
+
+        @if (canReadFindings()) {
+          <button type="button" class="text-action" (click)="go('findings')">
+            Voir tous les findings
+          </button>
+        }
+      </header>
+
+      @if (d.criticalFindings.length) {
+        <div class="findings-table">
+          <div class="table-heading">
+            <span> Sévérité </span>
+
+            <span> Finding </span>
+
+            <span> Repository </span>
+
+            <span> Assignation </span>
+          </div>
+
+          @for (finding of d.criticalFindings; track finding.id) {
+            <button
+              type="button"
+              class="finding-row"
+              [disabled]="!canReadFindings()"
+              (click)="openFinding(finding.id)"
+            >
+              <span
+                class="severity-badge"
+                [attr.data-severity]="finding.severity"
+              >
+                {{ finding.severity }}
+              </span>
+
+              <span class="finding-title">
+                <strong> {{ finding.title }} </strong>
+
+                <small>
+                  {{ finding.filePath || "Emplacement non renseigné" }}
+                </small>
+              </span>
+
+              <span>
+                {{ finding.repository.fullName || finding.repository.name }}
+              </span>
+
+              <span> {{ findingAssignee(finding) }} </span>
+            </button>
+          }
+        </div>
+      } @else {
+        <div class="empty-card-state compact">
+          <span class="empty-symbol success"> ✓ </span>
+
+          <div>
+            <strong> Aucun finding critique ou high ouvert </strong>
+
+            <p>Les vulnérabilités prioritaires apparaîtront ici.</p>
+          </div>
+        </div>
+      }
+    </section>
+
+    <!-- ================================================= -->
+    <!-- RECENT SCANS -->
+    <!-- ================================================= -->
+
+    <section class="dashboard-card">
+      <header class="card-header">
+        <div>
+          <span class="section-kicker"> RECENT ACTIVITY </span>
+
+          <h2>Scans récents</h2>
+
+          <p>Dernières analyses exécutées sur le projet.</p>
+        </div>
+
+        @if (canReadScans()) {
+          <button type="button" class="text-action" (click)="go('scans')">
+            Historique des scans
+          </button>
+        }
+      </header>
+
+      @if (d.recentScans.length) {
+        <div class="scans-table">
+          <div class="scan-table-heading">
+            <span> Repository </span>
+
+            <span> Déclencheur </span>
+
+            <span> Statut </span>
+
+            <span> Score </span>
+
+            <span> Date </span>
+          </div>
+
+          @for (scan of d.recentScans; track scan.id) {
+            <button
+              type="button"
+              class="scan-row"
+              [disabled]="!canReadScans()"
+              (click)="openScan(scan.id)"
+            >
+              <span class="repository-cell">
+                <strong> {{ repositoryName(scan) }} </strong>
+
+                @if (scan.type) {
+                  <small> {{ scan.type }} </small>
+                }
+              </span>
+
+              <span> {{ triggerLabel(scan.trigger) }} </span>
+
+              <span class="scan-status" [attr.data-status]="scan.status">
+                {{ scanStatusLabel(scan.status) }}
+              </span>
+
+              <span class="scan-score"> {{ scan.score ?? "—" }} </span>
+
+              <span> {{ scan.createdAt | date: "dd/MM/yyyy HH:mm" }} </span>
+            </button>
+          }
+        </div>
+      } @else {
+        <div class="empty-card-state compact">
+          <span class="empty-symbol"> S </span>
+
+          <div>
+            <strong> Aucun scan exécuté </strong>
+
+            <p>Les analyses récentes apparaîtront ici.</p>
+          </div>
+        </div>
+      }
+    </section>
+  </section>
+}

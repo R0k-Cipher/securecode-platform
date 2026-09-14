@@ -1,0 +1,286 @@
+<section class="admin-page">
+  <header class="page-heading">
+    <div>
+      <h1>
+        Organisations
+      </h1>
+
+      <p>
+        Gestion des organisations clientes de la plateforme SecureCode.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      class="primary-button"
+      (click)="openCreateForm()"
+    >
+      Nouvelle organisation
+    </button>
+  </header>
+
+  @if (createSuccess()) {
+    <div class="success">
+      {{ createSuccess() }}
+    </div>
+  }
+
+  @if (showCreateForm()) {
+    <div class="card">
+      <div class="page-heading">
+        <div>
+          <h2>
+            Créer une organisation
+          </h2>
+
+          <p>
+            Le Platform Admin crée le tenant.
+            Le propriétaire renseigné ci-dessous devient OWNER de l'organisation.
+          </p>
+        </div>
+      </div>
+
+      @if (createError()) {
+        <div class="error">
+          {{ createError() }}
+        </div>
+      }
+
+      <form
+        (ngSubmit)="createOrganization()"
+      >
+        <h3>
+          Organisation
+        </h3>
+
+        <div class="form-grid">
+          <label>
+            Nom de l'organisation
+
+            <input
+              type="text"
+              name="organizationName"
+              [(ngModel)]="organizationName"
+              maxlength="150"
+              required
+            >
+          </label>
+
+          <label>
+            Slug
+
+            <input
+              type="text"
+              name="organizationSlug"
+              [(ngModel)]="organizationSlug"
+              maxlength="100"
+              placeholder="généré automatiquement"
+            >
+          </label>
+
+          <label>
+            URL du logo
+
+            <input
+              type="url"
+              name="organizationLogoUrl"
+              [(ngModel)]="organizationLogoUrl"
+              placeholder="https://..."
+            >
+          </label>
+        </div>
+
+        <label>
+          Description
+
+          <textarea
+            name="organizationDescription"
+            [(ngModel)]="organizationDescription"
+            maxlength="1000"
+            rows="4"
+          ></textarea>
+        </label>
+
+        <h3>
+          Propriétaire de l'organisation
+        </h3>
+
+        <div class="form-grid">
+          <label>
+            Prénom
+
+            <input
+              type="text"
+              name="ownerFirstName"
+              [(ngModel)]="ownerFirstName"
+              maxlength="100"
+              required
+            >
+          </label>
+
+          <label>
+            Nom
+
+            <input
+              type="text"
+              name="ownerLastName"
+              [(ngModel)]="ownerLastName"
+              maxlength="100"
+              required
+            >
+          </label>
+
+          <label>
+            Email
+
+            <input
+              type="email"
+              name="ownerEmail"
+              [(ngModel)]="ownerEmail"
+              maxlength="320"
+              required
+            >
+          </label>
+        </div>
+
+        <div class="toolbar">
+          <button
+            type="submit"
+            class="primary-button"
+            [disabled]="creating()"
+          >
+            @if (creating()) {
+              Création...
+            } @else {
+              Créer l'organisation
+            }
+          </button>
+
+          <button
+            type="button"
+            (click)="closeCreateForm()"
+            [disabled]="creating()"
+          >
+            Annuler
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <div class="card">
+    <div class="toolbar">
+      <input
+        class="search"
+        type="search"
+        placeholder="Rechercher une organisation..."
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+      >
+
+      <span class="count">
+        {{ filtered().length }}
+        organisation(s)
+      </span>
+    </div>
+
+    @if (loading()) {
+      <div class="loading">
+        Chargement...
+      </div>
+
+    } @else if (error()) {
+      <div class="error">
+        {{ error() }}
+      </div>
+
+    } @else if (!filtered().length) {
+      <div class="empty">
+        Aucune organisation.
+      </div>
+
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>
+                Organisation
+              </th>
+
+              <th>
+                Créée par
+              </th>
+
+              <th>
+                Membres
+              </th>
+
+              <th>
+                Projets
+              </th>
+
+              <th>
+                Repositories
+              </th>
+
+              <th>
+                Création
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (
+              organization
+              of filtered();
+              track organization.id
+            ) {
+              <tr>
+                <td>
+                  <span class="primary">
+                    {{ organization.name }}
+                  </span>
+
+                  <span class="secondary">
+                    {{ organization.slug }}
+                  </span>
+                </td>
+
+                <td>
+                  <span class="primary">
+                    {{ organization.createdBy.firstName }}
+                    {{ organization.createdBy.lastName }}
+                  </span>
+
+                  <span class="secondary">
+                    {{ organization.createdBy.email }}
+                  </span>
+                </td>
+
+                <td>
+                  {{ organization._count.members }}
+                </td>
+
+                <td>
+                  {{ organization._count.projects }}
+                </td>
+
+                <td>
+                  {{ organization._count.repositories }}
+                </td>
+
+                <td>
+                  {{
+                    organization.createdAt
+                    | date:'dd/MM/yyyy HH:mm'
+                  }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</section>

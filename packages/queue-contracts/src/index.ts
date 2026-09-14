@@ -20,5 +20,11 @@ export type {
 
 export type {
   SecurityScanJobData,
-  ScanMode,
+  SecurityScanProvider,
+  SecurityScanRequestedMode,
+  SecurityScanTrigger,
 } from './lib/jobs/security-scan-job';
+
+export type {
+  ScheduledScanJobData,
+} from './lib/jobs/scheduled-scan-job';

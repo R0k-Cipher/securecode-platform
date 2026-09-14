@@ -3,7 +3,9 @@
   "compilerOptions": {
     "outDir": "../../dist/out-tsc",
     "module": "commonjs",
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "target": "es2021",
@@ -14,7 +16,11 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*.ts", "../api/src/app/health/health.controller.ts", "../api/src/app/health/health.module.ts"],
+  "include": [
+    "src/**/*.ts",
+    "../api/src/app/health/health.controller.ts",
+    "../api/src/app/health/health.module.ts"
+  ],
   "exclude": [
     "jest.config.ts",
     "jest.config.cts",

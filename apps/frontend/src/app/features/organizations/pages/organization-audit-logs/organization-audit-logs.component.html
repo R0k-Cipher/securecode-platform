@@ -1,0 +1,181 @@
+<section class="audit-page">
+
+  <header class="page-header">
+
+    <div>
+      <span class="eyebrow">
+        ORGANISATION
+      </span>
+
+      <h1>
+        Journaux d'audit
+      </h1>
+
+      <p>
+        Historique des actions réalisées par les membres de l'organisation.
+      </p>
+    </div>
+
+  </header>
+
+  @if (!canReadAudit()) {
+
+    <section class="card">
+
+      <div class="state">
+        Vous n'avez pas l'autorisation
+        de consulter les journaux d'audit.
+      </div>
+
+    </section>
+
+  } @else {
+    <section class="card">
+
+      <div class="toolbar">
+
+        <input
+          type="search"
+          placeholder="Rechercher par utilisateur, IP, action ou ressource..."
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+        >
+
+        <span>
+          {{ filtered().length }}
+          événement(s)
+        </span>
+
+      </div>
+
+      @if (
+        loading()
+      ) {
+
+        <div class="state">
+          Chargement des journaux...
+        </div>
+
+      } @else if (
+        !filtered().length
+      ) {
+
+        <div class="state">
+          Aucun événement trouvé.
+        </div>
+
+      } @else {
+
+        <div class="table-wrap">
+
+          <table>
+
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Utilisateur</th>
+                <th>Action</th>
+                <th>Ressource</th>
+                <th>Projet</th>
+                <th>Adresse IP</th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              @for (
+                log of filtered();
+                track log.id
+              ) {
+
+                <tr>
+
+                  <td>
+                    {{
+                      log.createdAt
+                      | date:
+                        'dd/MM/yyyy HH:mm:ss'
+                    }}
+                  </td>
+
+                  <td>
+
+                    <strong>
+                      {{
+                        log.actor
+                          ? (
+                              log.actor.firstName +
+                              ' ' +
+                              log.actor.lastName
+                            )
+                          : 'Système'
+                      }}
+                    </strong>
+
+                    <small>
+                      {{
+                        log.actor?.email ??
+                        'Action système'
+                      }}
+                    </small>
+
+                  </td>
+
+                  <td>
+
+                    <span class="badge">
+                      {{ log.action }}
+                    </span>
+
+                  </td>
+
+                  <td>
+
+                    <strong>
+                      {{
+                        log.resourceType
+                      }}
+                    </strong>
+
+                    <small>
+                      {{
+                        log.resourceId ??
+                        '—'
+                      }}
+                    </small>
+
+                  </td>
+
+                  <td>
+                    {{
+                      log.project?.name ??
+                      '—'
+                    }}
+                  </td>
+
+                  <td>
+
+                    <code>
+                      {{
+                        log.ipAddress ??
+                        'Non enregistrée'
+                      }}
+                    </code>
+
+                  </td>
+
+                </tr>
+
+              }
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      }
+
+    </section>
+  }
+</section>

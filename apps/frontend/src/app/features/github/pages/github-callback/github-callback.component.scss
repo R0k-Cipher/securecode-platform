@@ -1,0 +1,178 @@
+:host {
+  display: block;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.callback-page {
+  min-height: calc(100vh - 100px);
+
+  padding: 35px 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.callback-card {
+  width: 100%;
+  max-width: 470px;
+
+  padding: 44px 38px;
+
+  border: 1px solid #e1e6ec;
+  border-radius: 12px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 12px 35px
+    rgba(15, 23, 42, 0.05);
+
+  text-align: center;
+}
+
+.loader {
+  width: 48px;
+  height: 48px;
+
+  margin: 0 auto 19px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 11px;
+
+  background: #edf4fc;
+}
+
+.loader span {
+  width: 20px;
+  height: 20px;
+
+  border: 2px solid #c9daee;
+  border-top-color: #2867bd;
+  border-radius: 50%;
+
+  animation: spin 700ms linear infinite;
+}
+
+.eyebrow {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: #3975c6;
+
+  font-size: 7px;
+  font-weight: 850;
+
+  letter-spacing: 0.16em;
+}
+
+.callback-card h1 {
+  margin: 0;
+
+  color: #253247;
+
+  font-size: 20px;
+
+  letter-spacing: -0.03em;
+}
+
+.callback-card p {
+  max-width: 350px;
+
+  margin: 10px auto 0;
+
+  color: #818b99;
+
+  font-size: 9px;
+  line-height: 1.7;
+}
+
+.progress-line {
+  height: 5px;
+
+  margin: 23px 0 10px;
+
+  overflow: hidden;
+
+  border-radius: 10px;
+
+  background: #edf0f4;
+}
+
+.progress-line span {
+  width: 40%;
+  height: 100%;
+
+  display: block;
+
+  border-radius: inherit;
+
+  background: #3975c6;
+
+  animation:
+    loadingLine
+    1.2s
+    ease-in-out
+    infinite;
+}
+
+.callback-card small {
+  color: #a0a8b4;
+
+  font-size: 7px;
+}
+
+.error-mark {
+  width: 47px;
+  height: 47px;
+
+  margin: 0 auto 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 11px;
+
+  background: #fee4e2;
+
+  color: #b42318;
+
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.error-label {
+  color: #b42318;
+}
+
+.callback-card .error-message {
+  color: #a14a43;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loadingLine {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  50% {
+    transform: translateX(80%);
+  }
+
+  100% {
+    transform: translateX(250%);
+  }
+}

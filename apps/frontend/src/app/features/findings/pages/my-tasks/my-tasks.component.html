@@ -1,0 +1,188 @@
+<section class="tasks-page">
+
+  <header class="page-header">
+
+    <div>
+      <span class="eyebrow">
+        REMEDIATION
+      </span>
+
+      <h1>
+        Mes tâches
+      </h1>
+
+      <p>
+        Findings de sécurité qui vous
+        sont actuellement affectés.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      class="secondary-button"
+      (click)="load()"
+    >
+      Actualiser
+    </button>
+
+  </header>
+
+  @if (error()) {
+
+    <div class="alert-error">
+      {{ error() }}
+    </div>
+
+  }
+
+  @if (success()) {
+
+    <div class="alert-success">
+      {{ success() }}
+    </div>
+
+  }
+
+  @if (loading()) {
+
+    <div class="loading-state">
+      Chargement...
+    </div>
+
+  } @else {
+
+    @if (tasks().length === 0) {
+
+      <div class="empty-state">
+        Aucune tâche affectée.
+      </div>
+
+    } @else {
+
+      <div class="tasks-list">
+
+        @for (
+          task of tasks();
+          track task.id
+        ) {
+
+          <article
+            class="task-card"
+            tabindex="0"
+            (click)="
+              openFinding(
+                task.finding.id
+              )
+            "
+            (keydown.enter)="
+              openFinding(
+                task.finding.id
+              )
+            "
+          >
+
+            <div class="task-main">
+
+              <span
+                class="severity"
+                [attr.data-severity]="
+                  task.finding.severity
+                "
+              >
+                {{
+                  task.finding.severity
+                }}
+              </span>
+
+              <div>
+
+                <strong>
+                  {{
+                    task.finding.title
+                  }}
+                </strong>
+
+                <small>
+                  {{
+                    task.finding
+                      .repository
+                      ?.fullName ||
+                    task.finding
+                      .repository
+                      ?.name
+                  }}
+                </small>
+
+              </div>
+
+            </div>
+
+            <div class="task-status">
+              {{
+                task.finding.status
+              }}
+            </div>
+
+            <div class="task-date">
+              Affecté le
+              {{
+                task.assignedAt
+                  | date:'short'
+              }}
+            </div>
+
+            <div class="task-actions">
+
+              @if (
+                task.finding.status === 'ASSIGNED' ||
+                task.finding.status === 'IN_PROGRESS' ||
+                task.finding.status === 'REOPENED'
+              ) {
+
+                <button
+                  type="button"
+                  class="fixed-button"
+                  [disabled]="
+                    updatingFindingId() ===
+                    task.finding.id
+                  "
+                  (click)="
+                    $event.stopPropagation();
+                    markAsFixed(
+                      task.finding.id
+                    )
+                  "
+                >
+                  {{
+                    updatingFindingId() ===
+                    task.finding.id
+                      ? 'Envoi...'
+                      : 'Signaler comme corrigé'
+                  }}
+                </button>
+
+              } @else if (
+                task.finding.status ===
+                'READY_FOR_RETEST'
+              ) {
+
+                <span class="waiting-validation">
+                  En attente de validation
+                </span>
+
+              }
+
+
+            </div>
+
+          </article>
+
+        }
+
+      </div>
+
+    }
+
+  }
+
+</section>
