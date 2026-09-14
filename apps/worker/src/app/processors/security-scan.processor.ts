@@ -334,6 +334,29 @@ export class SecurityScanProcessor
           },
         );
 
+      const currentScan =
+        await this.prisma.scan.findUnique({
+          where: {
+            id:
+              data.scanId,
+          },
+          select: {
+            type: true,
+            configuration: true,
+          },
+        });
+
+      if (!currentScan) {
+        throw new Error(
+          `Scan ${data.scanId} introuvable.`,
+        );
+      }
+
+      const existingConfiguration =
+        this.asJsonObject(
+          currentScan.configuration,
+        );
+
       await this.prisma.scan.update({
         where: {
           id:
@@ -342,7 +365,8 @@ export class SecurityScanProcessor
 
         data: {
           type:
-            this.mapScanType(
+            this.resolveBusinessScanType(
+              data.trigger,
               plan.mode,
             ),
 
@@ -353,6 +377,8 @@ export class SecurityScanProcessor
             20,
 
           configuration: {
+            ...existingConfiguration,
+
             requestedMode:
               data.requestedMode,
 
@@ -1175,23 +1201,29 @@ export class SecurityScanProcessor
       },
     });
 
-    if (notificationTarget?.requestedById) {
-      await this.prisma.notification.create({
-        data: {
-          userId: notificationTarget.requestedById,
-          type: 'SCAN_COMPLETED',
-          title: 'Scan terminé',
-          message:
-            `Le scan de ${notificationTarget.repository.fullName} est terminé avec un score de ${scoreResult.score}.`,
-          metadata: {
-            scanId: data.scanId,
-            projectId: notificationTarget.projectId,
-            repositoryId: data.repositoryId,
-            score: scoreResult.score,
-          },
-        },
+    await this.notifyProjectMembers({
+      organizationId:
+        data.organizationId,
+      projectId:
+        notificationTarget?.projectId ??
+        data.projectId,
+      repositoryId:
+        data.repositoryId,
+      repositoryName:
+        notificationTarget?.repository.fullName ??
+        repository.fullName,
+      scanId:
+        data.scanId,
+      requestedById:
+        notificationTarget?.requestedById ??
+        null,
+      trigger:
+        data.trigger,
+      type:
+        'SCAN_COMPLETED',
+      score:
+        scoreResult.score,
     });
-  }
 
 
       await job.updateProgress(
@@ -1274,22 +1306,29 @@ export class SecurityScanProcessor
           },
         });
 
-      if (failedTarget?.requestedById) {
-        await this.prisma.notification.create({
-          data: {
-            userId: failedTarget.requestedById,
-            type: 'SCAN_FAILED',
-            title: 'Échec du scan',
-            message:
-              `Le scan de ${failedTarget.repository.fullName} a échoué : ${message}`,
-            metadata: {
-              scanId: data.scanId,
-              projectId: failedTarget.projectId,
-              repositoryId: data.repositoryId,
-            },
-          },
-        });
-      }
+      await this.notifyProjectMembers({
+        organizationId:
+          data.organizationId,
+        projectId:
+          failedTarget?.projectId ??
+          data.projectId,
+        repositoryId:
+          data.repositoryId,
+        repositoryName:
+          failedTarget?.repository.fullName ??
+          data.repositoryId,
+        scanId:
+          data.scanId,
+        requestedById:
+          failedTarget?.requestedById ??
+          null,
+        trigger:
+          data.trigger,
+        type:
+          'SCAN_FAILED',
+        errorMessage:
+          message,
+      });
 
       /*
        * Indispensable pour laisser BullMQ
@@ -1368,24 +1407,176 @@ export class SecurityScanProcessor
     });
   }
 
-  private mapScanType(
+  private resolveBusinessScanType(
+    trigger: SecurityScanJobData['trigger'],
     mode:
       | 'FULL'
       | 'INCREMENTAL'
       | 'PULL_REQUEST',
+
   ): ScanType {
-    switch (
-      mode
-    ) {
-      case 'FULL':
-        return ScanType.FULL_SCAN;
-
-      case 'PULL_REQUEST':
-        return ScanType.PULL_REQUEST_SCAN;
-
-      default:
-        return ScanType.INCREMENTAL_SCAN;
+    if (trigger === 'MANUAL') {
+      return ScanType.MANUAL_SCAN;
     }
+
+    if (trigger === 'RELEASE') {
+      return ScanType.RELEASE_SCAN;
+    }
+
+    if (trigger === 'PULL_REQUEST') {
+      return ScanType.PULL_REQUEST_SCAN;
+    }
+
+    return mode === 'FULL'
+      ? ScanType.FULL_SCAN
+      : mode === 'PULL_REQUEST'
+        ? ScanType.PULL_REQUEST_SCAN
+        : ScanType.INCREMENTAL_SCAN;
+  }
+
+  private async notifyProjectMembers(
+    input: {
+      organizationId: string;
+      projectId: string;
+      repositoryId: string;
+      repositoryName: string;
+      scanId: string;
+      requestedById: string | null;
+      trigger: SecurityScanJobData['trigger'];
+      type:
+        | 'SCAN_COMPLETED'
+        | 'SCAN_FAILED';
+      score?: number;
+      errorMessage?: string;
+    },
+  ): Promise<void> {
+    try {
+      const members =
+        await this.prisma.projectMember.findMany({
+          where: {
+            projectId:
+              input.projectId,
+            user: {
+              status:
+                'ACTIVE',
+            },
+            role: {
+              permissions: {
+                some: {
+                  permission: {
+                    code:
+                      'scan:read',
+                  },
+                },
+              },
+            },
+          },
+          select: {
+            userId:
+              true,
+          },
+        });
+
+      const recipients =
+        new Set(
+          members.map(
+            member =>
+              member.userId,
+          ),
+        );
+
+      if (input.requestedById) {
+        recipients.add(
+          input.requestedById,
+        );
+      }
+
+      if (recipients.size === 0) {
+        return;
+      }
+
+      const triggerLabels:
+        Record<string, string> = {
+          MANUAL:
+            'manuel',
+          PUSH:
+            'après un push',
+          PULL_REQUEST:
+            'après une pull request',
+          RELEASE:
+            'de release',
+          SCHEDULED:
+            'programmé',
+          API:
+            'via API',
+        };
+
+      const triggerLabel =
+        triggerLabels[input.trigger] ??
+        input.trigger;
+
+      const completed =
+        input.type ===
+        'SCAN_COMPLETED';
+
+      const title = completed
+        ? 'Scan terminé'
+        : 'Échec du scan';
+
+      const message = completed
+        ? `Le scan ${triggerLabel} de ${input.repositoryName} est terminé avec un score de ${input.score ?? 0}/100.`
+        : `Le scan ${triggerLabel} de ${input.repositoryName} a échoué : ${input.errorMessage ?? 'erreur inconnue'}`;
+
+      await this.prisma.notification.createMany({
+        data: [
+          ...recipients,
+        ].map(
+          userId => ({
+            userId,
+            type:
+              input.type,
+            title,
+            message,
+            metadata: {
+              organizationId:
+                input.organizationId,
+              projectId:
+                input.projectId,
+              repositoryId:
+                input.repositoryId,
+              scanId:
+                input.scanId,
+              trigger:
+                input.trigger,
+              score:
+                input.score ??
+                null,
+            },
+          }),
+        ),
+      });
+    } catch (error: unknown) {
+      this.logger.error(
+        `Le scan ${input.scanId} est finalisé, mais ses notifications n'ont pas pu être créées.`,
+        error instanceof Error
+          ? error.stack
+          : undefined,
+      );
+    }
+  }
+
+  private asJsonObject(
+    value: Prisma.JsonValue | null,
+  ): Record<string, Prisma.JsonValue> {
+    if (
+      !value ||
+      typeof value !== 'object' ||
+      Array.isArray(value)
+    ) {
+      return {};
+    }
+
+    return value as Record<string, Prisma.JsonValue>;
   }
 
   @OnWorkerEvent(

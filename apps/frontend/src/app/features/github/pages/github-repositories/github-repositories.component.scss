@@ -335,6 +335,20 @@ button:disabled {
     padding: 22px 16px 45px;
   }
 
+  .github-access-card {
+    align-items: stretch;
+
+    flex-direction: column;
+  }
+
+  .github-access-actions {
+    width: 100%;
+  }
+
+  .github-access-actions button {
+    flex: 1;
+  }
+
   .repository-row {
     grid-template-columns:
       38px
@@ -344,4 +358,91 @@ button:disabled {
   .import-button {
     grid-column: 1 / -1;
   }
+}
+
+.github-access-card {
+  margin-bottom: 14px;
+
+  padding: 15px 17px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+
+  border: 1px solid #dce5ef;
+  border-radius: 10px;
+
+  background: #f8fbff;
+}
+
+.github-access-content {
+  min-width: 0;
+}
+
+.github-access-content h2 {
+  margin: 0;
+
+  color: #344054;
+
+  font-size: 12px;
+}
+
+.github-access-content p {
+  margin: 6px 0 0;
+
+  color: #7b8794;
+
+  font-size: 8px;
+
+  line-height: 1.5;
+}
+
+.github-access-actions {
+  display: flex;
+
+  align-items: center;
+
+  gap: 7px;
+
+  flex-shrink: 0;
+}
+
+.secondary-button {
+  min-height: 34px;
+
+  padding: 0 12px;
+
+  border: 1px solid #d5dde7;
+
+  border-radius: 6px;
+
+  background: #ffffff;
+
+  color: #475467;
+
+  cursor: pointer;
+
+  font-size: 8px;
+
+  font-weight: 750;
+}
+
+.secondary-button:hover {
+  border-color: #b8c7d9;
+
+  background: #f9fbfd;
+}
+
+.repo-imported {
+  background: #eef4fb !important;
+
+  color: #3975c6 !important;
+
+  font-weight: 700;
+}
+
+.import-button:disabled {
+  cursor: not-allowed;
 }

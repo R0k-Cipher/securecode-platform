@@ -3,7 +3,9 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 
@@ -25,6 +27,18 @@ import type {
 } from '../auth/interfaces/jwt-payload.interface';
 
 import {
+  PermissionsGuard,
+} from '../rbac/guards/permissions.guard';
+
+import {
+  RequirePermissions,
+} from '../rbac/decorators/require-permissions.decorator';
+
+import {
+  PERMISSION_CODES,
+} from '../rbac/types/permission-code.type';
+
+import {
   CreateReportDto,
 } from './dto/create-report.dto';
 
@@ -36,6 +50,7 @@ import {
 @ApiBearerAuth()
 @UseGuards(
   AuthGuard('jwt'),
+  PermissionsGuard,
 )
 @Controller(
   'organizations/:organizationId/projects/:projectId/reports',
@@ -46,31 +61,64 @@ export class ReportsController {
       ReportsService,
   ) {}
 
+  /*
+  |--------------------------------------------------------------------------
+  | Liste rapports du projet
+  |--------------------------------------------------------------------------
+  */
+
   @Get()
+  @RequirePermissions(
+    PERMISSION_CODES.REPORT_READ,
+  )
   list(
-    @Param('organizationId')
+    @Param(
+      'organizationId',
+      ParseUUIDPipe,
+    )
     organizationId: string,
 
-    @Param('projectId')
+    @Param(
+      'projectId',
+      ParseUUIDPipe,
+    )
     projectId: string,
 
     @CurrentUser()
     user: AuthenticatedUser,
+
+    @Query('repositoryId')
+    repositoryId?: string,
   ) {
-    return this.reports
-      .list(
-        organizationId,
-        projectId,
-        user.id,
-      );
+    return this.reports.list(
+      organizationId,
+      projectId,
+      user.id,
+      repositoryId,
+    );
   }
 
+  /*
+  |--------------------------------------------------------------------------
+  | SCAN / PROJECT
+  |--------------------------------------------------------------------------
+  */
+
   @Post()
+  @RequirePermissions(
+    PERMISSION_CODES.REPORT_EXPORT,
+  )
   create(
-    @Param('organizationId')
+    @Param(
+      'organizationId',
+      ParseUUIDPipe,
+    )
     organizationId: string,
 
-    @Param('projectId')
+    @Param(
+      'projectId',
+      ParseUUIDPipe,
+    )
     projectId: string,
 
     @CurrentUser()
@@ -79,35 +127,51 @@ export class ReportsController {
     @Body()
     dto: CreateReportDto,
   ) {
-    return this.reports
-      .create(
-        organizationId,
-        projectId,
-        user.id,
-        dto,
-      );
+    return this.reports.create(
+      organizationId,
+      projectId,
+      user.id,
+      dto,
+    );
   }
 
+  /*
+  |--------------------------------------------------------------------------
+  | Download
+  |--------------------------------------------------------------------------
+  */
+
   @Get(':reportId/download')
+  @RequirePermissions(
+    PERMISSION_CODES.REPORT_READ,
+  )
   download(
-    @Param('organizationId')
+    @Param(
+      'organizationId',
+      ParseUUIDPipe,
+    )
     organizationId: string,
 
-    @Param('projectId')
+    @Param(
+      'projectId',
+      ParseUUIDPipe,
+    )
     projectId: string,
 
-    @Param('reportId')
+    @Param(
+      'reportId',
+      ParseUUIDPipe,
+    )
     reportId: string,
 
     @CurrentUser()
     user: AuthenticatedUser,
   ) {
-    return this.reports
-      .downloadPayload(
-        organizationId,
-        projectId,
-        reportId,
-        user.id,
-      );
+    return this.reports.downloadPayload(
+      organizationId,
+      projectId,
+      reportId,
+      user.id,
+    );
   }
 }

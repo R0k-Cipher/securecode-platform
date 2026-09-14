@@ -9,15 +9,35 @@ export type PlatformRole =
   | 'PLATFORM_ADMIN';
 
 export interface PlatformAdminSummary {
-  users: number;
-  activeUsers: number;
-  organizations: number;
-  projects: number;
-  repositories: number;
-  scans: number;
-  findings: number;
-  failedScans: number;
-  criticalOpen: number;
+  users:
+    number;
+
+  activeUsers:
+    number;
+
+  organizations:
+    number;
+
+  projects:
+    number;
+
+  repositories:
+    number;
+
+  pendingInvitations:
+    number;
+
+  activeGitConnections:
+    number;
+
+  gitConnectionErrors:
+    number;
+
+  auditEvents24h:
+    number;
+
+  activeSessions:
+    number;
 }
 
 export interface PlatformUser {
@@ -107,29 +127,99 @@ export interface PlatformScan {
     findings: number;
   };
 }
-
 export interface PlatformAuditLog {
-  id: string;
-  action: string;
-  resourceType: string;
-  resourceId: string | null;
-  description: string | null;
-  ipAddress: string | null;
-  createdAt: string;
+  id:
+    string;
+
+  action:
+    string;
+
+  resourceType:
+    string;
+
+  resourceId:
+    string |
+    null;
+
+  description:
+    string |
+    null;
+
+  ipAddress:
+    string |
+    null;
+
+  userAgent:
+    string |
+    null;
+
+  metadata:
+    Record<
+      string,
+      unknown
+    > |
+    null;
+
+  createdAt:
+    string;
+
   actor: {
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-  } | null;
+    id:
+      string;
+
+    email:
+      string;
+
+    firstName:
+      string;
+
+    lastName:
+      string;
+
+    platformRole:
+      PlatformRole;
+  } |
+  null;
+
   organization: {
-    id: string;
-    name: string;
-  } | null;
+    id:
+      string;
+
+    name:
+      string;
+
+    slug:
+      string;
+  } |
+  null;
+
   project: {
-    id: string;
-    name: string;
-  } | null;
+    id:
+      string;
+
+    name:
+      string;
+
+    slug:
+      string;
+  } |
+  null;
+}
+
+export interface CreatePlatformOrganizationPayload {
+  name: string;
+
+  slug?: string;
+
+  description?: string;
+
+  logoUrl?: string;
+
+  ownerEmail: string;
+
+  ownerFirstName: string;
+
+  ownerLastName: string;
 }
 
 export interface PlatformSystemStatus {

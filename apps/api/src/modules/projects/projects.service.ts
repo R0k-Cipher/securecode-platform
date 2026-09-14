@@ -30,11 +30,32 @@ export class ProjectsService {
     currentUserId: string,
     dto: CreateProjectDto,
   ) {
-    const membership =
-      await this.ensureOrganizationMembership(
-        organizationId,
-        currentUserId,
+    await this.ensureOrganizationMembership(
+      organizationId,
+      currentUserId,
+    );
+
+    const projectAdminRole =
+      await this.prisma.role.findFirst({
+        where: {
+          code:
+            'PROJECT_ADMIN',
+
+          scope:
+            'PROJECT',
+        },
+
+        select: {
+          id:
+            true,
+        },
+      });
+
+    if (!projectAdminRole) {
+      throw new ConflictException(
+        'Le rôle système PROJECT_ADMIN est introuvable.',
       );
+    }
 
     const name = dto.name.trim();
 
@@ -66,7 +87,7 @@ export class ProjectsService {
           data: {
             projectId: createdProject.id,
             userId: currentUserId,
-            roleId: membership.roleId,
+            roleId: projectAdminRole.id,
           },
         });
 
@@ -114,42 +135,71 @@ export class ProjectsService {
     currentUserId: string,
     query: ProjectQueryDto,
   ) {
-    await this.ensureOrganizationMembership(
-      organizationId,
-      currentUserId,
-    );
+    const organizationMembership =
+      await this.ensureOrganizationMembership(
+        organizationId,
+        currentUserId,
+      );
+
+    const isOwner =
+      organizationMembership
+        .role
+        .code ===
+      'OWNER';
 
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const skip = (page - 1) * limit;
     const search = query.search?.trim();
 
-    const where: Prisma.ProjectWhereInput = {
+    const where:
+      Prisma.ProjectWhereInput = {
       organizationId,
+      ...(
+        isOwner
+          ? {}
+          : {
+              members: {
+                some: {
+                  userId:
+                    currentUserId,
+                },
+              },
+            }
+      ),
+
       ...(query.status
         ? {
-            status: query.status,
+            status:
+              query.status,
           }
         : {}),
+
       ...(search
         ? {
             OR: [
               {
                 name: {
-                  contains: search,
-                  mode: 'insensitive',
+                  contains:
+                    search,
+                  mode:
+                    'insensitive',
                 },
               },
               {
                 slug: {
-                  contains: search,
-                  mode: 'insensitive',
+                  contains:
+                    search,
+                  mode:
+                    'insensitive',
                 },
               },
               {
                 description: {
-                  contains: search,
-                  mode: 'insensitive',
+                  contains:
+                    search,
+                  mode:
+                    'insensitive',
                 },
               },
             ],
@@ -205,50 +255,100 @@ export class ProjectsService {
     projectId: string,
     currentUserId: string,
   ) {
-    await this.ensureOrganizationMembership(
-      organizationId,
-      currentUserId,
-    );
+    const organizationMembership =
+      await this.ensureOrganizationMembership(
+        organizationId,
+        currentUserId,
+      );
+
+    /*
+    * Toujours vérifier en premier que le projet
+    * appartient réellement à cette organisation.
+    *
+    * Protection IDOR / cross-tenant.
+    */
 
     const project =
       await this.prisma.project.findFirst({
         where: {
-          id: projectId,
+          id:
+            projectId,
+
           organizationId,
         },
+
         include: {
           createdBy: {
             select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-              avatarUrl: true,
+              id:
+                true,
+
+              email:
+                true,
+
+              firstName:
+                true,
+
+              lastName:
+                true,
+
+              avatarUrl:
+                true,
             },
           },
+
           scans: {
-            take: 1,
+            take:
+              1,
+
             orderBy: {
-              createdAt: 'desc',
+              createdAt:
+                'desc',
             },
+
             select: {
-              id: true,
-              status: true,
-              score: true,
-              branch: true,
-              commitSha: true,
-              createdAt: true,
-              completedAt: true,
+              id:
+                true,
+
+              status:
+                true,
+
+              score:
+                true,
+
+              branch:
+                true,
+
+              commitSha:
+                true,
+
+              createdAt:
+                true,
+
+              completedAt:
+                true,
             },
           },
+
           _count: {
             select: {
-              members: true,
-              repositories: true,
-              scans: true,
-              findings: true,
-              vulnerabilities: true,
-              reports: true,
+              members:
+                true,
+
+              repositories:
+                true,
+
+              scans:
+                true,
+
+              findings:
+                true,
+
+              vulnerabilities:
+                true,
+
+              reports:
+                true,
             },
           },
         },
@@ -260,7 +360,64 @@ export class ProjectsService {
       );
     }
 
-    return ProjectMapper.withDetails(project);
+    const isOwner =
+      organizationMembership
+        .role
+        .code ===
+      'OWNER';
+
+    /*
+    * OWNER possède tous les projets
+    * de son organisation.
+    *
+    * Tous les autres doivent avoir
+    * un ProjectMember explicite.
+    */
+
+    if (!isOwner) {
+      const projectMembership =
+        await this.prisma.projectMember.findUnique({
+          where: {
+            projectId_userId: {
+              projectId,
+
+              userId:
+                currentUserId,
+            },
+          },
+
+          select: {
+            id:
+              true,
+
+            role: {
+              select: {
+                scope:
+                  true,
+              },
+            },
+          },
+        });
+
+      if (!projectMembership) {
+        throw new ForbiddenException(
+          "Vous n'êtes pas affecté à ce projet.",
+        );
+      }
+
+      if (
+        projectMembership.role.scope !==
+        'PROJECT'
+      ) {
+        throw new ForbiddenException(
+          "Le rôle affecté à ce membre n'est pas un rôle projet valide.",
+        );
+      }
+    }
+
+    return ProjectMapper.withDetails(
+      project,
+    );
   }
 
   async update(
@@ -603,10 +760,12 @@ export class ProjectsService {
           role: {
             select: {
               code: true,
+              scope: true,
             },
           },
         },
       });
+
 
     if (!membership) {
       throw new ForbiddenException(
@@ -614,8 +773,19 @@ export class ProjectsService {
       );
     }
 
+    if (
+      membership.role.scope !==
+      'ORGANIZATION'
+    ) {
+      throw new ForbiddenException(
+        "Le rôle du membre n'est pas un rôle d'organisation valide.",
+      );
+    }
+
+
     return membership;
   }
+
 
   private async ensureProjectExists(
     organizationId: string,

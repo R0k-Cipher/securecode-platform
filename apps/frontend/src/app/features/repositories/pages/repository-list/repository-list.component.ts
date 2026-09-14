@@ -3,6 +3,7 @@ import {
   OnInit,
   inject,
   signal,
+  computed,
 } from '@angular/core';
 
 import {
@@ -25,6 +26,14 @@ import {
 import type {
   RepositoryListItem,
 } from '../../models/repository.models';
+
+import {
+  AuthContextService,
+} from '../../../../core/auth/auth-context.service';
+
+import {
+  PERMISSIONS,
+} from '../../../../core/auth/auth-context.models';
 
 @Component({
   selector:
@@ -64,6 +73,11 @@ export class RepositoryListComponent
   private readonly github =
     inject(
       GithubService,
+    );
+
+  private readonly authContext =
+    inject(
+      AuthContextService,
     );
 
   readonly repositories =
@@ -115,12 +129,66 @@ export class RepositoryListComponent
     this.loadRepositories();
   }
 
+  readonly canConnectGithub =
+  computed(
+    () => {
+      if (
+        !this.projectId
+      ) {
+        return false;
+      }
+
+      return (
+        this.authContext
+          .canOrganization(
+            PERMISSIONS.GIT_CONNECTION_CREATE,
+          ) &&
+        this.authContext
+          .canProject(
+            this.projectId,
+            PERMISSIONS.REPOSITORY_CREATE,
+          )
+      );
+    },
+  );
+
+  readonly canReadRepositories =
+    computed(
+      () =>
+        Boolean(
+          this.projectId &&
+          this.authContext
+            .canProject(
+              this.projectId,
+              PERMISSIONS.REPOSITORY_READ,
+            ),
+        ),
+    );
+
   loadRepositories():
     void {
     if (
       !this.organizationId ||
       !this.projectId
     ) {
+      return;
+    }
+
+    if (
+      !this.authContext
+        .canProject(
+          this.projectId,
+          PERMISSIONS.REPOSITORY_READ,
+        )
+    ) {
+      this.repositories.set(
+        [],
+      );
+
+      this.error.set(
+        "Vous n'avez pas la permission de consulter les repositories de ce projet.",
+      );
+
       return;
     }
 
@@ -169,9 +237,20 @@ export class RepositoryListComponent
       !this.organizationId ||
       !this.projectId
     ) {
+
       this.error.set(
         'Organisation ou projet introuvable.',
       );
+      return;
+    }
+
+    if (
+      !this.canConnectGithub()
+    ) {
+      this.error.set(
+        "Vous n'avez pas la permission de connecter GitHub à ce projet.",
+      );
+
       return;
     }
 
@@ -217,7 +296,7 @@ export class RepositoryListComponent
             return;
           }
           this.connectingGithub.set(false);
-          
+
           this.error.set(
             'Impossible de démarrer la connexion GitHub.',
           );
@@ -238,6 +317,20 @@ export class RepositoryListComponent
     repository:
       RepositoryListItem,
   ): void {
+    if (
+      !this.authContext
+        .canProject(
+          this.projectId,
+          PERMISSIONS.REPOSITORY_READ,
+        )
+    ) {
+      this.error.set(
+        "Vous n'avez pas accès à ce repository.",
+      );
+
+      return;
+    }
+
     void this.router.navigate([
       '/organizations',
       this.organizationId,

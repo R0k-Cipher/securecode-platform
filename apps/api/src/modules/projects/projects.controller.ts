@@ -11,7 +11,11 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+
+import {
+  AuthGuard,
+} from '@nestjs/passport';
+
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
@@ -21,16 +25,41 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
-import { RequirePermissions } from '../rbac/decorators/require-permissions.decorator';
-import { PermissionsGuard } from '../rbac/guards/permissions.guard';
-import { PERMISSION_CODES } from '../rbac/types/permission-code.type';
+import {
+  CurrentUser,
+} from '../auth/decorators/current-user.decorator';
 
-import { CreateProjectDto } from './dto/create-project.dto';
-import { ProjectQueryDto } from './dto/project-query.dto';
-import { UpdateProjectDto } from './dto/update-project.dto';
-import { ProjectsService } from './projects.service';
+import type {
+  AuthenticatedUser,
+} from '../auth/interfaces/jwt-payload.interface';
+
+import {
+  RequirePermissions,
+} from '../rbac/decorators/require-permissions.decorator';
+
+import {
+  PermissionsGuard,
+} from '../rbac/guards/permissions.guard';
+
+import {
+  PERMISSION_CODES,
+} from '../rbac/types/permission-code.type';
+
+import {
+  CreateProjectDto,
+} from './dto/create-project.dto';
+
+import {
+  ProjectQueryDto,
+} from './dto/project-query.dto';
+
+import {
+  UpdateProjectDto,
+} from './dto/update-project.dto';
+
+import {
+  ProjectsService,
+} from './projects.service';
 
 @ApiTags('Projects')
 @ApiBearerAuth()
@@ -38,25 +67,38 @@ import { ProjectsService } from './projects.service';
   AuthGuard('jwt'),
   PermissionsGuard,
 )
-@Controller('organizations/:organizationId/projects')
+@Controller(
+  'organizations/:organizationId/projects',
+)
 export class ProjectsController {
   constructor(
-    private readonly projectsService: ProjectsService,
+    private readonly projectsService:
+      ProjectsService,
   ) {}
+
+  /*
+  |--------------------------------------------------------------------------
+  | Create
+  |--------------------------------------------------------------------------
+  */
 
   @Post()
   @RequirePermissions(
     PERMISSION_CODES.PROJECT_CREATE,
   )
   @ApiOperation({
-    summary: 'Créer un projet',
+    summary:
+      'Créer un projet',
   })
   @ApiCreatedResponse({
-    description: 'Projet créé avec succès.',
+    description:
+      'Projet créé avec succès.',
   })
   @ApiParam({
-    name: 'organizationId',
-    description: "Identifiant UUID de l'organisation",
+    name:
+      'organizationId',
+    description:
+      "Identifiant UUID de l'organisation",
   })
   create(
     @Param('organizationId')
@@ -75,19 +117,37 @@ export class ProjectsController {
     );
   }
 
+  /*
+  |--------------------------------------------------------------------------
+  | List
+  |--------------------------------------------------------------------------
+  |
+  | project:list est une permission ORGANIZATION.
+  |
+  | Le service filtre ensuite :
+  |
+  | OWNER  -> tous les projets
+  | autres -> uniquement leurs ProjectMember
+  |
+  */
+
   @Get()
   @RequirePermissions(
-    PERMISSION_CODES.PROJECT_READ,
+    PERMISSION_CODES.PROJECT_LIST,
   )
   @ApiOperation({
-    summary: "Lister les projets de l'organisation",
+    summary:
+      "Lister les projets accessibles dans l'organisation",
   })
   @ApiOkResponse({
-    description: 'Liste paginée des projets.',
+    description:
+      'Liste paginée des projets accessibles.',
   })
   @ApiParam({
-    name: 'organizationId',
-    description: "Identifiant UUID de l'organisation",
+    name:
+      'organizationId',
+    description:
+      "Identifiant UUID de l'organisation",
   })
   findAll(
     @Param('organizationId')
@@ -106,23 +166,35 @@ export class ProjectsController {
     );
   }
 
+  /*
+  |--------------------------------------------------------------------------
+  | Details
+  |--------------------------------------------------------------------------
+  */
+
   @Get(':projectId')
   @RequirePermissions(
     PERMISSION_CODES.PROJECT_READ,
   )
   @ApiOperation({
-    summary: "Afficher les détails d'un projet",
+    summary:
+      "Afficher les détails d'un projet",
   })
   @ApiParam({
-    name: 'organizationId',
-    description: "Identifiant UUID de l'organisation",
+    name:
+      'organizationId',
+    description:
+      "Identifiant UUID de l'organisation",
   })
   @ApiParam({
-    name: 'projectId',
-    description: 'Identifiant UUID du projet',
+    name:
+      'projectId',
+    description:
+      'Identifiant UUID du projet',
   })
   @ApiOkResponse({
-    description: 'Détails du projet.',
+    description:
+      'Détails du projet.',
   })
   findOne(
     @Param('organizationId')
@@ -141,23 +213,35 @@ export class ProjectsController {
     );
   }
 
+  /*
+  |--------------------------------------------------------------------------
+  | Update
+  |--------------------------------------------------------------------------
+  */
+
   @Patch(':projectId')
   @RequirePermissions(
     PERMISSION_CODES.PROJECT_UPDATE,
   )
   @ApiOperation({
-    summary: 'Modifier un projet',
+    summary:
+      'Modifier un projet',
   })
   @ApiParam({
-    name: 'organizationId',
-    description: "Identifiant UUID de l'organisation",
+    name:
+      'organizationId',
+    description:
+      "Identifiant UUID de l'organisation",
   })
   @ApiParam({
-    name: 'projectId',
-    description: 'Identifiant UUID du projet',
+    name:
+      'projectId',
+    description:
+      'Identifiant UUID du projet',
   })
   @ApiOkResponse({
-    description: 'Projet modifié avec succès.',
+    description:
+      'Projet modifié avec succès.',
   })
   update(
     @Param('organizationId')
@@ -180,23 +264,35 @@ export class ProjectsController {
     );
   }
 
+  /*
+  |--------------------------------------------------------------------------
+  | Archive
+  |--------------------------------------------------------------------------
+  */
+
   @Post(':projectId/archive')
   @RequirePermissions(
     PERMISSION_CODES.PROJECT_ARCHIVE,
   )
   @ApiOperation({
-    summary: 'Archiver un projet',
+    summary:
+      'Archiver un projet',
   })
   @ApiParam({
-    name: 'organizationId',
-    description: "Identifiant UUID de l'organisation",
+    name:
+      'organizationId',
+    description:
+      "Identifiant UUID de l'organisation",
   })
   @ApiParam({
-    name: 'projectId',
-    description: 'Identifiant UUID du projet',
+    name:
+      'projectId',
+    description:
+      'Identifiant UUID du projet',
   })
   @ApiOkResponse({
-    description: 'Projet archivé avec succès.',
+    description:
+      'Projet archivé avec succès.',
   })
   archive(
     @Param('organizationId')
@@ -215,23 +311,35 @@ export class ProjectsController {
     );
   }
 
+  /*
+  |--------------------------------------------------------------------------
+  | Restore
+  |--------------------------------------------------------------------------
+  */
+
   @Post(':projectId/restore')
   @RequirePermissions(
     PERMISSION_CODES.PROJECT_RESTORE,
   )
   @ApiOperation({
-    summary: 'Restaurer un projet archivé',
+    summary:
+      'Restaurer un projet archivé',
   })
   @ApiParam({
-    name: 'organizationId',
-    description: "Identifiant UUID de l'organisation",
+    name:
+      'organizationId',
+    description:
+      "Identifiant UUID de l'organisation",
   })
   @ApiParam({
-    name: 'projectId',
-    description: 'Identifiant UUID du projet',
+    name:
+      'projectId',
+    description:
+      'Identifiant UUID du projet',
   })
   @ApiOkResponse({
-    description: 'Projet restauré avec succès.',
+    description:
+      'Projet restauré avec succès.',
   })
   restore(
     @Param('organizationId')
@@ -250,24 +358,38 @@ export class ProjectsController {
     );
   }
 
+  /*
+  |--------------------------------------------------------------------------
+  | Delete
+  |--------------------------------------------------------------------------
+  */
+
   @Delete(':projectId')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(
+    HttpStatus.OK,
+  )
   @RequirePermissions(
     PERMISSION_CODES.PROJECT_DELETE,
   )
   @ApiOperation({
-    summary: 'Supprimer définitivement un projet',
+    summary:
+      'Supprimer définitivement un projet',
   })
   @ApiParam({
-    name: 'organizationId',
-    description: "Identifiant UUID de l'organisation",
+    name:
+      'organizationId',
+    description:
+      "Identifiant UUID de l'organisation",
   })
   @ApiParam({
-    name: 'projectId',
-    description: 'Identifiant UUID du projet',
+    name:
+      'projectId',
+    description:
+      'Identifiant UUID du projet',
   })
   @ApiOkResponse({
-    description: 'Projet supprimé avec succès.',
+    description:
+      'Projet supprimé avec succès.',
   })
   remove(
     @Param('organizationId')

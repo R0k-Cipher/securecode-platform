@@ -14,6 +14,8 @@ import {
   tap,
 } from 'rxjs';
 
+import { getClientIp } from './audit-ip.util';
+
 import {
   PrismaService,
 } from '@securecode-platform/database';

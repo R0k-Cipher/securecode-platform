@@ -36,6 +36,18 @@ import {
 
 import { NotificationBellComponent } from '../../features/notifications/notification-bell/notification-bell.component';
 
+import { OrganizationsService } from '../../features/organizations/services/organizations.service';
+import { ProjectsService } from '../../features/projects/services/projects.service';
+
+import {
+  AuthContextService,
+} from '../../core/auth/auth-context.service';
+
+import {
+  PERMISSIONS,
+} from '../../core/auth/auth-context.models';
+
+
 
 @Component({
   selector: 'app-layout',
@@ -65,6 +77,17 @@ export class AppLayoutComponent {
 
   private readonly router =
     inject(Router);
+
+  private readonly organizationsService =
+    inject(OrganizationsService);
+
+  private readonly projectsService =
+    inject(ProjectsService);
+
+  private readonly authContext =
+    inject(
+      AuthContextService,
+    );
 
   private readonly destroyRef =
     inject(DestroyRef);
@@ -146,6 +169,126 @@ export class AppLayoutComponent {
       },
     );
 
+  readonly canSeeOrganizationDashboard =
+    computed(
+      () => {
+        const role =
+          this.authContext
+            .organizationRole()
+            ?.code;
+
+        return (
+          role ===
+            'OWNER' ||
+          role ===
+            'ADMIN'
+        );
+      },
+    );
+
+  readonly canReadRepositories =
+  computed(
+    () => {
+      const projectId =
+        this.project()
+          ?.id;
+
+      return Boolean(
+        projectId &&
+        this.authContext
+          .canProject(
+            projectId,
+            PERMISSIONS.REPOSITORY_READ,
+          ),
+      );
+    },
+  );
+
+readonly canReadScans =
+  computed(
+    () => {
+      const projectId =
+        this.project()
+          ?.id;
+
+      return Boolean(
+        projectId &&
+        this.authContext
+          .canProject(
+            projectId,
+            PERMISSIONS.SCAN_READ,
+          ),
+      );
+    },
+  );
+
+readonly canReadFindings =
+  computed(
+    () => {
+      const projectId =
+        this.project()
+          ?.id;
+
+      return Boolean(
+        projectId &&
+        this.authContext
+          .canProject(
+            projectId,
+            PERMISSIONS.FINDING_READ,
+          ),
+      );
+    },
+  );
+
+readonly canReadReports =
+  computed(
+    () => {
+      const projectId =
+        this.project()
+          ?.id;
+
+      return Boolean(
+        projectId &&
+        this.authContext
+          .canProject(
+            projectId,
+            PERMISSIONS.REPORT_READ,
+          ),
+      );
+    },
+  );
+
+  readonly canReadMembers =
+    computed(
+      () =>
+        this.authContext
+          .canOrganization(
+            PERMISSIONS.MEMBER_READ,
+          ),
+    );
+
+  readonly canReadAudit =
+    computed(
+      () =>
+        this.authContext
+          .canOrganization(
+            PERMISSIONS.AUDIT_LOG_READ,
+          ),
+    );
+
+  readonly organizationDashboardUrl =
+    computed(
+      () => {
+        const organizationId =
+          this.organization()
+            ?.id;
+
+        return organizationId
+          ? `/organizations/${organizationId}/dashboard`
+          : '/organizations';
+      },
+    );
+
   readonly projectsUrl =
     computed(
       () => {
@@ -199,6 +342,8 @@ export class AppLayoutComponent {
     );
 
   constructor() {
+    this.syncContextFromUrl(this.router.url);
+
     this.router.events
       .pipe(
         filter(
@@ -221,10 +366,77 @@ export class AppLayoutComponent {
             event.urlAfterRedirects,
           );
 
+          this.syncContextFromUrl(
+            event.urlAfterRedirects,
+          );
+
           this.mobileMenuOpen
             .set(false);
         },
       );
+  }
+
+  private syncContextFromUrl(url: string): void {
+    if (url.startsWith('/platform-admin') || url.startsWith('/invitation')) {
+      return;
+    }
+
+    const match = url.match(
+      /^\/organizations\/([^/?#]+)(?:\/projects\/([^/?#]+))?/i,
+    );
+
+    if (!match) {
+      return;
+    }
+
+    const organizationId = decodeURIComponent(match[1]);
+    const projectId = match[2] ? decodeURIComponent(match[2]) : null;
+
+    const applyProject = (): void => {
+      if (!projectId) {
+        if (this.project()) {
+          this.workspace.clearProject();
+        }
+        return;
+      }
+
+      if (this.project()?.id === projectId) {
+        return;
+      }
+
+      this.projectsService
+        .getOne(organizationId, projectId)
+        .subscribe({
+          next: project => {
+            this.workspace.setProject({
+              id: project.id,
+              name: project.name,
+              slug: project.slug,
+              status: project.status,
+            });
+          },
+        });
+    };
+
+    if (this.organization()?.id === organizationId) {
+      applyProject();
+      return;
+    }
+
+    this.organizationsService
+      .getOne(organizationId)
+      .subscribe({
+        next: organization => {
+          this.workspace.setOrganization({
+            id: organization.id,
+            name: organization.name,
+            slug: organization.slug,
+            roleCode: organization.currentUserRole?.code ?? null,
+          });
+
+          applyProject();
+        },
+      });
   }
 
   toggleMobileMenu():

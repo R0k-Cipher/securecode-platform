@@ -83,26 +83,7 @@
     #f8fafc;
 }
 
-.tabs {
-  display: flex;
 
-  gap: 6px;
-
-  padding:
-    5px;
-
-  width:
-    fit-content;
-
-  border:
-    1px solid #e2e8f0;
-
-  border-radius:
-    10px;
-
-  background:
-    #ffffff;
-}
 
 .tabs button {
   min-height:
@@ -633,4 +614,19 @@ small {
     overflow-x:
       auto;
   }
+}
+
+
+.admin-error {
+  padding: 12px 14px;
+
+  border: 1px solid #fecaca;
+
+  border-radius: 10px;
+
+  background: #fef2f2;
+
+  color: #b91c1c;
+
+  font-size: 11px;
 }

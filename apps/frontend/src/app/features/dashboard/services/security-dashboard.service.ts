@@ -8,21 +8,22 @@ import {
 } from '../../../core/api/api-client.service';
 
 import type {
-  SecurityDashboardResponse,
+  SecurityDashboard,
 } from '../models/security-dashboard.models';
 
 @Injectable({
   providedIn: 'root',
 })
 export class SecurityDashboardService {
+
   private readonly api =
     inject(ApiClientService);
 
-  getProjectDashboard(
+  getDashboard(
     organizationId: string,
     projectId: string,
   ) {
-    return this.api.get<SecurityDashboardResponse>(
+    return this.api.get<SecurityDashboard>(
       `/organizations/${organizationId}/projects/${projectId}/security-dashboard`,
     );
   }

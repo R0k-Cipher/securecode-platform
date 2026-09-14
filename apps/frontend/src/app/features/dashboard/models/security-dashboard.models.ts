@@ -1,64 +1,204 @@
-export interface DashboardProject {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  defaultBranch: string | null;
-}
+import type {
+  FindingSeverity,
+  FindingStatus,
+} from '../../findings/models/finding.models';
 
-export interface DashboardSeverity {
-  critical: number;
-  high: number;
-  medium: number;
-  low: number;
-  info: number;
-}
 
 export interface DashboardSummary {
   repositories: number;
+
   scans: number;
+
+  failedScans: number;
+
   findings: number;
+
   openFindings: number;
+
   securityScore: number | null;
-  severity: DashboardSeverity;
+
+  grade?: string | null;
 }
+
+export interface DashboardCweItem {
+  category: string;
+
+  count: number;
+}
+
+export interface DashboardSeverity {
+  INFO: number;
+
+  LOW: number;
+
+  MEDIUM: number;
+
+  HIGH: number;
+
+  CRITICAL: number;
+
+  [key: string]: number;
+}
+
+
+export interface DashboardOwaspItem {
+  category: string;
+
+  count: number;
+}
+
+
+export interface DashboardScoreHistoryItem {
+  id: string;
+
+  score: number | null;
+
+  createdAt: string;
+
+  status?: string;
+
+  scanId?: string;
+}
+
 
 export interface DashboardRepository {
   id: string;
-  provider: 'GITHUB' | 'GITLAB';
+
   name: string;
+
   fullName: string;
-  primaryLanguage: string | null;
-  syncStatus: string;
-  lastSyncedAt: string | null;
+
+  provider?: string | null;
 }
+
 
 export interface DashboardScan {
   id: string;
-  type: string;
-  trigger?: string;
+
   status: string;
+
+  trigger: string;
+
+  type?: string;
+
   score: number | null;
-  progress: number;
+
   createdAt: string;
-  startedAt: string | null;
-  completedAt: string | null;
 
-  repository: {
-    id: string;
-    name: string;
-    fullName: string;
-  };
-
-  _count?: {
-    findings: number;
-  };
+  repository: DashboardRepository;
 }
+
+
+export interface DashboardFinding {
+  id: string;
+
+  title: string;
+
+  severity: FindingSeverity;
+
+  status: FindingStatus;
+
+  filePath: string | null;
+
+  repository: DashboardRepository;
+
+  assignments?: Array<{
+    id?: string;
+
+    assignedTo?: {
+      id?: string;
+
+      email?: string;
+
+      firstName?: string | null;
+
+      lastName?: string | null;
+    } | null;
+  }>;
+}
+
+
+export interface SecurityDashboardProject {
+  id: string;
+
+  name: string;
+
+  description?: string | null;
+}
+
+export interface DashboardWstgCategory {
+  code: string;
+
+  name: string;
+
+  findings: number;
+
+  critical: number;
+
+  high: number;
+
+  medium: number;
+
+  low: number;
+
+  info: number;
+
+  score: number;
+
+  grade: string;
+}
+
+
+export interface DashboardWstg {
+  score: number;
+
+  grade: string;
+
+  categories: DashboardWstgCategory[];
+
+  totalCategories: number;
+}
+
+
+export interface DashboardScanPerformance {
+  averageScore: number | null;
+
+  successRate: number;
+
+  trend: 'UP' | 'DOWN' | 'STABLE';
+
+  scoreDelta?: number | null;
+
+  completedScans: number;
+}
+
 
 export interface SecurityDashboardResponse {
-  project: DashboardProject;
+  project: SecurityDashboardProject;
+
   summary: DashboardSummary;
-  latestScan: DashboardScan | null;
-  repositories: DashboardRepository[];
+
+  severity: DashboardSeverity;
+
+  owasp: DashboardOwaspItem[];
+
+  scoreHistory: DashboardScoreHistoryItem[];
+
+  criticalFindings: DashboardFinding[];
+
   recentScans: DashboardScan[];
+
+  wstg?: DashboardWstg;
+
+  cwe: DashboardCweItem[];
+
+  scanPerformance?: DashboardScanPerformance;
 }
+
+
+/*
+ * Nom utilisé par SecurityDashboardComponent
+ * et SecurityDashboardService.
+ */
+export type SecurityDashboard =
+  SecurityDashboardResponse;

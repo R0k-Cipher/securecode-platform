@@ -6,14 +6,15 @@ import {
 } from '@nestjs/common';
 
 import {
+  AuthGuard,
+} from '@nestjs/passport';
+
+import {
   ApiBearerAuth,
+  ApiOperation,
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-
-import {
-  AuthGuard,
-} from '@nestjs/passport';
 
 import {
   PlatformAdminGuard,
@@ -39,16 +40,20 @@ export class AuditController {
   ) {}
 
   @Get()
+  @ApiOperation({
+    summary:
+      "Consulter uniquement les journaux d'audit de la plateforme",
+  })
   @ApiQuery({
     name: 'limit',
     required: false,
-    example: 100,
+    example: 500,
   })
   async list(
     @Query('limit')
     limit?: string,
   ) {
-    const parsedLimit =
+    const parsed =
       Number(
         limit ?? 500,
       );
@@ -58,10 +63,11 @@ export class AuditController {
         await this.auditService
           .getPlatformLogs({
             take:
-              Number.isFinite(
-                parsedLimit,
-              )
-                ? parsedLimit
+              Number.isFinite(parsed)
+                ? Math.max(
+                    1,
+                    Math.trunc(parsed),
+                  )
                 : 500,
           }),
     };

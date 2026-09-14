@@ -80,7 +80,7 @@
       <header>
 
         <span class="mobile-brand">
-          SecureCode-AI
+          SecureCode
         </span>
 
         <h2>
@@ -109,34 +109,34 @@
         (ngSubmit)="submit()"
       >
 
-        <div class="form-group">
+  <div class="form-group">
 
-          <label for="email">
-            Adresse e-mail
-          </label>
+    <label for="identifier">
+      Identifiant professionnel
+    </label>
 
-          <input
-            id="email"
-            type="email"
-            formControlName="email"
-            placeholder="nom@entreprise.com"
-            autocomplete="email"
-          />
+    <input
+      id="identifier"
+      type="text"
+      formControlName="identifier"
+      placeholder="votre.identifiant"
+      autocomplete="username"
+    />
 
-          @if (
-            form.controls.email.touched &&
-            form.controls.email.invalid
-          ) {
+    @if (
+      form.controls.identifier.touched &&
+      form.controls.identifier.invalid
+    ) {
 
-            <small>
-              Saisissez une adresse e-mail valide.
-            </small>
+      <small>
+        Saisissez votre identifiant professionnel.
+      </small>
 
-          }
+    }
 
-        </div>
+  </div>
 
-        <div class="form-group">
+    <div class="form-group">
 
           <label for="password">
             Mot de passe
@@ -181,7 +181,7 @@
 
           }
 
-        </div>
+    </div>
 
         <button
           class="submit-button"

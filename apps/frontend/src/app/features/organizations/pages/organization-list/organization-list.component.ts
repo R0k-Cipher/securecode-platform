@@ -298,7 +298,7 @@ export class OrganizationListComponent
     void this.router.navigate([
       '/organizations',
       organization.id,
-      'projects',
+      'dashboard',
     ]);
   }
 

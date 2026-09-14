@@ -7,8 +7,16 @@ import {
 } from '../notifications/notifications.module';
 
 import {
+  RbacModule,
+} from '../rbac/rbac.module';
+
+import {
   ReportsController,
 } from './reports.controller';
+
+import {
+  OrganizationReportsController,
+} from './organization-reports.controller';
 
 import {
   ReportsService,
@@ -17,13 +25,19 @@ import {
 @Module({
   imports: [
     NotificationsModule,
+    RbacModule,
   ],
 
   controllers: [
     ReportsController,
+    OrganizationReportsController,
   ],
 
   providers: [
+    ReportsService,
+  ],
+
+  exports: [
     ReportsService,
   ],
 })

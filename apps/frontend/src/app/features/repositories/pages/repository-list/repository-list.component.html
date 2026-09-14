@@ -16,19 +16,20 @@
         et lancez leurs analyses de sécurité.
       </p>
     </div>
-
-    <button
-      type="button"
-      class="primary-button"
-      (click)="connectGithub()"
-      [disabled]="connectingGithub()"
-    >
-      {{
-        connectingGithub()
-          ? 'Connexion...'
-          : 'Connecter GitHub'
-      }}
-    </button>
+    @if (canConnectGithub()) {
+      <button
+        type="button"
+        class="primary-button"
+        (click)="connectGithub()"
+        [disabled]="connectingGithub()"
+      >
+        {{
+          connectingGithub()
+            ? 'Connexion...'
+            : 'Connecter GitHub'
+        }}
+      </button>
+    }
 
   </header>
 
@@ -72,18 +73,20 @@
         souhaitez analyser avec SecureCode-AI.
       </p>
 
-      <button
-        type="button"
-        class="primary-button"
-        (click)="connectGithub()"
-        [disabled]="connectingGithub()"
-      >
-        {{
-          connectingGithub()
-            ? 'Connexion...'
-            : 'Connecter GitHub'
-        }}
-      </button>
+      @if (canConnectGithub()) {
+        <button
+          type="button"
+          class="primary-button"
+          (click)="connectGithub()"
+          [disabled]="connectingGithub()"
+        >
+          {{
+            connectingGithub()
+              ? 'Connexion...'
+              : 'Connecter GitHub'
+          }}
+        </button>
+      }
 
     </section>
 

@@ -5,31 +5,39 @@ import {
 } from '@angular/core';
 
 export interface WorkspaceOrganization {
-  id:
-    string;
+  id: string;
 
-  name:
-    string;
+  name: string;
 
   slug?:
     string;
 
   roleCode?:
     string | null;
+
+  permissions?:
+    string[];
 }
 
 export interface WorkspaceProject {
-  id:
-    string;
+  id: string;
 
-  name:
-    string;
+  name: string;
 
   slug?:
     string;
 
   status?:
     string;
+
+  roleCode?:
+    string | null;
+
+  permissions?:
+    string[];
+
+  ownerOverride?:
+    boolean;
 }
 
 interface PersistedWorkspace {

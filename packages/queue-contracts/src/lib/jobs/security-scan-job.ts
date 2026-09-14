@@ -18,12 +18,12 @@ export type SecurityScanTrigger =
 
 export interface SecurityScanJobData {
   /*
-   * Isolation multi-tenant
+   * Isolation multi-tenant.
    */
   organizationId: string;
 
   /*
-   * Identifiants internes SecureCode-AI
+   * Identifiants SecureCode.
    */
   projectId: string;
   repositoryId: string;
@@ -31,28 +31,28 @@ export interface SecurityScanJobData {
   gitConnectionId: string;
 
   /*
-   * Provider Git
+   * Provider Git.
    */
   provider: SecurityScanProvider;
 
   /*
-   * Repository distant
+   * Repository distant.
    */
   repositoryExternalId: string;
   repositoryFullName: string;
 
   /*
-   * Contexte Git
+   * Contexte Git.
    */
   branch: string;
 
   /*
-   * SHA de départ.
+   * SHA précédent éventuel.
    */
   fromSha: string | null;
 
   /*
-   * SHA cible.
+   * SHA exact à analyser.
    */
   toSha: string;
 
@@ -62,17 +62,22 @@ export interface SecurityScanJobData {
   pullRequestId: string | null;
 
   /*
-   * Mode d'analyse demandé.
+   * Mode technique demandé.
+   *
+   * AUTO sera résolu par le worker en
+   * FULL ou INCREMENTAL.
    */
   requestedMode: SecurityScanRequestedMode;
 
   /*
-   * Origine du scan.
+   * Origine métier du scan.
    */
   trigger: SecurityScanTrigger;
 
   /*
-   * Utilisateur ayant déclenché le scan.
+   * Utilisateur déclencheur.
+   *
+   * null pour webhook/scheduler.
    */
   triggeredById: string | null;
 

@@ -1,0 +1,128 @@
+<section class="organization-dashboard">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">ORGANISATION SECURITY</span>
+      <h1>Dashboard général</h1>
+      <p>Vue consolidée de l’activité de sécurité de l’ensemble de vos projets.</p>
+    </div>
+
+    <div class="header-actions">
+      <button type="button" class="secondary-button" (click)="load()" [disabled]="loading()">
+        {{ loading() ? 'Actualisation...' : 'Actualiser' }}
+      </button>
+      <a class="primary-button" [routerLink]="['/organizations', organizationId, 'projects']">
+        Voir les projets
+      </a>
+    </div>
+  </header>
+
+  @if (error()) {
+    <section class="alert" role="alert">
+      <strong>Chargement impossible</strong>
+      <span>{{ error() }}</span>
+      <button type="button" (click)="load()">Réessayer</button>
+    </section>
+  }
+
+  @if (loading() && !projects().length) {
+    <section class="stats-grid">
+      @for (item of [1,2,3,4,5,6]; track item) {
+        <article class="stat-card skeleton-card">
+          <span class="skeleton skeleton-small"></span>
+          <span class="skeleton skeleton-value"></span>
+        </article>
+      }
+    </section>
+  } @else {
+    <section class="stats-grid">
+      <article class="stat-card"><span>Projets actifs</span><strong>{{ activeProjects() }}</strong><small>{{ archivedProjects() }} archivé(s)</small></article>
+      <article class="stat-card"><span>Repositories</span><strong>{{ repositories() }}</strong><small>Tous les projets</small></article>
+      <article class="stat-card"><span>Scans</span><strong>{{ scans() }}</strong><small>Historique disponible</small></article>
+      <article class="stat-card"><span>Findings</span><strong>{{ findings() }}</strong><small>Dans les projets accessibles</small></article>
+      <article class="stat-card"><span>Vulnérabilités</span><strong>{{ vulnerabilities() }}</strong><small>Compteur fourni par les projets</small></article>
+      <article class="stat-card"><span>Rapports</span><strong>{{ reports() }}</strong><small>Générés à la demande</small></article>
+      <article class="stat-card correction-card"><span>Corrections ce mois</span><strong>{{ correctionsCount() }}</strong><small>Enregistrées dans l’audit</small></article>
+    </section>
+
+    <section class="content-grid">
+      <article class="panel">
+        <div class="panel-header">
+          <div>
+            <span class="section-label">PROJETS</span>
+            <h2>Activité par projet</h2>
+            <p>Accédez directement au contexte de sécurité d’un projet.</p>
+          </div>
+          <span class="count">{{ projects().length }}</span>
+        </div>
+
+        @for (project of projectsWithFindings(); track project.id) {
+          <button type="button" class="project-row" (click)="openProject(project)">
+            <span class="project-main">
+              <strong>{{ project.name }}</strong>
+              <small>{{ project.slug }}</small>
+            </span>
+            <span class="project-metric">
+              <strong>{{ project.findingsCount ?? 0 }}</strong>
+              <small>findings</small>
+            </span>
+            <span class="project-metric">
+              <strong>{{ project.scansCount ?? 0 }}</strong>
+              <small>scans</small>
+            </span>
+            <span class="open-link">Ouvrir</span>
+          </button>
+        } @empty {
+          <div class="empty-state">
+            <strong>Aucun finding à afficher</strong>
+            <span>Les projets sans finding restent accessibles depuis la page Projets.</span>
+          </div>
+        }
+      </article>
+
+      <article class="panel activity-panel">
+        <div class="panel-header">
+          <div>
+            <span class="section-label">HISTORIQUE</span>
+            <h2>Activité récente</h2>
+            <p>Les événements enregistrés dans les journaux de l’organisation.</p>
+          </div>
+        </div>
+
+        @for (log of recentActivity(); track log.id) {
+          <div class="activity-row">
+            <div>
+              <strong>{{ activityLabel(log) }}</strong>
+              <small>
+                {{ log.project?.name ?? 'Organisation' }}
+                ·
+                {{ log.createdAt | date:'dd/MM/yyyy HH:mm' }}
+              </small>
+            </div>
+            @if (isFindingCorrection(log)) {
+              <span class="activity-status">Corrigée</span>
+            } @else {
+              <span class="activity-status neutral">{{ log.action }}</span>
+            }
+          </div>
+        } @empty {
+          <div class="empty-state">
+            <strong>Aucune activité récente</strong>
+            <span>Les événements apparaîtront ici lorsqu’ils seront enregistrés.</span>
+          </div>
+        }
+      </article>
+
+      <article class="panel summary-panel">
+        <span class="section-label">PÉRIMÈTRE</span>
+        <h2>Lecture du dashboard</h2>
+        <p>
+          Cette vue consolide les compteurs actuellement fournis par vos projets.
+          Elle ne fabrique pas d’historique de corrections qui n’est pas encore exposé par l’API.
+        </p>
+        <a [routerLink]="['/organizations', organizationId, 'audit-logs']">
+          Consulter les journaux d’audit
+        </a>
+      </article>
+    </section>
+  }
+</section>

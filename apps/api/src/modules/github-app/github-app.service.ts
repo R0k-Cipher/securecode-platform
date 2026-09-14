@@ -99,20 +99,33 @@ export class GithubAppService {
       currentUserId,
     );
 
-    await this.rbacService.requirePermission(
-      organizationId,
-      currentUserId,
-      PERMISSION_CODES.GIT_CONNECTION_CREATE,
-    );
+    await this.rbacService
+      .requireOrganizationPermission(
+        organizationId,
+        currentUserId,
+        PERMISSION_CODES.GIT_CONNECTION_CREATE,
+      );
+
+    await this.rbacService
+      .requireProjectPermission(
+        organizationId,
+        projectId,
+        currentUserId,
+        PERMISSION_CODES.REPOSITORY_CREATE,
+      );
 
     const project =
       await this.prisma.project.findFirst({
         where: {
-          id: projectId,
+          id:
+            projectId,
+
           organizationId,
         },
+
         select: {
-          id: true,
+          id:
+            true,
         },
       });
 
@@ -122,67 +135,136 @@ export class GithubAppService {
       );
     }
 
-    const existingConnection =
-      await this.prisma.gitConnection.findFirst({
-        where: {
-          organizationId,
-          provider: GitProvider.GITHUB,
-          status: ConnectionStatus.ACTIVE,
-          installationId: {
-            not: null,
-          },
-        },
-        select: {
-          id: true,
-          installationId: true,
-        },
-        orderBy: {
-          updatedAt: 'desc',
-        },
-      });
+    /*
+    * ============================================================
+    * Connexion GitHub existante
+    * ============================================================
+    */
 
-    if (existingConnection?.installationId) {
+    const existingConnection =
+      await this.prisma.gitConnection
+        .findFirst({
+          where: {
+            organizationId,
+
+            provider:
+              GitProvider.GITHUB,
+
+            status:
+              ConnectionStatus.ACTIVE,
+
+            installationId: {
+              not:
+                null,
+            },
+          },
+
+          select: {
+            id:
+              true,
+
+            installationId:
+              true,
+          },
+
+          orderBy: {
+            updatedAt:
+              'desc',
+          },
+        });
+
+    if (
+      existingConnection
+        ?.installationId
+    ) {
       return {
-        provider: GitProvider.GITHUB,
-        alreadyConnected: true,
-        connectionId: existingConnection.id,
+        provider:
+          GitProvider.GITHUB,
+
+        alreadyConnected:
+          true,
+
+        connectionId:
+          existingConnection.id,
+
         installationId:
           existingConnection.installationId,
-        installationUrl: null,
-        expiresInSeconds: 0,
+
+        installationUrl:
+          null,
+
+        expiresInSeconds:
+          0,
       };
     }
 
     /*
-    * Supprimer les demandes expirées.
+    * ============================================================
+    * Nettoyage des demandes expirées
+    * ============================================================
     */
-    await this.prisma.githubInstallationPending.deleteMany({
-      where: {
-        expiresAt: {
-          lte: new Date(),
+
+    await this.prisma
+      .githubInstallationPending
+      .deleteMany({
+        where: {
+          expiresAt: {
+            lte:
+              new Date(),
+          },
         },
-      },
-    });
+      });
 
     /*
-    * Une seule installation en attente par utilisateur.
+    * Une seule tentative active pour le même user.
     */
-    await this.prisma.githubInstallationPending.deleteMany({
-      where: {
-        userId: currentUserId,
-      },
-    });
 
-    await this.prisma.githubInstallationPending.create({
-      data: {
-        organizationId,
-        projectId,
-        userId: currentUserId,
-        expiresAt: new Date(
-          Date.now() + 10 * 60 * 1000,
-        ),
-      },
-    });
+    await this.prisma
+      .githubInstallationPending
+      .deleteMany({
+        where: {
+          userId:
+            currentUserId,
+        },
+      });
+
+    /*
+    * ============================================================
+    * Créer le pending AVANT de générer l'URL.
+    *
+    * Son UUID devient le state GitHub.
+    * ============================================================
+    */
+
+    const pending =
+      await this.prisma
+        .githubInstallationPending
+        .create({
+          data: {
+            organizationId,
+
+            projectId,
+
+            userId:
+              currentUserId,
+
+            expiresAt:
+              new Date(
+                Date.now() +
+                  10 *
+                    60 *
+                    1000,
+              ),
+          },
+
+          select: {
+            id:
+              true,
+
+            expiresAt:
+              true,
+          },
+        });
 
     const appSlug =
       this.getRequiredConfig(
@@ -196,14 +278,42 @@ export class GithubAppService {
         )}/installations/new`,
       );
 
+    /*
+    * CRITIQUE :
+    *
+    * GitHub nous renverra ce state sur la Setup URL.
+    * Le callback n'a donc plus besoin du JWT utilisateur.
+    */
+
+    installationUrl.searchParams.set(
+      'state',
+      pending.id,
+    );
+
     return {
-      provider: GitProvider.GITHUB,
-      alreadyConnected: false,
-      connectionId: null,
-      installationId: null,
+      provider:
+        GitProvider.GITHUB,
+
+      alreadyConnected:
+        false,
+
+      connectionId:
+        null,
+
+      installationId:
+        null,
+
       installationUrl:
         installationUrl.toString(),
-      expiresInSeconds: 600,
+
+      state:
+        pending.id,
+
+      expiresAt:
+        pending.expiresAt,
+
+      expiresInSeconds:
+        600,
     };
   }
   /**
@@ -211,70 +321,139 @@ export class GithubAppService {
    */
   async completeInstallation(
     installationId: string,
-    authenticatedUserId: string,
+    state: string,
   ) {
     const normalizedInstallationId =
       installationId.trim();
 
-    if (!/^\d+$/.test(normalizedInstallationId)) {
+    const normalizedState =
+      state.trim();
+
+    /*
+    * ============================================================
+    * 1. Validation basique du retour GitHub
+    * ============================================================
+    */
+
+    if (
+      !/^\d+$/.test(
+        normalizedInstallationId,
+      )
+    ) {
       throw new BadRequestException(
         "L'identifiant d'installation GitHub est invalide.",
       );
     }
 
-    const pending =
-      await this.prisma.githubInstallationPending.findFirst({
-        where: {
-          userId: authenticatedUserId,
-          expiresAt: {
-            gt: new Date(),
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-
-    if (!pending) {
+    if (!normalizedState) {
       throw new UnauthorizedException(
-        "Aucune installation GitHub valide n'est en attente.",
+        "Le state GitHub est absent.",
       );
     }
 
+    /*
+    * ============================================================
+    * 2. Résoudre le contexte depuis le state
+    *
+    * IMPORTANT :
+    * le callback n'utilise PAS un JWT utilisateur.
+    * ============================================================
+    */
+
+    const pending =
+      await this.prisma
+        .githubInstallationPending
+        .findFirst({
+          where: {
+            id:
+              normalizedState,
+
+            expiresAt: {
+              gt:
+                new Date(),
+            },
+          },
+        });
+
+    if (!pending) {
+      throw new UnauthorizedException(
+        "Cette demande d'installation GitHub est invalide ou expirée.",
+      );
+    }
+
+    const authenticatedUserId =
+      pending.userId;
+
+    const organizationId =
+      pending.organizationId;
+
+    /*
+    * ============================================================
+    * 3. Vérifier que le user d'origine possède toujours l'accès
+    * ============================================================
+    */
+
     await this.ensureOrganizationMembership(
-      pending.organizationId,
+      organizationId,
       authenticatedUserId,
     );
 
-    await this.rbacService.requirePermission(
-      pending.organizationId,
-      authenticatedUserId,
-      PERMISSION_CODES.GIT_CONNECTION_CREATE,
-    );
+    await this.rbacService
+      .requireOrganizationPermission(
+        organizationId,
+        authenticatedUserId,
+        PERMISSION_CODES.GIT_CONNECTION_CREATE,
+      );
+
+    await this.rbacService
+      .requireProjectPermission(
+        organizationId,
+        pending.projectId,
+        authenticatedUserId,
+        PERMISSION_CODES.REPOSITORY_CREATE,
+      );
+
+    /*
+    * ============================================================
+    * 4. Vérifier le projet
+    * ============================================================
+    */
 
     const project =
       await this.prisma.project.findFirst({
         where: {
-          id: pending.projectId,
-          organizationId:
-            pending.organizationId,
+          id:
+            pending.projectId,
+
+          organizationId,
         },
+
         select: {
-          id: true,
+          id:
+            true,
         },
       });
 
     if (!project) {
-      await this.prisma.githubInstallationPending.delete({
-        where: {
-          id: pending.id,
-        },
-      });
+      await this.prisma
+        .githubInstallationPending
+        .delete({
+          where: {
+            id:
+              pending.id,
+          },
+        });
 
       throw new NotFoundException(
         'Le projet associé à cette installation est introuvable.',
       );
     }
+
+    /*
+    * ============================================================
+    * 5. Vérifier réellement l'installation auprès de GitHub
+    * ============================================================
+    */
 
     const installation =
       await this.getInstallation(
@@ -289,19 +468,30 @@ export class GithubAppService {
       );
 
     if (
-      !Number.isSafeInteger(configuredAppId) ||
-      installation.app_id !== configuredAppId
+      !Number.isSafeInteger(
+        configuredAppId,
+      ) ||
+      installation.app_id !==
+        configuredAppId
     ) {
       throw new UnauthorizedException(
         "Cette installation n'appartient pas à la GitHub App SecureCode-AI.",
       );
     }
 
-    if (installation.suspended_at) {
+    if (
+      installation.suspended_at
+    ) {
       throw new ConflictException(
         "L'installation GitHub est suspendue.",
       );
     }
+
+    /*
+    * ============================================================
+    * 6. Informations du compte GitHub
+    * ============================================================
+    */
 
     const externalAccountId =
       String(
@@ -314,167 +504,223 @@ export class GithubAppService {
       installation.account.name ??
       null;
 
+    /*
+    * ============================================================
+    * 7. Enregistrer GitConnection de manière atomique
+    * ============================================================
+    */
+
     try {
       const connection =
-        await this.prisma.$transaction(
-          async (transaction) => {
-            const existingByInstallation =
-              await transaction.gitConnection.findFirst({
-                where: {
-                  provider:
-                    GitProvider.GITHUB,
+        await this.prisma
+          .$transaction(
+            async (
+              transaction,
+            ) => {
+              /*
+              * Une installation GitHub ne doit jamais pouvoir
+              * appartenir à deux tenants SecureCode différents.
+              */
 
-                  installationId:
-                    normalizedInstallationId,
-                },
+              const existingByInstallation =
+                await transaction
+                  .gitConnection
+                  .findFirst({
+                    where: {
+                      provider:
+                        GitProvider.GITHUB,
 
-                select: {
-                  id: true,
-                  organizationId: true,
-                },
-              });
+                      installationId:
+                        normalizedInstallationId,
+                    },
 
-            if (
-              existingByInstallation &&
-              existingByInstallation.organizationId !==
-                pending.organizationId
-            ) {
-              throw new ConflictException(
-                'Cette installation GitHub est déjà associée à une autre organisation.',
-              );
-            }
+                    select: {
+                      id:
+                        true,
 
-            const savedConnection =
-              await transaction.gitConnection.upsert({
-                where: {
-                  organizationId_provider_externalAccountId: {
-                    organizationId:
-                      pending.organizationId,
+                      organizationId:
+                        true,
+                    },
+                  });
 
-                    provider:
-                      GitProvider.GITHUB,
+              if (
+                existingByInstallation &&
+                existingByInstallation
+                  .organizationId !==
+                  organizationId
+              ) {
+                throw new ConflictException(
+                  'Cette installation GitHub est déjà associée à une autre organisation.',
+                );
+              }
 
-                    externalAccountId,
+              const savedConnection =
+                await transaction
+                  .gitConnection
+                  .upsert({
+                    where: {
+                      organizationId_provider_externalAccountId:
+                        {
+                          organizationId,
+
+                          provider:
+                            GitProvider.GITHUB,
+
+                          externalAccountId,
+                        },
+                    },
+
+                    create: {
+                      organizationId,
+
+                      connectedById:
+                        authenticatedUserId,
+
+                      provider:
+                        GitProvider.GITHUB,
+
+                      externalAccountId,
+
+                      externalAccountName,
+
+                      installationId:
+                        normalizedInstallationId,
+
+                      repositorySelection:
+                        installation.repository_selection,
+
+                      permissions:
+                        installation.permissions,
+
+                      status:
+                        ConnectionStatus.ACTIVE,
+
+                      revokedAt:
+                        null,
+                    },
+
+                    update: {
+                      connectedById:
+                        authenticatedUserId,
+
+                      externalAccountName,
+
+                      installationId:
+                        normalizedInstallationId,
+
+                      repositorySelection:
+                        installation.repository_selection,
+
+                      permissions:
+                        installation.permissions,
+
+                      status:
+                        ConnectionStatus.ACTIVE,
+
+                      revokedAt:
+                        null,
+                    },
+
+                    select: {
+                      id:
+                        true,
+
+                      organizationId:
+                        true,
+
+                      provider:
+                        true,
+
+                      externalAccountId:
+                        true,
+
+                      externalAccountName:
+                        true,
+
+                      installationId:
+                        true,
+
+                      repositorySelection:
+                        true,
+
+                      permissions:
+                        true,
+
+                      status:
+                        true,
+
+                      createdAt:
+                        true,
+
+                      updatedAt:
+                        true,
+                    },
+                  });
+
+              /*
+              * Audit.
+              */
+
+              await transaction
+                .auditLog
+                .create({
+                  data: {
+                    organizationId,
+
+                    projectId:
+                      pending.projectId,
+
+                    actorId:
+                      authenticatedUserId,
+
+                    action:
+                      AuditAction.CONNECT,
+
+                    resourceType:
+                      'GitConnection',
+
+                    resourceId:
+                      savedConnection.id,
+
+                    description:
+                      `Installation GitHub "${externalAccountName ?? externalAccountId}" connectée`,
+
+                    metadata: {
+                      installationId:
+                        normalizedInstallationId,
+
+                      repositorySelection:
+                        installation.repository_selection,
+
+                      accountType:
+                        installation.target_type,
+                    },
                   },
-                },
+                });
 
-                create: {
-                  organizationId:
-                    pending.organizationId,
+              /*
+              * Le state est à usage unique.
+              */
 
-                  connectedById:
-                    authenticatedUserId,
+              await transaction
+                .githubInstallationPending
+                .delete({
+                  where: {
+                    id:
+                      pending.id,
+                  },
+                });
 
-                  provider:
-                    GitProvider.GITHUB,
-
-                  externalAccountId,
-                  externalAccountName,
-
-                  installationId:
-                    normalizedInstallationId,
-
-                  repositorySelection:
-                    installation.repository_selection,
-
-                  permissions:
-                    installation.permissions,
-
-                  status:
-                    ConnectionStatus.ACTIVE,
-
-                  revokedAt: null,
-                },
-
-                update: {
-                  connectedById:
-                    authenticatedUserId,
-
-                  externalAccountName,
-
-                  installationId:
-                    normalizedInstallationId,
-
-                  repositorySelection:
-                    installation.repository_selection,
-
-                  permissions:
-                    installation.permissions,
-
-                  status:
-                    ConnectionStatus.ACTIVE,
-
-                  revokedAt: null,
-                },
-
-                select: {
-                  id: true,
-                  organizationId: true,
-                  provider: true,
-                  externalAccountId: true,
-                  externalAccountName: true,
-                  installationId: true,
-                  repositorySelection: true,
-                  permissions: true,
-                  status: true,
-                  createdAt: true,
-                  updatedAt: true,
-                },
-              });
-
-            await transaction.auditLog.create({
-              data: {
-                organizationId:
-                  pending.organizationId,
-
-                projectId:
-                  pending.projectId,
-
-                actorId:
-                  authenticatedUserId,
-
-                action:
-                  AuditAction.CONNECT,
-
-                resourceType:
-                  'GitConnection',
-
-                resourceId:
-                  savedConnection.id,
-
-                description:
-                  `Installation GitHub "${externalAccountName ?? externalAccountId}" connectée`,
-
-                metadata: {
-                  installationId:
-                    normalizedInstallationId,
-
-                  repositorySelection:
-                    installation.repository_selection,
-
-                  accountType:
-                    installation.target_type,
-                },
-              },
-            });
-
-            await transaction.githubInstallationPending.delete({
-              where: {
-                id: pending.id,
-              },
-            });
-
-            return savedConnection;
-          },
-        );
+              return savedConnection;
+            },
+          );
 
       return {
         message:
           'GitHub App installée avec succès.',
 
         context: {
-          organizationId:
-            pending.organizationId,
+          organizationId,
 
           projectId:
             pending.projectId,
@@ -482,17 +728,22 @@ export class GithubAppService {
 
         connection,
       };
-    } catch (error: unknown) {
+    } catch (
+      error: unknown
+    ) {
       if (
-        error instanceof ConflictException
+        error instanceof
+        ConflictException
       ) {
         throw error;
       }
 
       if (
         error instanceof
-          Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
+          Prisma
+            .PrismaClientKnownRequestError &&
+        error.code ===
+          'P2002'
       ) {
         throw new ConflictException(
           'Cette installation GitHub est déjà enregistrée.',
@@ -517,11 +768,12 @@ export class GithubAppService {
       currentUserId,
     );
 
-    await this.rbacService.requirePermission(
-      organizationId,
-      currentUserId,
-      PERMISSION_CODES.REPOSITORY_SYNC,
-    );
+    await this.rbacService
+      .requireOrganizationPermission(
+        organizationId,
+        currentUserId,
+        PERMISSION_CODES.GIT_CONNECTION_READ,
+      );
 
     const connection =
       await this.prisma.gitConnection.findFirst({
@@ -558,6 +810,8 @@ export class GithubAppService {
       );
     }
 
+
+
     return this.requestInstallationAccessToken(
       connection.installationId,
     );
@@ -575,11 +829,12 @@ export class GithubAppService {
       input.userId,
     );
 
-    await this.rbacService.requirePermission(
-      input.organizationId,
-      input.userId,
-      PERMISSION_CODES.PROJECT_READ,
-    );
+    await this.rbacService
+      .requireOrganizationPermission(
+        input.organizationId,
+        input.userId,
+        PERMISSION_CODES.GIT_CONNECTION_READ,
+      );
 
     const connection =
       await this.prisma.gitConnection.findFirst({
@@ -620,6 +875,8 @@ export class GithubAppService {
       );
     }
 
+
+
     const page =
       Number.isInteger(input.page) &&
       input.page > 0
@@ -641,6 +898,29 @@ export class GithubAppService {
           input.search,
         );
 
+    const installation =
+      await this.getInstallation(
+        connection.installationId,
+      );
+
+    const installationInfo = {
+      id:
+        String(
+          installation.id,
+        ),
+
+      accountName:
+        installation.account.login ??
+        installation.account.name ??
+        null,
+
+      repositorySelection:
+        installation.repository_selection,
+
+      manageUrl:
+        installation.html_url,
+    };
+
     const externalRepositoryIds =
       result.items.map((repository) =>
         String(repository.id),
@@ -649,7 +929,11 @@ export class GithubAppService {
     if (
       externalRepositoryIds.length === 0
     ) {
-      return result;
+      return {
+        ...result,
+
+        installation : installationInfo,
+      };
     }
 
     const importedRepositories =
@@ -687,30 +971,34 @@ export class GithubAppService {
     return {
       ...result,
 
-      items: result.items.map(
-        (repository) => {
-          const imported =
-            importedByExternalId.get(
-              String(repository.id),
-            );
+      installation:
+        installationInfo,
 
-          return {
-            ...repository,
+      items:
+        result.items.map(
+          (repository) => {
+            const imported =
+              importedByExternalId.get(
+                String(repository.id),
+              );
 
-            imported:
-              Boolean(imported),
+            return {
+              ...repository,
 
-            localRepositoryId:
-              imported?.id ?? null,
+              imported:
+                Boolean(imported),
 
-            projectId:
-              imported?.projectId ?? null,
+              localRepositoryId:
+                imported?.id ?? null,
 
-            syncStatus:
-              imported?.syncStatus ?? null,
-          };
-        },
-      ),
+              projectId:
+                imported?.projectId ?? null,
+
+              syncStatus:
+                imported?.syncStatus ?? null,
+            };
+          },
+        ),
     };
   }
 
@@ -727,11 +1015,20 @@ export class GithubAppService {
       currentUserId,
     );
 
-    await this.rbacService.requirePermission(
-      dto.organizationId,
-      currentUserId,
-      PERMISSION_CODES.PROJECT_UPDATE,
-    );
+    await this.rbacService
+      .requireProjectPermission(
+        dto.organizationId,
+        dto.projectId,
+        currentUserId,
+        PERMISSION_CODES.REPOSITORY_CREATE,
+      );
+
+    await this.rbacService
+      .requireOrganizationPermission(
+        dto.organizationId,
+        currentUserId,
+        PERMISSION_CODES.GIT_CONNECTION_READ,
+      );
 
     const [project, connection] =
       await Promise.all([
@@ -845,7 +1142,10 @@ export class GithubAppService {
 
     if (existingRepository) {
       throw new ConflictException(
-        'Ce repository GitHub est déjà importé.',
+        existingRepository.projectId ===
+          dto.projectId
+          ? 'Ce repository GitHub est déjà importé dans ce projet.'
+          : 'Ce repository GitHub est déjà associé à un autre projet de cette organisation.',
       );
     }
 

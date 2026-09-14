@@ -3,337 +3,866 @@
   @if (loading()) {
 
     <div class="loading-state">
+
       <span class="spinner"></span>
 
-      Chargement du repository...
-    </div>
-
-  }
-
-  @if (error()) {
-
-    <div class="alert-error">
-      {{ error() }}
-    </div>
-
-  }
-
-  @if (overview(); as data) {
-
-    <header class="page-header">
-
       <div>
-
-        <span class="eyebrow">
-          REPOSITORY SECURITY
-        </span>
-
-        <h1>
-          {{ data.repository.fullName }}
-        </h1>
-
-        <div class="repository-meta">
-
-          <span>
-            {{ data.repository.provider }}
-          </span>
-
-          <span>
-            {{
-              data.repository.defaultBranch
-                || 'Branche inconnue'
-            }}
-          </span>
-
-          <span>
-            {{
-              data.repository.primaryLanguage
-                || 'Langage inconnu'
-            }}
-          </span>
-
-          <span
-            class="sync-badge"
-            [attr.data-status]="
-              data.repository.syncStatus
-            "
-          >
-            {{ data.repository.syncStatus }}
-          </span>
-
-        </div>
-
-      </div>
-
-      <div class="header-actions">
-
-        <button
-          type="button"
-          class="secondary-button"
-          (click)="openFindings()"
-        >
-          Voir les findings
-        </button>
-
-        <button
-          type="button"
-          class="primary-button"
-          (click)="startScan()"
-          [disabled]="startingScan()"
-        >
-          {{
-            startingScan()
-              ? 'Planification...'
-              : 'Lancer un scan'
-          }}
-        </button>
-
-      </div>
-
-    </header>
-
-    <section class="metrics-grid">
-
-      <article class="metric-card score-card">
-
-        <span class="metric-label">
-          SECURITY SCORE
-        </span>
-
-        <strong class="score">
-          {{
-            data.security.score ??
-            'N/A'
-          }}
-        </strong>
-
-        @if (
-          data.security.scoreReliable === false
-        ) {
-          <small>
-            Score partiel
-          </small>
-        } @else {
-          <small>
-            Score de sécurité
-          </small>
-        }
-
-      </article>
-
-      <article class="metric-card">
-
-        <span class="metric-label">
-          FINDINGS ACTIFS
-        </span>
-
         <strong>
-          {{ data.security.activeFindings }}
+          Chargement du repository
         </strong>
 
-        <small>
-          Vulnérabilités ouvertes
-        </small>
-
-      </article>
-
-      <article class="metric-card">
-
-        <span class="metric-label">
-          SYNCHRONISATION
+        <span>
+          Récupération des informations de sécurité...
         </span>
-
-        <strong class="status-value">
-          {{ data.repository.syncStatus }}
-        </strong>
-
-        <small>
-          État du repository
-        </small>
-
-      </article>
-
-    </section>
-
-    <section class="severity-card">
-
-      <div class="section-heading">
-
-        <div>
-          <span class="section-label">
-            SECURITY
-          </span>
-
-          <h2>
-            Répartition par sévérité
-          </h2>
-        </div>
-
       </div>
-
-      <div class="severity-grid">
-
-        <article class="severity-item critical">
-
-          <span>
-            Critical
-          </span>
-
-          <strong>
-            {{
-              data.security.bySeverity
-                ?.CRITICAL ?? 0
-            }}
-          </strong>
-
-        </article>
-
-        <article class="severity-item high">
-
-          <span>
-            High
-          </span>
-
-          <strong>
-            {{
-              data.security.bySeverity
-                ?.HIGH ?? 0
-            }}
-          </strong>
-
-        </article>
-
-        <article class="severity-item medium">
-
-          <span>
-            Medium
-          </span>
-
-          <strong>
-            {{
-              data.security.bySeverity
-                ?.MEDIUM ?? 0
-            }}
-          </strong>
-
-        </article>
-
-        <article class="severity-item low">
-
-          <span>
-            Low
-          </span>
-
-          <strong>
-            {{
-              data.security.bySeverity
-                ?.LOW ?? 0
-            }}
-          </strong>
-
-        </article>
-
-      </div>
-
-    </section>
-
-  }
-
-  <section class="history-card">
-
-    <div class="section-heading">
-
-      <div>
-        <span class="section-label">
-          HISTORY
-        </span>
-
-        <h2>
-          Historique des scans
-        </h2>
-      </div>
-
-      <span class="count-badge">
-        {{ scanHistory().length }}
-      </span>
 
     </div>
 
-    @if (
-      scanHistory().length === 0
-    ) {
+  } @else {
 
-      <div class="history-empty">
-        Aucun scan effectué sur ce repository.
-      </div>
+    @if (error()) {
 
-    } @else {
+      <div class="alert-error">
 
-      <div class="scan-list">
+        <span class="alert-symbol">
+          !
+        </span>
 
-        @for (
-          scan of scanHistory();
-          track scan.id
-        ) {
-
-          <article
-            class="scan-row"
-            tabindex="0"
-            (click)="openScan(scan.id)"
-            (keydown.enter)="openScan(scan.id)"
-          >
-
-            <div class="scan-main">
-
-              <strong>
-                {{ scan.type }}
-              </strong>
-
-              <span>
-                {{ scan.status }}
-              </span>
-
-            </div>
-
-            <div class="progress-cell">
-
-              <div class="mini-progress">
-
-                <span
-                  [style.width.%]="
-                    scan.progress
-                  "
-                ></span>
-
-              </div>
-
-              <small>
-                {{ scan.progress }} %
-              </small>
-
-            </div>
-
-            <div class="score-cell">
-              <span>
-                Score
-              </span>
-
-              <strong>
-                {{
-                  scan.score ??
-                  'N/A'
-                }}
-              </strong>
-            </div>
-
-          </article>
-
-        }
+        <span>
+          {{ error() }}
+        </span>
 
       </div>
 
     }
 
+
+    @if (overview(); as data) {
+
+      <!-- ================================================= -->
+      <!-- HEADER -->
+      <!-- ================================================= -->
+
+      <header class="page-header">
+
+        <div class="repository-heading">
+
+          <div class="eyebrow-row">
+
+            <span class="eyebrow">
+              REPOSITORY SECURITY
+            </span>
+
+            <span
+              class="sync-status"
+              [attr.data-status]="
+                data.repository.syncStatus
+              "
+            >
+              <span class="status-dot"></span>
+
+              {{
+                data.repository.syncStatus
+              }}
+            </span>
+
+          </div>
+
+          <h1>
+            {{ data.repository.fullName }}
+          </h1>
+
+          <p>
+            Vue consolidée de l'état du repository,
+            de ses vulnérabilités et de son historique de scans.
+          </p>
+
+          <div class="repository-meta">
+
+            <span>
+              <strong>
+                Provider
+              </strong>
+
+              {{ data.repository.provider }}
+            </span>
+
+            <span>
+              <strong>
+                Branche
+              </strong>
+
+              {{
+                data.repository.defaultBranch ||
+                'Non définie'
+              }}
+            </span>
+
+            <span>
+              <strong>
+                Langage
+              </strong>
+
+              {{
+                data.repository.primaryLanguage ||
+                'Non détecté'
+              }}
+            </span>
+
+            @if (
+              data.repository.lastRemoteCommitSha
+            ) {
+
+              <span>
+                <strong>
+                  Commit
+                </strong>
+
+                {{
+                  data.repository
+                    .lastRemoteCommitSha
+                    .slice(
+                      0,
+                      8
+                    )
+                }}
+              </span>
+
+            }
+
+          </div>
+
+        </div>
+
+
+        <div class="header-actions">
+
+          @if (canExportReport()) {
+
+            <div class="report-actions">
+
+              <button
+                type="button"
+                class="secondary-button"
+                (click)="downloadGeneralReport('JSON')"
+              >
+                JSON
+              </button>
+
+              <button
+                type="button"
+                class="secondary-button"
+                (click)="downloadGeneralReport('HTML')"
+              >
+                HTML
+              </button>
+
+            </div>
+
+          }
+
+
+          @if (canReadFindings()) {
+
+            <button
+              type="button"
+              class="secondary-button"
+              (click)="openFindings()"
+            >
+              Voir les findings
+            </button>
+
+          }
+
+
+          @if (canCreateScan()) {
+
+            <button
+              type="button"
+              class="primary-button"
+              [disabled]="startingScan()"
+              (click)="startScan()"
+            >
+
+              @if (startingScan()) {
+                Planification...
+              } @else {
+                Lancer un scan
+              }
+
+            </button>
+
+          }
+
+        </div>
+
+      </header>
+
+
+      <!-- ================================================= -->
+      <!-- MAIN SUMMARY -->
+      <!-- ================================================= -->
+
+      <section class="summary-grid">
+
+        <article class="security-score-card">
+
+          <div class="score-heading">
+
+            <div>
+              <span class="section-label">
+                SECURITY SCORE
+              </span>
+
+              <h2>
+                Niveau de sécurité
+              </h2>
+            </div>
+
+            @if (
+              data.security.scoreReliable === false
+            ) {
+              <span class="partial-badge">
+                Score partiel
+              </span>
+            }
+
+          </div>
+
+
+          <div class="score-content">
+
+            <div class="score-number">
+
+              <strong>
+                {{
+                  data.security.score ??
+                  '—'
+                }}
+              </strong>
+
+              <span>
+                /100
+              </span>
+
+            </div>
+
+
+            <div class="score-progress">
+
+              <div>
+                <span
+                  [style.width.%]="
+                    data.security.score ?? 0
+                  "
+                ></span>
+              </div>
+
+              <small>
+                {{
+                  data.security.score === null
+                    ? 'Aucun score disponible'
+                    : 'Dernier score de sécurité'
+                }}
+              </small>
+
+            </div>
+
+          </div>
+
+        </article>
+
+
+        <article
+          class="metric-card clickable"
+          [class.disabled]="
+            !canReadFindings()
+          "
+          (click)="
+            canReadFindings()
+              ? openFindings()
+              : null
+          "
+        >
+
+          <div class="metric-icon findings-icon">
+            F
+          </div>
+
+          <div>
+
+            <span class="metric-label">
+              FINDINGS ACTIFS
+            </span>
+
+            <strong>
+              {{
+                data.security.activeFindings
+              }}
+            </strong>
+
+            <small>
+              Vulnérabilités ouvertes
+            </small>
+
+          </div>
+
+        </article>
+
+
+        <article class="metric-card">
+
+          <div class="metric-icon sync-icon">
+            S
+          </div>
+
+          <div>
+
+            <span class="metric-label">
+              SYNCHRONISATION
+            </span>
+
+            <strong class="status-value">
+              {{
+                data.repository.syncStatus
+              }}
+            </strong>
+
+            <small>
+              État actuel du repository
+            </small>
+
+          </div>
+
+        </article>
+
+
+        <article class="metric-card">
+
+          <div class="metric-icon scan-icon">
+            A
+          </div>
+
+          <div>
+
+            <span class="metric-label">
+              SCANS
+            </span>
+
+            <strong>
+              {{ scanHistory().length }}
+            </strong>
+
+            <small>
+              Analyses disponibles
+            </small>
+
+          </div>
+
+        </article>
+
+      </section>
+
+
+      <!-- ================================================= -->
+      <!-- SEVERITY -->
+      <!-- ================================================= -->
+
+
+
+    }
+
+
+<!-- ================================================= -->
+<!-- SCAN SCHEDULE -->
+<!-- ================================================= -->
+
+@if (
+  canReadScans()
+) {
+
+  <section class="content-card schedule-card">
+
+    <header class="section-heading">
+
+      <div>
+
+        <span class="section-label">
+          SCAN SCHEDULE
+        </span>
+
+        <h2>
+          Planification des scans
+        </h2>
+
+        <p>
+          Programmez les analyses automatiques
+          de ce repository.
+        </p>
+
+      </div>
+
+      @if (
+        scanSchedule()
+      ) {
+
+        <span
+          class="schedule-status"
+          [attr.data-enabled]="
+            scheduleEnabled
+          "
+        >
+          {{
+            scheduleEnabled
+              ? 'Active'
+              : 'Désactivée'
+          }}
+        </span>
+
+      }
+
+    </header>
+
+
+    @if (
+      loadingSchedule()
+    ) {
+
+      <div class="schedule-loading">
+
+        <span class="spinner"></span>
+
+        <span>
+          Chargement de la planification...
+        </span>
+
+      </div>
+
+    } @else {
+
+      @if (
+        scheduleError()
+      ) {
+
+        <div class="alert-error">
+
+          <span class="alert-symbol">
+            !
+          </span>
+
+          <span>
+            {{ scheduleError() }}
+          </span>
+
+        </div>
+
+      }
+
+      @if (
+        scheduleMessage()
+      ) {
+
+        <div class="alert-success">
+
+          {{ scheduleMessage() }}
+
+        </div>
+
+      }
+
+
+      @if (
+        !scanSchedule() &&
+        !canCreateScan()
+      ) {
+
+        <div class="history-empty">
+
+          <span class="empty-icon">
+            C
+          </span>
+
+          <div>
+
+            <strong>
+              Aucune planification
+            </strong>
+
+            <p>
+              Aucun scan automatique n’est configuré
+              pour ce repository.
+            </p>
+
+          </div>
+
+        </div>
+
+      } @else {
+
+        <div class="schedule-form">
+
+          <div class="schedule-field">
+
+            <label for="schedule-cron">
+              Expression cron
+            </label>
+
+            <input
+              id="schedule-cron"
+              type="text"
+              name="scheduleCronExpression"
+              [(ngModel)]="
+                scheduleCronExpression
+              "
+              [disabled]="
+                !canCreateScan() ||
+                savingSchedule() ||
+                deletingSchedule()
+              "
+              placeholder="0 2 * * *"
+            />
+
+            <small>
+              Exemple : 0 2 * * * exécute
+              un scan chaque jour à 02:00.
+            </small>
+
+          </div>
+
+
+          <div class="schedule-field">
+
+            <label for="schedule-timezone">
+              Fuseau horaire
+            </label>
+
+            <select
+              id="schedule-timezone"
+              name="scheduleTimezone"
+              [(ngModel)]="
+                scheduleTimezone
+              "
+              [disabled]="
+                !canCreateScan() ||
+                savingSchedule() ||
+                deletingSchedule()
+              "
+            >
+
+              <option
+                value="Africa/Casablanca"
+              >
+                Africa/Casablanca
+              </option>
+
+              <option value="UTC">
+                UTC
+              </option>
+
+              <option value="Europe/Paris">
+                Europe/Paris
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <div class="schedule-field">
+
+            <label for="schedule-mode">
+              Mode du scan
+            </label>
+
+            <select
+              id="schedule-mode"
+              name="scheduleMode"
+              [(ngModel)]="
+                scheduleMode
+              "
+              [disabled]="
+                !canCreateScan() ||
+                savingSchedule() ||
+                deletingSchedule()
+              "
+            >
+
+              <option value="FULL">
+                Scan complet
+              </option>
+
+              <option value="AUTO">
+                Automatique
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <label class="schedule-toggle">
+
+            <input
+              type="checkbox"
+              name="scheduleEnabled"
+              [(ngModel)]="
+                scheduleEnabled
+              "
+              [disabled]="
+                !canCreateScan() ||
+                savingSchedule() ||
+                deletingSchedule()
+              "
+            />
+
+            <span>
+              Activer cette planification
+            </span>
+
+          </label>
+
+
+          @if (
+            canCreateScan()
+          ) {
+
+            <div class="schedule-actions">
+
+              <button
+                type="button"
+                class="primary-button"
+                [disabled]="
+                  savingSchedule() ||
+                  deletingSchedule()
+                "
+                (click)="
+                  saveScanSchedule()
+                "
+              >
+                {{
+                  savingSchedule()
+                    ? 'Enregistrement...'
+                    : scanSchedule()
+                      ? 'Mettre à jour'
+                      : 'Créer la planification'
+                }}
+              </button>
+
+              @if (
+                scanSchedule()
+              ) {
+
+                <button
+                  type="button"
+                  class="secondary-button"
+                  [disabled]="
+                    savingSchedule() ||
+                    deletingSchedule()
+                  "
+                  (click)="
+                    deleteScanSchedule()
+                  "
+                >
+                  {{
+                    deletingSchedule()
+                      ? 'Suppression...'
+                      : 'Supprimer'
+                  }}
+                </button>
+
+              }
+
+            </div>
+
+          }
+
+        </div>
+
+      }
+
+    }
+
   </section>
+
+}
+
+
+
+    <!-- ================================================= -->
+    <!-- HISTORY -->
+    <!-- ================================================= -->
+
+    @if (canReadScans()) {
+
+      <section class="content-card history-card">
+
+        <header class="section-heading">
+
+          <div>
+
+            <span class="section-label">
+              SCAN HISTORY
+            </span>
+
+            <h2>
+              Historique des scans
+            </h2>
+
+            <p>
+              Dernières analyses exécutées
+              sur ce repository.
+            </p>
+
+          </div>
+
+          <span class="count-badge">
+            {{ scanHistory().length }}
+          </span>
+
+        </header>
+
+
+        @if (
+          scanHistory().length === 0
+        ) {
+
+          <div class="history-empty">
+
+            <span class="empty-icon">
+              S
+            </span>
+
+            <div>
+
+              <strong>
+                Aucun scan disponible
+              </strong>
+
+              <p>
+                Lancez une première analyse pour alimenter
+                l'historique de sécurité du repository.
+              </p>
+
+            </div>
+
+          </div>
+
+        } @else {
+
+          <div class="scan-table">
+
+            <div class="scan-table-header">
+
+              <span>
+                Scan
+              </span>
+
+              <span>
+                Statut
+              </span>
+
+              <span>
+                Progression
+              </span>
+
+              <span>
+                Score
+              </span>
+
+              <span>
+                Date
+              </span>
+
+            </div>
+
+
+            @for (
+              scan of scanHistory();
+              track scan.id
+            ) {
+
+              <button
+                type="button"
+                class="scan-row"
+                (click)="openScan(scan.id)"
+              >
+
+                <span class="scan-main">
+
+                  <strong>
+                    {{ scan.type }}
+                  </strong>
+
+                  <small>
+                    {{
+                      scan.trigger
+                    }}
+                  </small>
+
+                </span>
+
+
+                <span
+                  class="scan-status"
+                  [attr.data-status]="
+                    scan.status
+                  "
+                >
+                  {{
+                    scanStatusLabel(
+                      scan.status
+                    )
+                  }}
+                </span>
+
+
+                <span class="progress-cell">
+
+                  <span class="mini-progress">
+
+                    <span
+                      [style.width.%]="
+                        scan.progress
+                      "
+                    ></span>
+
+                  </span>
+
+                  <small>
+                    {{ scan.progress }}%
+                  </small>
+
+                </span>
+
+
+                <strong class="score-cell">
+                  {{
+                    scan.score ??
+                    '—'
+                  }}
+                </strong>
+
+
+                <span class="date-cell">
+                  {{
+                    scan.createdAt
+                      | date:
+                        'dd/MM/yyyy HH:mm'
+                  }}
+                </span>
+
+              </button>
+
+            }
+
+          </div>
+
+        }
+
+      </section>
+
+    }
+
+  }
 
 </section>

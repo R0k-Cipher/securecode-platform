@@ -1,6 +1,8 @@
 import {
   Component,
+  OnDestroy,
   OnInit,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -29,6 +31,14 @@ import type {
   FindingStatus,
 } from '../../models/finding.models';
 
+import {
+  AuthContextService,
+} from '../../../../core/auth/auth-context.service';
+
+import {
+  PERMISSIONS,
+} from '../../../../core/auth/auth-context.models';
+
 @Component({
   selector: 'app-findings-list',
 
@@ -56,6 +66,47 @@ export class FindingsListComponent
 
   private readonly findingsService =
     inject(FindingsService);
+
+  private readonly authContext =
+    inject(
+      AuthContextService,
+    );
+
+  readonly canReadFindings =
+  computed(
+    () =>
+      Boolean(
+        this.projectId &&
+        this.authContext.canProject(
+          this.projectId,
+          PERMISSIONS.FINDING_READ,
+        ),
+      ),
+  );
+
+  readonly canUpdateFindings =
+    computed(
+      () =>
+        Boolean(
+          this.projectId &&
+          this.authContext.canProject(
+            this.projectId,
+            PERMISSIONS.FINDING_UPDATE,
+          ),
+        ),
+    );
+
+  readonly canAssignFindings =
+    computed(
+      () =>
+        Boolean(
+          this.projectId &&
+          this.authContext.canProject(
+            this.projectId,
+            PERMISSIONS.FINDING_ASSIGN,
+          ),
+        ),
+    );
 
   readonly findings =
     signal<FindingListItem[]>([]);
@@ -116,6 +167,20 @@ export class FindingsListComponent
       !this.organizationId ||
       !this.projectId
     ) {
+      return;
+    }
+
+    if (
+      !this.canReadFindings()
+    ) {
+      this.findings.set(
+        [],
+      );
+
+      this.error.set(
+        "Vous n'avez pas la permission de consulter les findings de ce projet.",
+      );
+
       return;
     }
 
@@ -241,10 +306,19 @@ export class FindingsListComponent
     this.page += 1;
     this.load();
   }
-
+  
   open(
     finding: FindingListItem,
   ): void {
+    if (
+      !this.canReadFindings()
+    ) {
+      this.error.set(
+        "Vous n'avez pas la permission de consulter ce finding.",
+      );
+
+      return;
+    }
     void this.router.navigate([
       '/organizations',
       this.organizationId,

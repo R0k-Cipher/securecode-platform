@@ -1,12 +1,12 @@
 import {
+  Body,
   Controller,
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Query,
   UseGuards,
-  Body,
-  Patch,
 } from '@nestjs/common';
 
 import {
@@ -65,191 +65,200 @@ export class FindingsController {
       FindingsService,
   ) {}
 
-  @Get(
-    'findings',
-  )
+  /*
+  |--------------------------------------------------------------------------
+  | Liste des findings du projet
+  |--------------------------------------------------------------------------
+  */
+
+  @Get('findings')
   @RequirePermissions(
-    PERMISSION_CODES.PROJECT_READ,
+    PERMISSION_CODES.FINDING_READ,
   )
   list(
     @Param(
       'organizationId',
       ParseUUIDPipe,
     )
-    organizationId:
-      string,
+    organizationId: string,
 
     @Param(
       'projectId',
       ParseUUIDPipe,
     )
-    projectId:
-      string,
+    projectId: string,
 
     @Query()
-    query:
-      ListFindingsDto,
+    query: ListFindingsDto,
   ) {
-    return this.findingsService
-      .list(
-        organizationId,
-        projectId,
-        query,
-      );
+    return this.findingsService.list(
+      organizationId,
+      projectId,
+      query,
+    );
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Findings d'un repository précis
+  |--------------------------------------------------------------------------
+  */
 
   @Get(
     'repositories/:repositoryId/findings',
   )
   @RequirePermissions(
-    PERMISSION_CODES.PROJECT_READ,
+    PERMISSION_CODES.FINDING_READ,
   )
   listRepositoryFindings(
     @Param(
       'organizationId',
       ParseUUIDPipe,
     )
-    organizationId:
-      string,
+    organizationId: string,
 
     @Param(
       'projectId',
       ParseUUIDPipe,
     )
-    projectId:
-      string,
+    projectId: string,
 
     @Param(
       'repositoryId',
       ParseUUIDPipe,
     )
-    repositoryId:
-      string,
+    repositoryId: string,
 
     @Query()
-    query:
-      ListFindingsDto,
+    query: ListFindingsDto,
   ) {
-    return this.findingsService
-      .list(
-        organizationId,
-        projectId,
-        query,
-        repositoryId,
-      );
+    return this.findingsService.list(
+      organizationId,
+      projectId,
+      query,
+      repositoryId,
+    );
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Findings d'un scan précis
+  |--------------------------------------------------------------------------
+  */
 
   @Get(
     'scans/:scanId/findings',
   )
   @RequirePermissions(
-    PERMISSION_CODES.PROJECT_READ,
+    PERMISSION_CODES.FINDING_READ,
   )
   listScanFindings(
     @Param(
       'organizationId',
       ParseUUIDPipe,
     )
-    organizationId:
-      string,
+    organizationId: string,
 
     @Param(
       'projectId',
       ParseUUIDPipe,
     )
-    projectId:
-      string,
+    projectId: string,
 
     @Param(
       'scanId',
       ParseUUIDPipe,
     )
-    scanId:
-      string,
+    scanId: string,
 
     @Query()
-    query:
-      ListFindingsDto,
+    query: ListFindingsDto,
   ) {
-    return this.findingsService
-      .list(
-        organizationId,
-        projectId,
-        query,
-        undefined,
-        scanId,
-      );
+    return this.findingsService.list(
+      organizationId,
+      projectId,
+      query,
+      undefined,
+      scanId,
+    );
   }
 
-  @Get(
-    'findings/overview',
-  )
+  /*
+  |--------------------------------------------------------------------------
+  | Overview
+  |--------------------------------------------------------------------------
+  */
+
+  @Get('findings/overview')
   @RequirePermissions(
-    PERMISSION_CODES.PROJECT_READ,
+    PERMISSION_CODES.FINDING_READ,
   )
   overview(
     @Param(
       'organizationId',
       ParseUUIDPipe,
     )
-    organizationId:
-      string,
+    organizationId: string,
 
     @Param(
       'projectId',
       ParseUUIDPipe,
     )
-    projectId:
-      string,
+    projectId: string,
   ) {
-    return this.findingsService
-      .getOverview(
-        organizationId,
-        projectId,
-      );
+    return this.findingsService.getOverview(
+      organizationId,
+      projectId,
+    );
   }
 
-  @Get(
-    'findings/:findingId',
-  )
+  /*
+  |--------------------------------------------------------------------------
+  | Détail
+  |--------------------------------------------------------------------------
+  */
+
+  @Get('findings/:findingId')
   @RequirePermissions(
-    PERMISSION_CODES.PROJECT_READ,
+    PERMISSION_CODES.FINDING_READ,
   )
   getOne(
     @Param(
       'organizationId',
       ParseUUIDPipe,
     )
-    organizationId:
-      string,
+    organizationId: string,
 
     @Param(
       'projectId',
       ParseUUIDPipe,
     )
-    projectId:
-      string,
+    projectId: string,
 
     @Param(
       'findingId',
       ParseUUIDPipe,
     )
-    findingId:
-      string,
+    findingId: string,
   ) {
-    return this.findingsService
-      .getOne(
-        organizationId,
-        projectId,
-        findingId,
-      );
+    return this.findingsService.getOne(
+      organizationId,
+      projectId,
+      findingId,
+    );
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Modification du statut
+  |--------------------------------------------------------------------------
+  */
 
   @Patch(
     'findings/:findingId/status',
   )
   @RequirePermissions(
-    PERMISSION_CODES.PROJECT_UPDATE,
+    PERMISSION_CODES.FINDING_UPDATE,
   )
   updateStatus(
     @Param(
@@ -271,20 +280,17 @@ export class FindingsController {
     findingId: string,
 
     @Body()
-    dto:
-      UpdateFindingStatusDto,
+    dto: UpdateFindingStatusDto,
 
     @CurrentUser()
-    user:
-      AuthenticatedUser,
+    user: AuthenticatedUser,
   ) {
-    return this.findingsService
-      .updateStatus(
-        organizationId,
-        projectId,
-        findingId,
-        user.id,
-        dto,
-      );
+    return this.findingsService.updateStatus(
+      organizationId,
+      projectId,
+      findingId,
+      user.id,
+      dto,
+    );
   }
 }

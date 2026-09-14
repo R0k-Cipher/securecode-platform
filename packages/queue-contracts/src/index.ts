@@ -24,3 +24,7 @@ export type {
   SecurityScanRequestedMode,
   SecurityScanTrigger,
 } from './lib/jobs/security-scan-job';
+
+export type {
+  ScheduledScanJobData,
+} from './lib/jobs/scheduled-scan-job';

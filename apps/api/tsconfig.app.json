@@ -20,5 +20,16 @@
     "jest.config.cts",
     "src/**/*.spec.ts",
     "src/**/*.test.ts"
+  ],
+  "references": [
+    {
+      "path": "../../packages/queue-contracts"
+    },
+    {
+      "path": "../../packages/database"
+    },
+    {
+      "path": "../../packages/configuration"
+    }
   ]
 }

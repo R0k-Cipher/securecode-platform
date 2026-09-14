@@ -4,6 +4,7 @@ import {
   OnInit,
   inject,
   signal,
+  computed,
 } from '@angular/core';
 
 import {
@@ -42,6 +43,15 @@ import type {
 import {
   WorkspaceContextService,
 } from '../../../../core/context/workspace-context.service';
+
+import {
+  AuthContextService,
+} from '../../../../core/auth/auth-context.service';
+
+
+import {
+  PERMISSIONS,
+} from '../../../../core/auth/auth-context.models';
 
 @Component({
   selector:
@@ -89,6 +99,11 @@ export class ProjectListComponent
   private readonly fb =
     inject(
       FormBuilder,
+    );
+
+  private readonly authContext =
+    inject(
+      AuthContextService,
     );
 
   private readonly destroy$ =
@@ -164,6 +179,107 @@ export class ProjectListComponent
       hasPreviousPage:
         false,
     });
+
+  readonly canCreateProject =
+    computed(
+      () =>
+        this.authContext
+          .canOrganization(
+            PERMISSIONS.PROJECT_CREATE,
+          ),
+    );
+
+  canOpenProject(
+    projectId:
+      string,
+  ): boolean {
+    return this.authContext
+      .canProject(
+        projectId,
+        PERMISSIONS.PROJECT_READ,
+      );
+  }
+
+  canUpdateProject(
+    projectId:
+      string,
+  ): boolean {
+    return this.authContext
+      .canProject(
+        projectId,
+        PERMISSIONS.PROJECT_UPDATE,
+      );
+  }
+
+  canReadProjectMembers(
+    projectId:
+      string,
+  ): boolean {
+    return this.authContext
+      .canProject(
+        projectId,
+        PERMISSIONS.PROJECT_MEMBER_READ,
+      );
+  }
+
+  canArchiveProject(
+    projectId:
+      string,
+  ): boolean {
+    return this.authContext
+      .canProject(
+        projectId,
+        PERMISSIONS.PROJECT_ARCHIVE,
+      );
+  }
+
+  canRestoreProject(
+    projectId:
+      string,
+  ): boolean {
+    return this.authContext
+      .canProject(
+        projectId,
+        PERMISSIONS.PROJECT_RESTORE,
+      );
+  }
+
+  openProjectMembers(
+    project:
+      Project,
+
+    event:
+      Event,
+  ): void {
+    event.stopPropagation();
+
+    if (
+      !this.canReadProjectMembers(
+        project.id,
+      )
+    ) {
+      return;
+    }
+
+    this.router.navigate([
+      '/organizations',
+      this.organizationId,
+      'projects',
+      project.id,
+      'members',
+    ]);
+  }
+
+  canDeleteProject(
+    projectId:
+      string,
+  ): boolean {
+    return this.authContext
+      .canProject(
+        projectId,
+        PERMISSIONS.PROJECT_DELETE,
+      );
+  }
 
   readonly createForm =
     this.fb.nonNullable.group({
@@ -423,8 +539,18 @@ export class ProjectListComponent
     );
   }
 
-  openCreate():
+ openCreate():
     void {
+    if (
+      !this.canCreateProject()
+    ) {
+      this.error.set(
+        "Vous n'avez pas la permission de créer un projet.",
+      );
+
+      return;
+    }
+
     this.error.set(null);
 
     this.createForm
@@ -460,6 +586,16 @@ export class ProjectListComponent
 
   createProject():
     void {
+    if (
+      !this.canCreateProject()
+    ) {
+      this.error.set(
+        "Vous n'avez pas la permission de créer un projet.",
+      );
+
+      return;
+    }
+
     if (
       this.createForm.invalid ||
       this.creating()
@@ -499,31 +635,84 @@ export class ProjectListComponent
             undefined,
         },
       )
-      .pipe(
-        finalize(
-          () =>
-            this.creating.set(
-              false,
-            ),
-        ),
-      )
       .subscribe({
         next:
           (
             project,
           ) => {
-            this.showCreateModal
-              .set(false);
 
-            this.openProject(
-              project,
-            );
+            /*
+            |--------------------------------------------------------------------------
+            | IMPORTANT
+            |--------------------------------------------------------------------------
+            |
+            | Le backend vient de créer le ProjectMember PROJECT_ADMIN.
+            |
+            | Le contexte frontend chargé avant la création ne connaît donc pas
+            | encore ce nouveau projet.
+            |
+            | On rafraîchit le contexte AVANT openProject().
+            |--------------------------------------------------------------------------
+            */
+
+            this.authContext
+              .refresh()
+              .pipe(
+                finalize(
+                  () =>
+                    this.creating.set(
+                      false,
+                    ),
+                ),
+              )
+              .subscribe({
+                next:
+                  () => {
+                    this.showCreateModal
+                      .set(false);
+
+                    this.openProject(
+                      project,
+                    );
+                  },
+
+                error:
+                  (
+                    error,
+                  ) => {
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Le projet a bien été créé.
+                    |--------------------------------------------------------------------------
+                    |
+                    | On ne prétend surtout pas que la création a échoué.
+                    | Seul le rechargement du contexte RBAC a échoué.
+                    |--------------------------------------------------------------------------
+                    */
+
+                    this.showCreateModal
+                      .set(false);
+
+                    this.error.set(
+                      this.readError(
+                        error,
+                        'Le projet a été créé, mais le contexte des permissions n’a pas pu être actualisé. Rechargez la page.',
+                      ),
+                    );
+
+                    this.load();
+                  },
+              });
           },
 
         error:
           (
             error,
           ) => {
+            this.creating.set(
+              false,
+            );
+
             this.error.set(
               this.readError(
                 error,
@@ -542,6 +731,19 @@ export class ProjectListComponent
       Event,
   ): void {
     event.stopPropagation();
+
+    if (
+      !this.canUpdateProject(
+        project.id,
+      )
+    ) {
+      this.error.set(
+        "Vous n'avez pas la permission de modifier ce projet.",
+      );
+
+      return;
+    }
+
 
     if (
       project.status ===
@@ -600,8 +802,23 @@ export class ProjectListComponent
     const project =
       this.editingProject();
 
+    if (!project) {
+      return;
+    }
+
     if (
-      !project ||
+      !this.canUpdateProject(
+        project.id,
+      )
+    ) {
+      this.error.set(
+        "Vous n'avez pas la permission de modifier ce projet.",
+      );
+
+      return;
+    }
+
+    if (
       this.editForm.invalid ||
       this.updating()
     ) {
@@ -614,6 +831,19 @@ export class ProjectListComponent
     const value =
       this.editForm
         .getRawValue();
+
+
+
+    if (
+      !project ||
+      this.editForm.invalid ||
+      this.updating()
+    ) {
+      this.editForm
+        .markAllAsTouched();
+
+      return;
+    }
 
     this.updating.set(true);
     this.error.set(null);
@@ -698,6 +928,18 @@ export class ProjectListComponent
     event.stopPropagation();
 
     if (
+      !this.canArchiveProject(
+        project.id,
+      )
+    ) {
+      this.error.set(
+        "Vous n'avez pas la permission d'archiver ce projet.",
+      );
+
+      return;
+    }
+
+    if (
       project.status ===
       'ARCHIVED'
     ) {
@@ -763,6 +1005,18 @@ export class ProjectListComponent
   ): void {
     event.stopPropagation();
 
+      if (
+        !this.canRestoreProject(
+          project.id,
+        )
+      ) {
+        this.error.set(
+          "Vous n'avez pas la permission de restaurer ce projet.",
+        );
+
+        return;
+      }
+
     this.processing.set(
       project.id,
     );
@@ -813,6 +1067,26 @@ export class ProjectListComponent
       Event,
   ): void {
     event.stopPropagation();
+
+    if (
+      !this.canDeleteProject(
+        project.id,
+      )
+    ) {
+      this.error.set(
+        "Vous n'avez pas la permission de supprimer ce projet.",
+      );
+
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Supprimer définitivement "${project.name}" ? Cette opération est irréversible.`,
+      )
+    ) {
+      return;
+    }
 
     if (
       !window.confirm(
@@ -897,20 +1171,43 @@ export class ProjectListComponent
       return;
     }
 
-    this.workspace
-      .setProject({
-        id:
-          project.id,
+  const projectContext =
+    this.authContext
+      .getProject(
+        project.id,
+      );
 
-        name:
-          project.name,
+  if (!projectContext) {
+    this.error.set(
+      "Vous n'avez pas accès à ce projet.",
+    );
 
-        slug:
-          project.slug,
+    return;
+  }
 
-        status:
-          project.status,
-      });
+  this.workspace
+    .setProject({
+      id:
+        project.id,
+
+      name:
+        project.name,
+
+      slug:
+        project.slug,
+
+      status:
+        project.status,
+
+      roleCode:
+        projectContext.role.code,
+
+      permissions:
+        projectContext.permissions,
+
+      ownerOverride:
+        projectContext.ownerOverride,
+    });
 
     void this.router
       .navigate([

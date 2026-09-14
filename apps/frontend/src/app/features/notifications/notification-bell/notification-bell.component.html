@@ -3,9 +3,18 @@
   <button
     type="button"
     class="bell"
-    (click)="toggle()"
+    [class.active]="open()"
     aria-label="Notifications"
+    [attr.aria-expanded]="open()"
+    (click)="toggle($event)"
   >
+
+    <span class="bell-icon">
+      <span class="bell-shape">
+        N
+      </span>
+    </span>
+
     <span class="bell-label">
       Notifications
     </span>
@@ -17,99 +26,244 @@
       <span class="count">
         {{
           notifications.unread() >
-          99
+            99
             ? '99+'
             : notifications.unread()
         }}
       </span>
     }
+
   </button>
+
 
   @if (
     open()
   ) {
-    <section class="panel">
 
-      <header>
-        <div>
-          <strong>
-            Notifications
-          </strong>
+    <section
+      class="panel"
+      (click)="$event.stopPropagation()"
+    >
 
-          <small>
-            {{
-              notifications.unread()
-            }}
-            non lue(s)
-          </small>
+      <header class="panel-header">
+
+        <div class="panel-title">
+
+          <div>
+            <strong>
+              Notifications
+            </strong>
+
+            <small>
+              @if (
+                notifications.unread() >
+                0
+              ) {
+                {{
+                  notifications.unread()
+                }}
+                notification(s) non lue(s)
+              } @else {
+                Vous êtes à jour
+              }
+            </small>
+          </div>
+
         </div>
+
 
         @if (
           notifications.unread() >
           0
         ) {
+
           <button
             type="button"
             class="mark-all"
             (click)="readAll()"
           >
-            Tout lire
+            Tout marquer comme lu
           </button>
+
         }
+
       </header>
+
 
       <div class="items">
 
-        @for (
-          item of notifications.items();
-          track item.id
+        @if (
+          loading() &&
+          notifications.items().length ===
+            0
         ) {
-          <button
-            type="button"
-            class="notification"
-            [class.unread]="
-              !item.readAt
-            "
-            (click)="read(item)"
-          >
-            <span class="type">
-              {{
-                item.type
-                  .charAt(0)
-              }}
+
+          <div class="loading-state">
+
+            <span class="loader"></span>
+
+            <span>
+              Chargement...
             </span>
 
-            <span class="copy">
+          </div>
+
+        } @else {
+
+          @for (
+            item of visibleNotifications();
+            track item.id
+          ) {
+
+            <article
+              class="notification"
+              [class.unread]="!item.readAt"
+              [class.clickable]="hasNavigation(item)"
+              [attr.data-type]="item.type"
+              (click)="openItem(item)"
+            >
+
+              @if (
+                !item.readAt
+              ) {
+                <span
+                  class="unread-indicator"
+                  aria-label="Non lue"
+                ></span>
+              }
+
+
+              <span class="type">
+                {{ icon(item) }}
+              </span>
+
+
+              <div class="copy">
+
+                <div class="notification-meta">
+
+                  <span class="type-label">
+                    {{ typeLabel(item) }}
+                  </span>
+
+                  <time>
+                    {{
+                      item.createdAt
+                        | date:
+                          'dd/MM HH:mm'
+                    }}
+                  </time>
+
+                </div>
+
+
+                <strong class="notification-title">
+                  {{ item.title }}
+                </strong>
+
+
+                <p class="message">
+                  {{ item.message }}
+                </p>
+
+
+                @if (
+                  item.type ===
+                  'INVITATION'
+                ) {
+
+                  <div class="invitation-information">
+
+                    <span class="info-dot"></span>
+
+                    <span>
+                      Consultez votre invitation
+                      avant de rejoindre
+                      l'organisation.
+                    </span>
+
+                  </div>
+
+                }
+
+
+                @if (
+                  hasNavigation(item)
+                ) {
+
+                  <button
+                    type="button"
+                    class="notification-action"
+                    (click)="
+                      $event.stopPropagation();
+                      openItem(item)
+                    "
+                  >
+                    {{ actionLabel(item) }}
+
+                    <span>
+                      →
+                    </span>
+                  </button>
+
+                }
+
+              </div>
+
+            </article>
+
+          } @empty {
+
+            <div class="empty">
+
+              <span class="empty-icon">
+                ✓
+              </span>
+
               <strong>
-                {{
-                  item.title
-                }}
+                Aucune notification
               </strong>
 
-              <small class="message">
-                {{
-                  item.message
-                }}
-              </small>
+              <p>
+                Les nouvelles activités de sécurité
+                apparaîtront ici.
+              </p>
 
-              <small>
-                {{
-                  item.createdAt
-                  | date:
-                    'dd/MM HH:mm'
-                }}
-              </small>
-            </span>
-          </button>
-        } @empty {
-          <div class="empty">
-            Aucune notification.
-          </div>
+            </div>
+
+          }
+
         }
 
       </div>
 
+
+      <footer class="panel-footer">
+
+        <span>
+          {{
+            notifications.items().length
+          }}
+          notification(s)
+        </span>
+
+        <button
+          type="button"
+          class="refresh"
+          [disabled]="loading()"
+          (click)="refresh()"
+        >
+          {{
+            loading()
+              ? 'Actualisation...'
+              : 'Actualiser'
+          }}
+        </button>
+
+      </footer>
+
     </section>
+
   }
 
 </div>

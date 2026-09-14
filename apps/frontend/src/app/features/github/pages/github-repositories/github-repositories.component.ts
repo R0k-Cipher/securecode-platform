@@ -31,6 +31,7 @@ import {
 
 import type {
   GithubRepository,
+  GithubRepositoryPage,
 } from '../../models/github.models';
 
 @Component({
@@ -70,6 +71,11 @@ export class GithubRepositoriesComponent
     inject(
       GithubService,
     );
+
+  readonly installation =
+    signal<
+      GithubRepositoryPage['installation'] | null
+    >(null);
 
   private readonly destroy$ =
     new Subject<void>();
@@ -214,6 +220,11 @@ export class GithubRepositoriesComponent
               response.items,
             );
 
+            this.installation.set(
+              response.installation ??
+              null,
+            );
+
             this.totalPages =
               Math.max(
                 1,
@@ -285,12 +296,46 @@ export class GithubRepositoriesComponent
     this.loadRepositories();
   }
 
+  manageGithubInstallation():
+    void
+  {
+    const url =
+      this.installation()
+        ?.manageUrl;
+
+    if (!url) {
+      this.error.set(
+        "Impossible d'ouvrir la gestion de l'installation GitHub.",
+      );
+
+      return;
+    }
+
+    window.open(
+      url,
+      '_blank',
+      'noopener,noreferrer',
+    );
+  }
+
   importRepository(
     repository:
       GithubRepository,
   ):
     void
   {
+    if (
+      repository.imported
+    ) {
+      this.error.set(
+        repository.projectId ===
+        this.projectId
+          ? 'Ce repository est déjà importé dans ce projet.'
+          : 'Ce repository est déjà associé à un autre projet de cette organisation.',
+      );
+
+      return;
+    }
     if (
       this.importingRepositoryId() !==
       null

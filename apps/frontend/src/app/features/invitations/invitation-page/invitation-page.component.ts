@@ -22,11 +22,26 @@ import {
   ApiClientService,
 } from '../../../core/api/api-client.service';
 
-import {
-  AuthService,
-} from '../../../core/auth/auth.service';
+interface InvitationRole {
+  id: string;
+  code: string;
+  name: string;
+  scope?: string;
+}
+
+interface InvitationProject {
+  project: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+
+  role: InvitationRole;
+}
 
 interface InvitationPreview {
+  id: string;
+
   email: string;
 
   organization: {
@@ -35,11 +50,7 @@ interface InvitationPreview {
     slug: string;
   };
 
-  role: {
-    id: string;
-    code: string;
-    name: string;
-  };
+  organizationRole: InvitationRole;
 
   invitedBy: {
     id: string;
@@ -50,7 +61,15 @@ interface InvitationPreview {
 
   expiresAt: string;
 
-  existingUser: boolean;
+  login:
+    string |
+    null;
+
+  existingUser:
+    boolean;
+
+  projects:
+    InvitationProject[];
 }
 
 @Component({
@@ -88,11 +107,6 @@ export class InvitationPageComponent {
       ApiClientService,
     );
 
-  readonly auth =
-    inject(
-      AuthService,
-    );
-
   readonly token =
     this.route.snapshot
       .queryParamMap
@@ -108,14 +122,16 @@ export class InvitationPageComponent {
 
   readonly preview =
     signal<
-      InvitationPreview | null
+      InvitationPreview |
+      null
     >(
       null,
     );
 
   readonly error =
     signal<
-      string | null
+      string |
+      null
     >(
       null,
     );
@@ -131,6 +147,14 @@ export class InvitationPageComponent {
     );
 
   readonly password =
+    signal(
+      '',
+    );
+
+  readonly temporaryPassword =
+    signal('');
+
+  readonly passwordConfirmation =
     signal(
       '',
     );
@@ -169,87 +193,89 @@ export class InvitationPageComponent {
         )}`,
       )
       .subscribe({
-        next: (
-          response,
-        ) => {
-          this.preview.set(
-            response,
-          );
+        next:
+          response => {
+            this.preview.set(
+              response,
+            );
 
-          this.loading.set(
-            false,
-          );
-        },
+            /*
+             * Si le backend connaît déjà
+             * les noms de l'utilisateur,
+             * on pourra les laisser vides.
+             *
+             * Sinon l'utilisateur les renseigne.
+             */
 
-        error: (
-          error,
-        ) => {
-          this.loading.set(
-            false,
-          );
+            this.loading.set(
+              false,
+            );
+          },
 
-          this.error.set(
-            error?.error?.message ??
-            'Invitation invalide ou expirée.',
-          );
-        },
+        error:
+          error => {
+            this.loading.set(
+              false,
+            );
+
+            this.error.set(
+              error?.error?.message ??
+              'Invitation invalide ou expirée.',
+            );
+          },
       });
   }
 
-  acceptExisting():
+  activate():
     void {
-    this.submitting.set(
-      true,
-    );
+    const invitation =
+      this.preview();
 
-    this.error.set(
-      null,
-    );
+    if (
+      !invitation
+    ) {
+      return;
+    }
 
-    this.api
-      .post(
-        '/organizations/invitations/accept',
-        {
-          token:
-            this.token,
-        },
-      )
-      .subscribe({
-        next: () => {
-          this.submitting.set(
-            false,
-          );
+    const password =
+      this.password();
 
-          const organizationId =
-            this.preview()
-              ?.organization
-              .id;
+    const confirmation =
+      this.passwordConfirmation();
 
-          void this.router
-            .navigate([
-              organizationId
-                ? `/organizations/${organizationId}/projects`
-                : '/organizations',
-            ]);
-        },
+    const temporaryPassword =
+      this.temporaryPassword();
 
-        error: (
-          error,
-        ) => {
-          this.submitting.set(
-            false,
-          );
+    if (temporaryPassword.length < 12) {
+      this.error.set(
+        'Saisissez le mot de passe temporaire reçu par email.',
+      );
 
-          this.error.set(
-            error?.error?.message ??
-            'Impossible d’accepter l’invitation.',
-          );
-        },
-      });
-  }
+      return;
+    }
 
-  register():
-    void {
+    if (
+      password.length <
+      12
+    ) {
+      this.error.set(
+        'Le mot de passe doit contenir au moins 12 caractères.',
+      );
+
+      return;
+    }
+
+    if (
+      password !==
+      confirmation
+    ) {
+      this.error.set(
+        'Les mots de passe ne correspondent pas.',
+      );
+
+      return;
+    }
+
     this.submitting.set(
       true,
     );
@@ -264,40 +290,56 @@ export class InvitationPageComponent {
           this.token,
         )}/register`,
         {
+          
+          temporaryPassword,
+
           firstName:
-            this.firstName(),
+            this.firstName()
+              .trim(),
 
           lastName:
-            this.lastName(),
+            this.lastName()
+              .trim(),
 
-          password:
-            this.password(),
+          password,
         },
       )
       .subscribe({
-        next: () => {
-          this.submitting.set(
-            false,
-          );
+        next:
+          () => {
+            this.submitting.set(
+              false,
+            );
 
-          void this.router
-            .navigate([
-              '/login',
-            ]);
-        },
+            void this.router
+              .navigate(
+                [
+                  '/login',
+                ],
+                {
+                  queryParams: {
+                    activated:
+                      '1',
 
-        error: (
-          error,
-        ) => {
-          this.submitting.set(
-            false,
-          );
+                    login:
+                      invitation.login ??
+                      '',
+                  },
+                },
+              );
+          },
 
-          this.error.set(
-            error?.error?.message ??
-            'Impossible de créer le compte.',
-          );
-        },
+        error:
+          error => {
+            this.submitting.set(
+              false,
+            );
+
+            this.error.set(
+              error?.error?.message ??
+              "Impossible d'activer le compte.",
+            );
+          },
       });
   }
 }

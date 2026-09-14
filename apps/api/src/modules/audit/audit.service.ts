@@ -1,5 +1,6 @@
 import {
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 
 import {
@@ -14,8 +15,7 @@ import {
 @Injectable()
 export class AuditService {
   constructor(
-    private readonly prisma:
-      PrismaService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async create(
@@ -24,26 +24,19 @@ export class AuditService {
       projectId?: string | null;
       actorId?: string | null;
 
-      action:
-        AuditAction;
+      action: AuditAction;
 
-      resourceType:
-        string;
+      resourceType: string;
 
-      resourceId?:
-        string | null;
+      resourceId?: string | null;
 
-      description?:
-        string | null;
+      description?: string | null;
 
-      ipAddress?:
-        string | null;
+      ipAddress?: string | null;
 
-      userAgent?:
-        string | null;
+      userAgent?: string | null;
 
-      metadata?:
-        Prisma.InputJsonValue;
+      metadata?: Prisma.InputJsonValue;
     },
   ) {
     let ipAddress =
@@ -54,37 +47,26 @@ export class AuditService {
       input.userAgent ??
       null;
 
-    /*
-     * Fallback :
-     * si le controller/service ne fournit pas l'IP,
-     * on récupère les informations de la dernière session.
-     */
     if (
       input.actorId &&
-      (!ipAddress ||
-        !userAgent)
+      (!ipAddress || !userAgent)
     ) {
       const session =
-        await this.prisma.session
-          .findFirst({
-            where: {
-              userId:
-                input.actorId,
-            },
+        await this.prisma.session.findFirst({
+          where: {
+            userId: input.actorId,
+            revokedAt: null,
+          },
 
-            orderBy: {
-              createdAt:
-                'desc',
-            },
+          orderBy: {
+            createdAt: 'desc',
+          },
 
-            select: {
-              ipAddress:
-                true,
-
-              userAgent:
-                true,
-            },
-          });
+          select: {
+            ipAddress: true,
+            userAgent: true,
+          },
+        });
 
       ipAddress =
         ipAddress ??
@@ -97,44 +79,99 @@ export class AuditService {
         null;
     }
 
-    return this.prisma.auditLog
-      .create({
-        data: {
-          organizationId:
-            input.organizationId ??
-            null,
+    return this.prisma.auditLog.create({
+      data: {
+        organizationId:
+          input.organizationId ??
+          null,
 
-          projectId:
-            input.projectId ??
-            null,
+        projectId:
+          input.projectId ??
+          null,
 
-          actorId:
-            input.actorId ??
-            null,
+        actorId:
+          input.actorId ??
+          null,
 
-          action:
-            input.action,
+        action:
+          input.action,
 
-          resourceType:
-            input.resourceType,
+        resourceType:
+          input.resourceType,
 
-          resourceId:
-            input.resourceId ??
-            null,
+        resourceId:
+          input.resourceId ??
+          null,
 
-          description:
-            input.description ??
-            null,
+        description:
+          input.description ??
+          null,
 
-          ipAddress,
+        ipAddress,
 
-          userAgent,
+        userAgent,
 
-          metadata:
-            input.metadata,
-        },
-      });
+        metadata:
+          input.metadata,
+      },
+    });
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Platform logs
+  |--------------------------------------------------------------------------
+  |
+  | IMPORTANT :
+  | le Platform Admin ne doit jamais récupérer les logs internes
+  | d'une organisation cliente.
+  |
+  | Les événements plateforme sont ceux qui n'ont ni organizationId
+  | ni projectId.
+  */
+
+  getPlatformLogs(
+    options?: {
+      take?: number;
+    },
+  ) {
+    return this.prisma.auditLog.findMany({
+      where: {
+        organizationId: null,
+        projectId: null,
+      },
+
+      orderBy: {
+        createdAt: 'desc',
+      },
+
+      take:
+        this.normalizeTake(
+          options?.take,
+          500,
+          1000,
+        ),
+
+      include: {
+        actor: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Tous les logs d'une organisation
+  |--------------------------------------------------------------------------
+  |
+  | Utilisé principalement pour OWNER.
+  */
 
   getOrganizationLogs(
     organizationId: string,
@@ -142,88 +179,363 @@ export class AuditService {
       take?: number;
     },
   ) {
-    return this.prisma.auditLog
-      .findMany({
-        where: {
-          organizationId,
-        },
+    return this.prisma.auditLog.findMany({
+      where: {
+        organizationId,
+      },
 
-        orderBy: {
-          createdAt:
-            'desc',
-        },
+      orderBy: {
+        createdAt: 'desc',
+      },
 
-        take:
-          Math.min(
-            options?.take ??
-            200,
-            500,
-          ),
+      take:
+        this.normalizeTake(
+          options?.take,
+          200,
+          500,
+        ),
 
-        include: {
-          actor: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
-
-          project: {
-            select: {
-              id: true,
-              name: true,
-            },
+      include: {
+        actor: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
           },
         },
-      });
+
+        project: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
   }
 
-  getPlatformLogs(
+  /*
+  |--------------------------------------------------------------------------
+  | Audit organisation selon l'utilisateur
+  |--------------------------------------------------------------------------
+  */
+
+  async getOrganizationLogsForUser(
+    organizationId: string,
+    userId: string,
     options?: {
       take?: number;
     },
   ) {
-    return this.prisma.auditLog
-      .findMany({
-        orderBy: {
-          createdAt:
-            'desc',
+    const organization =
+      await this.prisma.organization.findUnique({
+        where: {
+          id: organizationId,
         },
 
-        take:
-          Math.min(
-            options?.take ??
-            500,
-            1000,
-          ),
+        select: {
+          id: true,
+        },
+      });
 
-        include: {
-          actor: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-            },
+    if (!organization) {
+      throw new NotFoundException(
+        'Organisation introuvable.',
+      );
+    }
+
+    const membership =
+      await this.prisma.organizationMember.findUnique({
+        where: {
+          organizationId_userId: {
+            organizationId,
+            userId,
           },
+        },
 
-          organization: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
+        select: {
+          id: true,
 
-          project: {
+          role: {
             select: {
-              id: true,
-              name: true,
+              code: true,
+              scope: true,
             },
           },
         },
       });
+
+    if (!membership) {
+      return [];
+    }
+
+    if (
+      membership.role.scope !==
+      'ORGANIZATION'
+    ) {
+      return [];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | OWNER
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+      membership.role.code ===
+      'OWNER'
+    ) {
+      return this.getOrganizationLogs(
+        organizationId,
+        options,
+      );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | ADMIN / autres membres disposant de audit-log:read
+    |--------------------------------------------------------------------------
+    |
+    | Le PermissionsGuard vérifie déjà la permission.
+    |
+    | Ici on limite les données visibles :
+    | - logs organisationnels ;
+    | - logs des projets auxquels l'utilisateur appartient.
+    */
+
+    const projectMemberships =
+      await this.prisma.projectMember.findMany({
+        where: {
+          userId,
+
+          project: {
+            organizationId,
+          },
+        },
+
+        select: {
+          projectId: true,
+        },
+      });
+
+    const projectIds =
+      projectMemberships.map(
+        membership =>
+          membership.projectId,
+      );
+
+    return this.prisma.auditLog.findMany({
+      where: {
+        organizationId,
+
+        OR: [
+          {
+            projectId: null,
+          },
+
+          ...(projectIds.length > 0
+            ? [
+                {
+                  projectId: {
+                    in: projectIds,
+                  },
+                },
+              ]
+            : []),
+        ],
+      },
+
+      orderBy: {
+        createdAt: 'desc',
+      },
+
+      take:
+        this.normalizeTake(
+          options?.take,
+          200,
+          500,
+        ),
+
+      include: {
+        actor: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+
+        project: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Audit d'un projet
+  |--------------------------------------------------------------------------
+  */
+
+  async getProjectLogsForUser(
+    organizationId: string,
+    projectId: string,
+    userId: string,
+    options?: {
+      take?: number;
+    },
+  ) {
+    const project =
+      await this.prisma.project.findFirst({
+        where: {
+          id: projectId,
+          organizationId,
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+    if (!project) {
+      throw new NotFoundException(
+        'Projet introuvable.',
+      );
+    }
+
+    const organizationMembership =
+      await this.prisma.organizationMember.findUnique({
+        where: {
+          organizationId_userId: {
+            organizationId,
+            userId,
+          },
+        },
+
+        select: {
+          id: true,
+
+          role: {
+            select: {
+              code: true,
+              scope: true,
+            },
+          },
+        },
+      });
+
+    if (!organizationMembership) {
+      return [];
+    }
+
+    if (
+      organizationMembership.role.scope !==
+      'ORGANIZATION'
+    ) {
+      return [];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | OWNER bypass
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+      organizationMembership.role.code !==
+      'OWNER'
+    ) {
+      const projectMembership =
+        await this.prisma.projectMember.findUnique({
+          where: {
+            projectId_userId: {
+              projectId,
+              userId,
+            },
+          },
+
+          select: {
+            id: true,
+
+            role: {
+              select: {
+                scope: true,
+              },
+            },
+          },
+        });
+
+      if (
+        !projectMembership ||
+        projectMembership.role.scope !==
+          'PROJECT'
+      ) {
+        return [];
+      }
+    }
+
+    return this.prisma.auditLog.findMany({
+      where: {
+        organizationId,
+        projectId,
+      },
+
+      orderBy: {
+        createdAt: 'desc',
+      },
+
+      take:
+        this.normalizeTake(
+          options?.take,
+          200,
+          500,
+        ),
+
+      include: {
+        actor: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+
+        project: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  private normalizeTake(
+    value: number | undefined,
+    defaultValue: number,
+    maximum: number,
+  ): number {
+    if (
+      value === undefined ||
+      !Number.isFinite(value)
+    ) {
+      return defaultValue;
+    }
+
+    return Math.min(
+      Math.max(
+        Math.trunc(value),
+        1,
+      ),
+      maximum,
+    );
   }
 }

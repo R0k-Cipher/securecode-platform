@@ -8,6 +8,7 @@ import {
 } from '../../core/api/api-client.service';
 
 import type {
+  CreatePlatformOrganizationPayload,
   PlatformAdminSummary,
   PlatformAuditLog,
   PlatformOrganization,
@@ -17,6 +18,7 @@ import type {
   PlatformSystemStatus,
   PlatformUser,
   PlatformUserStatus,
+
 } from './platform-admin.models';
 
 @Injectable({
@@ -28,11 +30,16 @@ export class PlatformAdminService {
       ApiClientService,
     );
 
-  dashboard() {
+  dashboard() {   
     return this.api.get<{
-      summary: PlatformAdminSummary;
-      latestUsers: PlatformUser[];
-      latestScans: PlatformScan[];
+      summary:
+        PlatformAdminSummary;
+
+      latestUsers:
+        PlatformUser[];
+
+      latestAuditLogs:
+        PlatformAuditLog[];
     }>(
       '/platform-admin/dashboard',
     );
@@ -107,6 +114,18 @@ export class PlatformAdminService {
       {
         platformRole,
       },
+    );
+  }
+
+  createOrganization(
+    payload:
+      CreatePlatformOrganizationPayload,
+  ) {
+    return this.api.post<
+      PlatformOrganization
+    >(
+      '/organizations',
+      payload,
     );
   }
 }

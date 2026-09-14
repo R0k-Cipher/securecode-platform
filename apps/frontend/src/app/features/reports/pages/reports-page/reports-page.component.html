@@ -1,188 +1,704 @@
 <section class="reports-page">
 
   <header class="page-header">
+    <div class="header-content">
+      <div class="eyebrow-row">
+        <span class="eyebrow">
+          SECURITY REPORTING
+        </span>
 
-    <div>
-      <span class="eyebrow">
-        REPORTING
-      </span>
+        <span class="live-indicator">
+          <span class="live-dot"></span>
+          REPORTING CENTER
+        </span>
+      </div>
 
       <h1>
         Rapports de sécurité
       </h1>
 
       <p>
-        Génération et historique des rapports du projet.
-        Le format PDF s'ouvre dans le dialogue d'impression
-        afin d'être enregistré directement en PDF.
+        Centralisez, consultez et exportez les rapports de sécurité
+        générés pour vos scans et repositories. Chaque rapport conserve
+        les informations nécessaires à la traçabilité et à l'audit.
       </p>
     </div>
 
-    <div class="actions">
-      <button
-        type="button"
-        class="primary"
-        [disabled]="creating() !== null"
-        (click)="create('PDF')"
-      >
-        {{
-          creating() === 'PDF'
-            ? 'Génération...'
-            : 'Nouveau rapport PDF'
-        }}
-      </button>
+    <div class="header-actions">
+
+      @if (canExportReports()) {
+        <button
+          type="button"
+          class="primary-report-button"
+          (click)="openCustomReport()"
+        >
+          Générer un rapport personnalisé
+        </button>
+      }
 
       <button
         type="button"
-        [disabled]="creating() !== null"
-        (click)="create('JSON')"
+        class="refresh-button"
+        [disabled]="loading()"
+        (click)="load()"
       >
-        JSON
+
+
+    @if (loadError()) {
+
+      <div class="state error-state">
+
+        <div class="error-state-icon">
+          !
+        </div>
+
+        <strong>
+          Impossible de charger les rapports
+        </strong>
+
+        <span>
+          {{ loadError() }}
+        </span>
+
+        <button
+          type="button"
+          class="refresh-button"
+          (click)="load()"
+        >
+          Réessayer
+        </button>
+
+      </div>
+
+    } @else if (loading()) {
+          Actualisation...
+        } @else {
+          ↻ Actualiser
+        }
       </button>
 
-      <button
-        type="button"
-        [disabled]="creating() !== null"
-        (click)="create('HTML')"
-      >
-        HTML
-      </button>
     </div>
-
   </header>
 
-  <section class="card">
+  <section class="audit-banner">
+    <div class="audit-icon">
+      ✓
+    </div>
 
-    <div class="card-header">
-      <div>
+    <div>
+      <strong>
+        Traçabilité des exports
+      </strong>
+
+      <span>
+        Les rapports générés et téléchargés sont associés à une activité
+        d'audit et peuvent inclure une empreinte d'intégrité SHA-256.
+      </span>
+    </div>
+  </section>
+
+  <section class="statistics-grid">
+
+    <article class="stat-card">
+      <div class="stat-icon">
+        ▤
+      </div>
+
+      <div class="stat-content">
+        <span>
+          Total
+        </span>
+
         <strong>
-          Historique
+          {{ totalReports() }}
         </strong>
 
         <small>
-          {{
-            reports().length
-          }}
-          rapport(s)
+          Tous les rapports
         </small>
       </div>
+    </article>
 
-      <button
-        type="button"
-        (click)="load()"
-      >
-        Actualiser
-      </button>
+    <article class="stat-card ready">
+      <div class="stat-icon">
+        ✓
+      </div>
+
+      <div class="stat-content">
+        <span>
+          Disponibles
+        </span>
+
+        <strong>
+          {{ readyReports() }}
+        </strong>
+
+        <small>
+          Prêts au téléchargement
+        </small>
+      </div>
+    </article>
+
+    <article class="stat-card processing">
+      <div class="stat-icon">
+        ◌
+      </div>
+
+      <div class="stat-content">
+        <span>
+          En génération
+        </span>
+
+        <strong>
+          {{ processingReports() }}
+        </strong>
+
+        <small>
+          Traitement en cours
+        </small>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon">
+        S
+      </div>
+
+      <div class="stat-content">
+        <span>
+          Scan
+        </span>
+
+        <strong>
+          {{ scanReports() }}
+        </strong>
+
+        <small>
+          Rapport d'un scan précis
+        </small>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon">
+        R
+      </div>
+
+      <div class="stat-content">
+        <span>
+          Repository
+        </span>
+
+        <strong>
+          {{ repositoryReports() }}
+        </strong>
+
+        <small>
+          Synthèse repository
+        </small>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon">
+        P
+      </div>
+
+      <div class="stat-content">
+        <span>
+          Projet
+        </span>
+
+        <strong>
+          {{ projectReports() }}
+        </strong>
+
+        <small>
+          Consolidation du projet
+        </small>
+      </div>
+    </article>
+
+  </section>
+  @if (latestReport()) {
+
+    <section class="latest-report">
+
+      <div class="latest-main">
+        <span class="section-label">
+          DERNIER RAPPORT
+        </span>
+
+        <strong>
+          {{ latestReport()!.name }}
+        </strong>
+
+        <span class="latest-meta">
+          Créé le
+          {{
+            latestReport()!.createdAt
+              | date:'dd MMMM yyyy à HH:mm'
+          }}
+        </span>
+      </div>
+
+      <div class="latest-status">
+        <span
+          class="status-badge"
+          [class.ready]="latestReport()!.status === 'READY'"
+          [class.failed]="latestReport()!.status === 'FAILED'"
+        >
+          <span class="status-dot"></span>
+
+          {{ statusLabel(latestReport()!.status) }}
+        </span>
+      </div>
+
+      @if (canExportReports()) {
+        <button
+          type="button"
+          class="download-main"
+          [disabled]="
+            latestReport()!.status !== 'READY' ||
+            downloadingId() === latestReport()!.id
+          "
+          (click)="open(latestReport()!)"
+        >
+          @if (
+            downloadingId() === latestReport()!.id
+          ) {
+            Préparation...
+          } @else {
+            Télécharger
+          }
+        </button>
+      }
+
+    </section>
+
+  }
+
+  <section class="reports-card">
+
+    <div class="card-header">
+      <div>
+        <span class="section-label">
+          REPORT REGISTRY
+        </span>
+
+        <h2>
+          Historique des rapports
+        </h2>
+
+        <p>
+          Registre des rapports de sécurité disponibles pour ce projet.
+        </p>
+      </div>
+
+      <div class="reports-count">
+        {{ reports().length }}
+
+        <span>
+          rapports
+        </span>
+      </div>
     </div>
 
-    @if (
-      loading()
-    ) {
-      <div class="state">
-        Chargement...
+    @if (loadError()) {
+
+      <div class="state error-state">
+
+        <div class="error-state-icon">
+          !
+        </div>
+
+        <strong>
+          Impossible de charger les rapports
+        </strong>
+
+        <span>
+          {{ loadError() }}
+        </span>
+
+        <button
+          type="button"
+          class="refresh-button"
+          (click)="load()"
+        >
+          Réessayer
+        </button>
+
       </div>
-    } @else if (
-      !reports().length
-    ) {
+
+    } @else if (loading()) {
+
       <div class="state">
-        Aucun rapport généré.
+        <div class="loader"></div>
+
+        <strong>
+          Chargement des rapports
+        </strong>
+
+        <span>
+          Récupération de l'historique de reporting...
+        </span>
       </div>
+
+    } @else if (!reports().length) {
+
+      <div class="state empty">
+        <div class="empty-icon">
+          ▤
+        </div>
+
+        <strong>
+          Aucun rapport disponible
+        </strong>
+
+        <span>
+          Les rapports générés pour le projet apparaîtront ici.
+        </span>
+      </div>
+
     } @else {
 
       <div class="table-wrap">
+
         <table>
+
           <thead>
             <tr>
               <th>Rapport</th>
+              <th>Périmètre</th>
+              <th>Scan / Score</th>
               <th>Format</th>
               <th>Statut</th>
+              <th>Traçabilité</th>
               <th>Généré par</th>
               <th>Date</th>
-              <th></th>
+
+              @if (canExportReports()) {
+                <th></th>
+              }
             </tr>
           </thead>
 
           <tbody>
+
             @for (
               report of reports();
               track report.id
             ) {
-              <tr>
-                <td>
-                  <strong>
-                    {{ report.name }}
-                  </strong>
 
-                  <small>
-                    {{
-                      report.scanId
-                        ? 'Scan ' +
-                          report.scanId.slice(
-                            0,
-                            8
-                          )
-                        : 'Projet'
-                    }}
-                  </small>
+              <tr>
+
+                <td class="report-cell">
+                  <div class="report-icon">
+                    {{ report.format }}
+                  </div>
+
+                  <div>
+                    <strong>
+                      {{ report.name }}
+                    </strong>
+
+                    <small>
+                      ID :
+                      {{ report.id.slice(0, 8) }}
+                    </small>
+                  </div>
                 </td>
 
                 <td>
-                  <span class="badge">
-                    {{ report.format }}
+
+                  <div class="scope-info">
+
+                    <span
+                      class="scope-badge"
+                      [attr.data-scope]="scope(report)"
+                    >
+                      {{ scopeLabel(report) }}
+                    </span>
+
+                    <small>
+                      {{ scopeDescription(report) }}
+                    </small>
+
+                  </div>
+
+                </td>
+
+                <td>
+                  @if (report.scan) {
+
+                    <div class="scan-info">
+                      <strong>
+                        {{ report.scan.status }}
+                      </strong>
+
+                      @if (
+                        report.scan.score !== null
+                      ) {
+                        <small>
+                          Score :
+                          {{ report.scan.score }}
+                        </small>
+                      }
+                    </div>
+
+                  } @else {
+
+                    <span class="muted">
+                      Rapport global
+                    </span>
+
+                  }
+                </td>
+
+                <td>
+                  <span class="format-badge">
+                    {{ formatLabel(report.format) }}
                   </span>
                 </td>
 
                 <td>
                   <span
-                    class="badge"
-                    [class.ready]="
-                      report.status ===
-                      'READY'
-                    "
+                    class="status-badge"
+                    [class.ready]="report.status === 'READY'"
+                    [class.failed]="report.status === 'FAILED'"
                   >
-                    {{ report.status }}
+                    <span class="status-dot"></span>
+
+                    {{ statusLabel(report.status) }}
                   </span>
                 </td>
 
                 <td>
-                  {{
-                    report.requestedBy.email
-                  }}
+                  <div class="audit-info">
+                    <strong>
+                      {{ fileSize(report.fileSize) }}
+                    </strong>
+
+                    @if (report.checksum) {
+                      <small
+                        [title]="report.checksum"
+                      >
+                        SHA-256
+                        {{ report.checksum.slice(0, 12) }}...
+                      </small>
+                    } @else {
+                      <small>
+                        Empreinte non calculée
+                      </small>
+                    }
+                  </div>
                 </td>
 
                 <td>
-                  {{
-                    report.generatedAt
-                      | date:
-                        'dd/MM/yyyy HH:mm'
-                  }}
+                  <div class="user-info">
+                    <strong>
+                      {{ userName(report) }}
+                    </strong>
+
+                    <small>
+                      {{ report.requestedBy.email }}
+                    </small>
+                  </div>
                 </td>
 
                 <td>
-                  <button
-                    type="button"
-                    [disabled]="
-                      report.status !==
-                      'READY'
-                    "
-                    (click)="open(report)"
-                  >
-                    {{
-                      report.format ===
-                      'PDF'
-                        ? 'Ouvrir / PDF'
-                        : 'Télécharger'
-                    }}
-                  </button>
+                  <div class="date-info">
+                    <strong>
+                      {{
+                        report.createdAt
+                          | date:'dd/MM/yyyy'
+                      }}
+                    </strong>
+
+                    <small>
+                      {{
+                        report.createdAt
+                          | date:'HH:mm'
+                      }}
+                    </small>
+                  </div>
                 </td>
+
+                @if (canExportReports()) {
+                  <td class="action-cell">
+                    <button
+                      type="button"
+                      class="download-button"
+                      [disabled]="
+                        report.status !== 'READY' ||
+                        downloadingId() === report.id
+                      "
+                      (click)="open(report)"
+                    >
+                      @if (
+                        downloadingId() === report.id
+                      ) {
+                        ...
+                      } @else {
+                        Télécharger
+                      }
+                    </button>
+                  </td>
+                }
+
               </tr>
+
             }
+
           </tbody>
         </table>
+
       </div>
 
     }
 
   </section>
+
+  @if (
+    customReportOpen() &&
+    canExportReports()
+  ) {
+
+    <div
+      class="report-modal-backdrop"
+      (click)="closeCustomReport()"
+    >
+
+      <section
+        class="report-modal"
+        role="dialog"
+        aria-modal="true"
+        (click)="$event.stopPropagation()"
+      >
+
+        <div class="modal-header">
+          <div>
+            <span class="section-label">
+              RAPPORT PERSONNALISÉ
+            </span>
+
+            <h2>
+              Rapport du projet
+            </h2>
+
+            <p>
+              Sélectionnez une période et le format du rapport.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="modal-close"
+            (click)="closeCustomReport()"
+          >
+            Fermer
+          </button>
+        </div>
+
+        @if (customReportError()) {
+          <div class="modal-error">
+            {{ customReportError() }}
+          </div>
+        }
+
+        <div class="report-form">
+
+          <label>
+            <span>
+              Du
+            </span>
+
+            <input
+              type="date"
+              [value]="customFromDate()"
+              (input)="
+                customFromDate.set(
+                  $any($event.target).value
+                )
+              "
+            >
+          </label>
+
+          <label>
+            <span>
+              Au
+            </span>
+
+            <input
+              type="date"
+              [value]="customToDate()"
+              (input)="
+                customToDate.set(
+                  $any($event.target).value
+                )
+              "
+            >
+          </label>
+
+          <label>
+            <span>
+              Format
+            </span>
+
+            <select
+              [value]="customFormat()"
+              (change)="
+                customFormat.set(
+                  $any($event.target).value
+                )
+              "
+            >
+              <option value="PDF">
+                PDF
+              </option>
+
+              <option value="HTML">
+                HTML
+              </option>
+
+              <option value="JSON">
+                JSON
+              </option>
+            </select>
+          </label>
+
+        </div>
+
+        <div class="modal-footer">
+
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="generatingCustomReport()"
+            (click)="closeCustomReport()"
+          >
+            Annuler
+          </button>
+
+          <button
+            type="button"
+            class="primary-report-button"
+            [disabled]="generatingCustomReport()"
+            (click)="generateCustomReport()"
+          >
+            {{
+              generatingCustomReport()
+                ? 'Génération...'
+                : 'Générer le rapport'
+            }}
+          </button>
+
+        </div>
+
+      </section>
+
+    </div>
+
+  }
 
 </section>

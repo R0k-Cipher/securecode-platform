@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 
 import {
+  ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
 
@@ -27,29 +28,32 @@ export class InvitationsController {
   ) {}
 
   @Get(':token')
+  @ApiOperation({
+    summary:
+      'Prévisualiser une invitation valide',
+  })
   preview(
     @Param('token')
     token: string,
   ) {
-    return this.invitations
-      .preview(
-        token,
-      );
+    return this.invitations.preview(token);
   }
 
   @Post(':token/register')
+  @ApiOperation({
+    summary:
+      'Accepter une invitation et activer l’identité organisation',
+  })
   register(
     @Param('token')
     token: string,
 
     @Body()
-    dto:
-      RegisterInvitedUserDto,
+    dto: RegisterInvitedUserDto,
   ) {
-    return this.invitations
-      .registerInvitedUser(
-        token,
-        dto,
-      );
+    return this.invitations.registerInvitedUser(
+      token,
+      dto,
+    );
   }
 }

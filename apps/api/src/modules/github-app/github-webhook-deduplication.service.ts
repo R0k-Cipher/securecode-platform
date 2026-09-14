@@ -1,46 +1,40 @@
-import {
-  Injectable,
-} from '@nestjs/common';
-
+import { Injectable } from '@nestjs/common';
 import {
   GitProvider,
+  WebhookEventStatus,
 } from '@prisma/client';
 
-import {
-  PrismaService,
-} from '@securecode-platform/database';
+import { PrismaService } from '@securecode-platform/database';
 
 @Injectable()
 export class GithubWebhookDeduplicationService {
   constructor(
-    private readonly prisma:
-      PrismaService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async alreadyProcessed(
-    deliveryId:
-      string,
+    deliveryId: string,
   ): Promise<boolean> {
-    const existing =
-      await this.prisma
-        .webhookEvent
-        .findFirst({
-          where: {
-            provider:
-              GitProvider.GITHUB,
+    const existing = await this.prisma.webhookEvent.findUnique({
+      where: {
+        provider_deliveryId: {
+          provider: GitProvider.GITHUB,
+          deliveryId,
+        },
+      },
+      select: {
+        status: true,
+      },
+    });
 
-            eventId:
-              deliveryId,
-          },
+    if (!existing) {
+      return false;
+    }
 
-          select: {
-            id:
-              true,
-          },
-        });
-
-    return Boolean(
-      existing,
+    return (
+      existing.status === WebhookEventStatus.PROCESSED ||
+      existing.status === WebhookEventStatus.IGNORED ||
+      existing.status === WebhookEventStatus.PROCESSING
     );
   }
 }

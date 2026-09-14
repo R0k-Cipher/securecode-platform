@@ -20,12 +20,12 @@ export type RepositorySyncEventType =
 
 export interface RepositorySyncJobData {
   /*
-   * Isolation multi-tenant
+   * Isolation multi-tenant.
    */
   organizationId: string;
 
   /*
-   * Identifiants internes SecureCode-AI
+   * Identifiants internes SecureCode.
    */
   projectId: string;
   repositoryId: string;
@@ -33,42 +33,40 @@ export interface RepositorySyncJobData {
   gitConnectionId: string;
 
   /*
-   * Provider
+   * Provider.
    */
   provider: GitProviderJob;
 
   /*
-   * Repository distant
+   * Repository distant.
    */
   repositoryExternalId: string;
   repositoryFullName: string;
 
   /*
-   * Révision ciblée
+   * Révision ciblée.
    */
   branch: string | null;
   commitSha: string | null;
 
   /*
-   * Origine de l'opération
+   * Origine de la synchronisation.
    */
   trigger: RepositorySyncTriggerJob;
   eventType: RepositorySyncEventType;
 
   /*
-   * Identifiant du webhook / événement externe,
-   * lorsqu'il existe.
+   * Identifiant webhook éventuel.
    */
   eventId: string | null;
 
   /*
-   * null lorsque l'opération est déclenchée
-   * automatiquement.
+   * null pour les opérations automatiques.
    */
   triggeredById: string | null;
 
   /*
-   * Observabilité
+   * Observabilité.
    */
   requestedAt: string;
   correlationId: string;

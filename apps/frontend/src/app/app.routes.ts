@@ -10,494 +10,778 @@ import {
   platformAdminGuard,
 } from './core/auth/platform-admin.guard';
 
+import {
+  permissionGuard,
+} from './core/auth/permission.guard';
+
+import {
+  PERMISSIONS,
+} from './core/auth/auth-context.models';
+
 export const routes:
   Routes = [
-  {
-    path:
-      'login',
+    {
+      path:
+        'login',
 
-    loadComponent:
-      () =>
-        import(
-          './features/auth/pages/login/login.component'
-        )
-          .then(
-            (
-              module,
-            ) =>
-              module
-                .LoginComponent,
-          ),
-  },
+      loadComponent:
+        () =>
+          import(
+            './features/auth/pages/login/login.component'
+          )
+            .then(
+              (
+                module,
+              ) =>
+                module
+                  .LoginComponent,
+            ),
+    },
 
-  {
-    path:
-      'register',
+    {
+      path:
+        'github/callback',
 
-    loadComponent:
-      () =>
-        import(
-          './features/auth/pages/register/register.component'
-        )
-          .then(
-            (
-              module,
-            ) =>
-              module
-                .RegisterComponent,
-          ),
-  },
+      canActivate: [
+        authGuard,
+      ],
 
-  {
-    path:
-      'github/callback',
+      loadComponent:
+        () =>
+          import(
+            './features/github/pages/github-callback/github-callback.component'
+          )
+            .then(
+              (
+                module,
+              ) =>
+                module
+                  .GithubCallbackComponent,
+            ),
+    },
 
-    canActivate: [
-      authGuard,
-    ],
+    {
+      path:
+        '',
 
-    loadComponent:
-      () =>
-        import(
-          './features/github/pages/github-callback/github-callback.component'
-        )
-          .then(
-            (
-              module,
-            ) =>
-              module
-                .GithubCallbackComponent,
-          ),
-  },
+      canActivate: [
+        authGuard,
+      ],
 
-  {
-    path:
-      '',
+      loadComponent:
+        () =>
+          import(
+            './layouts/app-layout/app-layout.component'
+          )
+            .then(
+              (
+                module,
+              ) =>
+                module
+                  .AppLayoutComponent,
+            ),
 
-    canActivate: [
-      authGuard,
-    ],
+      children: [
+        {
+          path:
+            '',
 
-    loadComponent:
-      () =>
-        import(
-          './layouts/app-layout/app-layout.component'
-        )
-          .then(
-            (
-              module,
-            ) =>
-              module
-                .AppLayoutComponent,
-          ),
+          pathMatch:
+            'full',
 
-    children: [
-      {
-        path:
-          '',
+          redirectTo:
+            'organizations',
+        },
 
-        pathMatch:
-          'full',
+        /*
+        |--------------------------------------------------------------------------
+        | Organizations
+        |--------------------------------------------------------------------------
+        */
 
-        redirectTo:
-          'organizations',
-      },
+        {
+          path:
+            'organizations',
 
-      {
-        path:
-          'organizations',
+          canActivate: [
+            permissionGuard,
+          ],
 
-        loadComponent:
-          () =>
-            import(
-              './features/organizations/pages/organization-list/organization-list.component'
-            )
-              .then(
-                (
-                  module,
-                ) =>
-                  module
-                    .OrganizationListComponent,
-              ),
-      },
+          data: {
+            permission:
+              PERMISSIONS.ORGANIZATION_READ,
 
-      {
-        path:
-          'organizations/:organizationId/members',
-
-        loadComponent:
-          () =>
-            import(
-              './features/organizations/pages/organization-members/organization-members.component'
-            )
-              .then(
-                (
-                  module,
-                ) =>
-                  module
-                    .OrganizationMembersComponent,
-              ),
-      },
-
-      {
-        path:
-          'organizations/:organizationId/projects',
-
-        loadComponent:
-          () =>
-            import(
-              './features/projects/pages/project-list/project-list.component'
-            )
-              .then(
-                (
-                  module,
-                ) =>
-                  module
-                    .ProjectListComponent,
-              ),
-      },
-
-      {
-        path:
-          'organizations/:organizationId/projects/:projectId/dashboard',
-
-        loadComponent:
-          () =>
-            import(
-              './features/dashboard/pages/security-dashboard/security-dashboard.component'
-            )
-              .then(
-                (
-                  module,
-                ) =>
-                  module
-                    .SecurityDashboardComponent,
-              ),
-      },
-
-      {
-        path:
-          'organizations/:organizationId/projects/:projectId/repositories',
-
-        loadComponent:
-          () =>
-            import(
-              './features/repositories/pages/repository-list/repository-list.component'
-            )
-              .then(
-                (
-                  module,
-                ) =>
-                  module
-                    .RepositoryListComponent,
-              ),
-      },
-
-      {
-        path:
-          'organizations/:organizationId/projects/:projectId/repositories/:repositoryId',
-
-        loadComponent:
-          () =>
-            import(
-              './features/repositories/pages/repository-detail/repository-detail.component'
-            )
-              .then(
-                (
-                  module,
-                ) =>
-                  module
-                    .RepositoryDetailComponent,
-              ),
-      },
-
-      {
-        path:
-          'organizations/:organizationId/projects/:projectId/github',
-
-        loadComponent:
-          () =>
-            import(
-              './features/github/pages/github-repositories/github-repositories.component'
-            )
-              .then(
-                (
-                  module,
-                ) =>
-                  module
-                    .GithubRepositoriesComponent,
-              ),
-      },
-
-      {
-        path:
-          'organizations/:organizationId/projects/:projectId/scans',
-
-        loadComponent:
-          () =>
-            import(
-              './features/scans/pages/scan-list/scan-list.component'
-            )
-              .then(
-                (
-                  module,
-                ) =>
-                  module
-                    .ScanListComponent,
-              ),
-      },
-
-      {
-        path:
-          'organizations/:organizationId/projects/:projectId/scans/:scanId',
-
-        loadComponent:
-          () =>
-            import(
-              './features/scans/pages/scan-detail/scan-detail.component'
-            )
-              .then(
-                (
-                  module,
-                ) =>
-                  module
-                    .ScanDetailComponent,
-              ),
-      },
-
-      {
-        path:
-          'organizations/:organizationId/projects/:projectId/findings',
-
-        loadComponent:
-          () =>
-            import(
-              './features/findings/pages/findings-list/findings-list.component'
-            )
-              .then(
-                (
-                  module,
-                ) =>
-                  module
-                    .FindingsListComponent,
-              ),
-      },
-
-      {
-        path:
-          'organizations/:organizationId/projects/:projectId/findings/:findingId',
-
-        loadComponent:
-          () =>
-            import(
-              './features/findings/pages/finding-detail/finding-detail.component'
-            )
-              .then(
-                (
-                  module,
-                ) =>
-                  module
-                    .FindingDetailComponent,
-              ),
-      },
-
-      {
-        path:
-          'organizations/:organizationId/projects/:projectId/reports',
-
-        loadComponent:
-          () =>
-            import(
-              './features/reports/pages/reports-page/reports-page.component'
-            )
-              .then(
-                (
-                  module,
-                ) =>
-                  module
-                    .ReportsPageComponent,
-              ),
-      },
-
-      {
-        path:
-          'platform-admin',
-
-        canActivate: [
-          platformAdminGuard,
-        ],
-
-        children: [
-          {
-            path:
-              '',
-
-            loadComponent:
-              () =>
-                import(
-                  './features/platform-admin/pages/admin-dashboard/admin-dashboard.component'
-                )
-                  .then(
-                    (
-                      module,
-                    ) =>
-                      module
-                        .AdminDashboardComponent,
-                  ),
+            permissionScope:
+              'ORGANIZATION',
           },
 
-          {
-            path:
-              'users',
+          loadComponent:
+            () =>
+              import(
+                './features/organizations/pages/organization-list/organization-list.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .OrganizationListComponent,
+                ),
+        },
 
-            loadComponent:
-              () =>
-                import(
-                  './features/platform-admin/pages/admin-users/admin-users.component'
-                )
-                  .then(
-                    (
-                      module,
-                    ) =>
-                      module
-                        .AdminUsersComponent,
-                  ),
+        {
+          path:
+            'organizations/:organizationId/dashboard',
+
+          canActivate: [
+            permissionGuard,
+          ],
+
+          data: {
+            permission:
+              PERMISSIONS.ORGANIZATION_READ,
+
+            permissionScope:
+              'ORGANIZATION',
+
+            organizationRoles: [
+              'OWNER',
+              'ADMIN',
+            ],
           },
 
-          {
-            path:
-              'organizations',
+          loadComponent:
+            () =>
+              import(
+                './features/organizations/pages/organization-dashboard/organization-dashboard.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .OrganizationDashboardComponent,
+                ),
+        },
 
-            loadComponent:
-              () =>
-                import(
-                  './features/platform-admin/pages/admin-organizations/admin-organizations.component'
-                )
-                  .then(
-                    (
-                      module,
-                    ) =>
-                      module
-                        .AdminOrganizationsComponent,
-                  ),
+        /*
+        |--------------------------------------------------------------------------
+        | Organization Members
+        |--------------------------------------------------------------------------
+        */
+
+        {
+          path:
+            'organizations/:organizationId/members',
+
+          canActivate: [
+            permissionGuard,
+          ],
+
+          data: {
+            permission:
+              PERMISSIONS.MEMBER_READ,
+
+            permissionScope:
+              'ORGANIZATION',
           },
 
-          {
-            path:
-              'projects',
+          loadComponent:
+            () =>
+              import(
+                './features/organizations/pages/organization-members/organization-members.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .OrganizationMembersComponent,
+                ),
+        },
 
-            loadComponent:
-              () =>
-                import(
-                  './features/platform-admin/pages/admin-projects/admin-projects.component'
-                )
-                  .then(
-                    (
-                      module,
-                    ) =>
-                      module
-                        .AdminProjectsComponent,
-                  ),
+        /*
+        |--------------------------------------------------------------------------
+        | Projects
+        |--------------------------------------------------------------------------
+        */
+
+        {
+          path:
+            'organizations/:organizationId/projects',
+
+          canActivate: [
+            permissionGuard,
+          ],
+
+          data: {
+            permission:
+              PERMISSIONS.PROJECT_LIST,
+
+            permissionScope:
+              'ORGANIZATION',
           },
 
-          {
-            path:
-              'scans',
+          loadComponent:
+            () =>
+              import(
+                './features/projects/pages/project-list/project-list.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .ProjectListComponent,
+                ),
+        },
 
-            loadComponent:
-              () =>
-                import(
-                  './features/platform-admin/pages/admin-scans/admin-scans.component'
-                )
-                  .then(
-                    (
-                      module,
-                    ) =>
-                      module
-                        .AdminScansComponent,
-                  ),
+        {
+          path:
+            'organizations/:organizationId/projects/:projectId/dashboard',
+
+          canActivate: [
+            permissionGuard,
+          ],
+
+          data: {
+            permission:
+              PERMISSIONS.PROJECT_READ,
+
+            permissionScope:
+              'PROJECT',
           },
 
-          {
-            path:
-              'audit-logs',
+          loadComponent:
+            () =>
+              import(
+                './features/dashboard/pages/security-dashboard/security-dashboard.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .SecurityDashboardComponent,
+                ),
+        },
 
-            loadComponent:
-              () =>
-                import(
-                  './features/platform-admin/pages/admin-audit-logs/admin-audit-logs.component'
-                )
-                  .then(
-                    (
-                      module,
-                    ) =>
-                      module
-                        .AdminAuditLogsComponent,
-                  ),
+        {
+          path:
+            'organizations/:organizationId/projects/:projectId/members',
+
+          canActivate: [
+            permissionGuard,
+          ],
+
+          data: {
+            permission:
+              PERMISSIONS.PROJECT_MEMBER_READ,
+
+            permissionScope:
+              'PROJECT',
           },
 
-          {
-            path:
-              'system',
+          loadComponent:
+            () =>
+              import(
+                './features/projects/pages/project-members/project-members.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .ProjectMembersComponent,
+                ),
+        },
 
-            loadComponent:
-              () =>
-                import(
-                  './features/platform-admin/pages/admin-system/admin-system.component'
-                )
-                  .then(
-                    (
-                      module,
-                    ) =>
-                      module
-                        .AdminSystemComponent,
-                  ),
+        /*
+        |--------------------------------------------------------------------------
+        | Repositories
+        |--------------------------------------------------------------------------
+        */
+
+        {
+          path:
+            'organizations/:organizationId/projects/:projectId/repositories',
+
+          canActivate: [
+            permissionGuard,
+          ],
+
+          data: {
+            permission:
+              PERMISSIONS.REPOSITORY_READ,
+
+            permissionScope:
+              'PROJECT',
           },
-        ],
-      },
 
-      {
-        path:
-          'organizations/:organizationId/audit-logs',
+          loadComponent:
+            () =>
+              import(
+                './features/repositories/pages/repository-list/repository-list.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .RepositoryListComponent,
+                ),
+        },
 
-        loadComponent:
-          () =>
-            import(
-              './features/organizations/pages/organization-audit-logs/organization-audit-logs.component'
-            )
-              .then(
-                (
-                  m,
-                ) =>
-                  m.OrganizationAuditLogsComponent,
-              ),
-      },
-    ],
-  },
+        {
+          path:
+            'organizations/:organizationId/projects/:projectId/repositories/:repositoryId',
 
-  {
-    path:
-      'invitation',
+          canActivate: [
+            permissionGuard,
+          ],
 
-    loadComponent:
-      () =>
-        import(
-          './features/invitations/invitation-page/invitation-page.component'
-        )
-          .then(
-            (
-              m,
-            ) =>
-              m.InvitationPageComponent,
-          ),
-  },
+          data: {
+            permission:
+              PERMISSIONS.REPOSITORY_READ,
 
+            permissionScope:
+              'PROJECT',
+          },
 
-  {
-    path:
-      '**',
+          loadComponent:
+            () =>
+              import(
+                './features/repositories/pages/repository-detail/repository-detail.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .RepositoryDetailComponent,
+                ),
+        },
 
-    redirectTo:
-      '',
-  },
-];
+        /*
+        |--------------------------------------------------------------------------
+        | GitHub
+        |--------------------------------------------------------------------------
+        */
+
+        {
+          path:
+            'organizations/:organizationId/projects/:projectId/github',
+
+          canActivate: [
+            permissionGuard,
+          ],
+
+          data: {
+            permission:
+              PERMISSIONS.GIT_CONNECTION_READ,
+
+            permissionScope:
+              'PROJECT',
+          },
+
+          loadComponent:
+            () =>
+              import(
+                './features/github/pages/github-repositories/github-repositories.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .GithubRepositoriesComponent,
+                ),
+        },
+
+        /*
+        |--------------------------------------------------------------------------
+        | Scans
+        |--------------------------------------------------------------------------
+        */
+
+        {
+          path:
+            'organizations/:organizationId/projects/:projectId/scans',
+
+          canActivate: [
+            permissionGuard,
+          ],
+
+          data: {
+            permission:
+              PERMISSIONS.SCAN_READ,
+
+            permissionScope:
+              'PROJECT',
+          },
+
+          loadComponent:
+            () =>
+              import(
+                './features/scans/pages/scan-list/scan-list.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .ScanListComponent,
+                ),
+        },
+
+        {
+          path:
+            'organizations/:organizationId/projects/:projectId/scans/:scanId',
+
+          canActivate: [
+            permissionGuard,
+          ],
+
+          data: {
+            permission:
+              PERMISSIONS.SCAN_READ,
+
+            permissionScope:
+              'PROJECT',
+          },
+
+          loadComponent:
+            () =>
+              import(
+                './features/scans/pages/scan-detail/scan-detail.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .ScanDetailComponent,
+                ),
+        },
+
+        /*
+        |--------------------------------------------------------------------------
+        | Findings
+        |--------------------------------------------------------------------------
+        */
+
+        {
+          path:
+            'organizations/:organizationId/projects/:projectId/findings',
+
+          canActivate: [
+            permissionGuard,
+          ],
+
+          data: {
+            permission:
+              PERMISSIONS.FINDING_READ,
+
+            permissionScope:
+              'PROJECT',
+          },
+
+          loadComponent:
+            () =>
+              import(
+                './features/findings/pages/findings-list/findings-list.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .FindingsListComponent,
+                ),
+        },
+
+        {
+          path:
+            'organizations/:organizationId/projects/:projectId/findings/:findingId',
+
+          canActivate: [
+            permissionGuard,
+          ],
+
+          data: {
+            permission:
+              PERMISSIONS.FINDING_READ,
+
+            permissionScope:
+              'PROJECT',
+          },
+
+          loadComponent:
+            () =>
+              import(
+                './features/findings/pages/finding-detail/finding-detail.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .FindingDetailComponent,
+                ),
+        },
+
+        /*
+        |--------------------------------------------------------------------------
+        | My Tasks
+        |--------------------------------------------------------------------------
+        */
+
+        {
+          path:
+            'organizations/:organizationId/projects/:projectId/my-tasks',
+
+          canActivate: [
+            permissionGuard,
+          ],
+
+          data: {
+            permission:
+              PERMISSIONS.FINDING_READ,
+
+            permissionScope:
+              'PROJECT',
+          },
+
+          loadComponent:
+            () =>
+              import(
+                './features/findings/pages/my-tasks/my-tasks.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .MyTasksComponent,
+                ),
+        },
+
+        /*
+        |--------------------------------------------------------------------------
+        | Reports
+        |--------------------------------------------------------------------------
+        */
+
+        {
+          path:
+            'organizations/:organizationId/projects/:projectId/reports',
+
+          canActivate: [
+            permissionGuard,
+          ],
+
+          data: {
+            permission:
+              PERMISSIONS.REPORT_READ,
+
+            permissionScope:
+              'PROJECT',
+          },
+
+          loadComponent:
+            () =>
+              import(
+                './features/reports/pages/reports-page/reports-page.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .ReportsPageComponent,
+                ),
+        },
+
+        /*
+        |--------------------------------------------------------------------------
+        | Organization Audit Logs
+        |--------------------------------------------------------------------------
+        */
+
+        {
+          path:
+            'organizations/:organizationId/audit-logs',
+
+          canActivate: [
+            permissionGuard,
+          ],
+
+          data: {
+            permission:
+              PERMISSIONS.AUDIT_LOG_READ,
+
+            permissionScope:
+              'ORGANIZATION',
+          },
+
+          loadComponent:
+            () =>
+              import(
+                './features/organizations/pages/organization-audit-logs/organization-audit-logs.component'
+              )
+                .then(
+                  (
+                    module,
+                  ) =>
+                    module
+                      .OrganizationAuditLogsComponent,
+                ),
+        },
+
+        /*
+        |--------------------------------------------------------------------------
+        | Platform Administration
+        |--------------------------------------------------------------------------
+        */
+
+        {
+          path:
+            'platform-admin',
+
+          canActivate: [
+            platformAdminGuard,
+          ],
+
+          children: [
+            {
+              path:
+                '',
+
+              loadComponent:
+                () =>
+                  import(
+                    './features/platform-admin/pages/admin-dashboard/admin-dashboard.component'
+                  )
+                    .then(
+                      (
+                        module,
+                      ) =>
+                        module
+                          .AdminDashboardComponent,
+                    ),
+            },
+
+            {
+              path:
+                'users',
+
+              loadComponent:
+                () =>
+                  import(
+                    './features/platform-admin/pages/admin-users/admin-users.component'
+                  )
+                    .then(
+                      (
+                        module,
+                      ) =>
+                        module
+                          .AdminUsersComponent,
+                    ),
+            },
+
+            {
+              path:
+                'organizations',
+
+              loadComponent:
+                () =>
+                  import(
+                    './features/platform-admin/pages/admin-organizations/admin-organizations.component'
+                  )
+                    .then(
+                      (
+                        module,
+                      ) =>
+                        module
+                          .AdminOrganizationsComponent,
+                    ),
+            },
+
+            {
+              path:
+                'audit-logs',
+
+              loadComponent:
+                () =>
+                  import(
+                    './features/platform-admin/pages/admin-audit-logs/admin-audit-logs.component'
+                  )
+                    .then(
+                      (
+                        module,
+                      ) =>
+                        module
+                          .AdminAuditLogsComponent,
+                    ),
+            },
+
+            {
+              path:
+                'system',
+
+              loadComponent:
+                () =>
+                  import(
+                    './features/platform-admin/pages/admin-system/admin-system.component'
+                  )
+                    .then(
+                      (
+                        module,
+                      ) =>
+                        module
+                          .AdminSystemComponent,
+                    ),
+            },
+          ],
+        },
+      ],
+    },
+
+    /*
+    |--------------------------------------------------------------------------
+    | Invitation
+    |--------------------------------------------------------------------------
+    */
+
+    {
+      path:
+        'invitation',
+
+      loadComponent:
+        () =>
+          import(
+            './features/invitations/invitation-page/invitation-page.component'
+          )
+            .then(
+              (
+                module,
+              ) =>
+                module
+                  .InvitationPageComponent,
+            ),
+    },
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fallback
+    |--------------------------------------------------------------------------
+    */
+
+    {
+      path:
+        '**',
+
+      redirectTo:
+        '',
+    },
+  ];

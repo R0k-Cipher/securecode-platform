@@ -18,152 +18,164 @@
 
   </header>
 
-  <section class="card">
+  @if (!canReadAudit()) {
 
-    <div class="toolbar">
-
-      <input
-        type="search"
-        placeholder="Rechercher par utilisateur, IP, action ou ressource..."
-        [ngModel]="search()"
-        (ngModelChange)="search.set($event)"
-      >
-
-      <span>
-        {{ filtered().length }}
-        événement(s)
-      </span>
-
-    </div>
-
-    @if (
-      loading()
-    ) {
+    <section class="card">
 
       <div class="state">
-        Chargement des journaux...
+        Vous n'avez pas l'autorisation
+        de consulter les journaux d'audit.
       </div>
 
-    } @else if (
-      !filtered().length
-    ) {
+    </section>
 
-      <div class="state">
-        Aucun événement trouvé.
+  } @else {
+    <section class="card">
+
+      <div class="toolbar">
+
+        <input
+          type="search"
+          placeholder="Rechercher par utilisateur, IP, action ou ressource..."
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+        >
+
+        <span>
+          {{ filtered().length }}
+          événement(s)
+        </span>
+
       </div>
 
-    } @else {
+      @if (
+        loading()
+      ) {
 
-      <div class="table-wrap">
+        <div class="state">
+          Chargement des journaux...
+        </div>
 
-        <table>
+      } @else if (
+        !filtered().length
+      ) {
 
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Utilisateur</th>
-              <th>Action</th>
-              <th>Ressource</th>
-              <th>Projet</th>
-              <th>Adresse IP</th>
-            </tr>
-          </thead>
+        <div class="state">
+          Aucun événement trouvé.
+        </div>
 
-          <tbody>
+      } @else {
 
-            @for (
-              log of filtered();
-              track log.id
-            ) {
+        <div class="table-wrap">
 
+          <table>
+
+            <thead>
               <tr>
+                <th>Date</th>
+                <th>Utilisateur</th>
+                <th>Action</th>
+                <th>Ressource</th>
+                <th>Projet</th>
+                <th>Adresse IP</th>
+              </tr>
+            </thead>
 
-                <td>
-                  {{
-                    log.createdAt
-                    | date:
-                      'dd/MM/yyyy HH:mm:ss'
-                  }}
-                </td>
+            <tbody>
 
-                <td>
+              @for (
+                log of filtered();
+                track log.id
+              ) {
 
-                  <strong>
+                <tr>
+
+                  <td>
                     {{
-                      log.actor
-                        ? (
-                            log.actor.firstName +
-                            ' ' +
-                            log.actor.lastName
-                          )
-                        : 'Système'
+                      log.createdAt
+                      | date:
+                        'dd/MM/yyyy HH:mm:ss'
                     }}
-                  </strong>
+                  </td>
 
-                  <small>
+                  <td>
+
+                    <strong>
+                      {{
+                        log.actor
+                          ? (
+                              log.actor.firstName +
+                              ' ' +
+                              log.actor.lastName
+                            )
+                          : 'Système'
+                      }}
+                    </strong>
+
+                    <small>
+                      {{
+                        log.actor?.email ??
+                        'Action système'
+                      }}
+                    </small>
+
+                  </td>
+
+                  <td>
+
+                    <span class="badge">
+                      {{ log.action }}
+                    </span>
+
+                  </td>
+
+                  <td>
+
+                    <strong>
+                      {{
+                        log.resourceType
+                      }}
+                    </strong>
+
+                    <small>
+                      {{
+                        log.resourceId ??
+                        '—'
+                      }}
+                    </small>
+
+                  </td>
+
+                  <td>
                     {{
-                      log.actor?.email ??
-                      'Action système'
-                    }}
-                  </small>
-
-                </td>
-
-                <td>
-
-                  <span class="badge">
-                    {{ log.action }}
-                  </span>
-
-                </td>
-
-                <td>
-
-                  <strong>
-                    {{
-                      log.resourceType
-                    }}
-                  </strong>
-
-                  <small>
-                    {{
-                      log.resourceId ??
+                      log.project?.name ??
                       '—'
                     }}
-                  </small>
+                  </td>
 
-                </td>
+                  <td>
 
-                <td>
-                  {{
-                    log.project?.name ??
-                    '—'
-                  }}
-                </td>
+                    <code>
+                      {{
+                        log.ipAddress ??
+                        'Non enregistrée'
+                      }}
+                    </code>
 
-                <td>
+                  </td>
 
-                  <code>
-                    {{
-                      log.ipAddress ??
-                      'Non enregistrée'
-                    }}
-                  </code>
+                </tr>
 
-                </td>
+              }
 
-              </tr>
+            </tbody>
 
-            }
+          </table>
 
-          </tbody>
+        </div>
 
-        </table>
+      }
 
-      </div>
-
-    }
-
-  </section>
-
+    </section>
+  }
 </section>

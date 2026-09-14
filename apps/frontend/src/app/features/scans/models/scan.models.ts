@@ -11,6 +11,7 @@ export type ScanStatus =
   | 'FAILED'
   | 'CANCELLED';
 
+
 export interface ScanRepository {
   id:
     string;
@@ -21,6 +22,73 @@ export interface ScanRepository {
   fullName:
     string;
 }
+
+
+/*
+|--------------------------------------------------------------------------
+| Scan statistics
+|--------------------------------------------------------------------------
+|
+| Propriétés actuellement produites par le scanner.
+| L'index signature permet également au backend
+| d'ajouter de nouvelles métriques sans casser
+| le frontend.
+|--------------------------------------------------------------------------
+*/
+
+export interface ScanStatistics {
+  findingsCount?:
+    number;
+
+  newFindings?:
+    number;
+
+  existingFindings?:
+    number;
+
+  reopenedFindings?:
+    number;
+
+  fixedFindings?:
+    number;
+
+  activeCritical?:
+    number;
+
+  activeHigh?:
+    number;
+
+  activeMedium?:
+    number;
+
+  activeLow?:
+    number;
+
+  activeInfo?:
+    number;
+
+  cacheHits?:
+    number;
+
+  cacheMisses?:
+    number;
+
+  inventoryFileCount?:
+    number;
+
+  changedFileCount?:
+    number;
+
+  securityScoreReliable?:
+    boolean;
+
+  partial?:
+    boolean;
+
+  [key: string]:
+    unknown;
+}
+
 
 export interface ScanProgress {
   id:
@@ -51,6 +119,7 @@ export interface ScanProgress {
     string;
 }
 
+
 export interface ScanListItem {
   id:
     string;
@@ -77,10 +146,7 @@ export interface ScanListItem {
     number | null;
 
   statistics:
-    Record<
-      string,
-      unknown
-    > | null;
+    ScanStatistics | null;
 
   createdAt:
     string;
@@ -100,8 +166,15 @@ export interface ScanListItem {
   };
 }
 
+
 export interface ScanDetail
   extends ScanListItem {
+  configuration?:
+    Record<
+      string,
+      unknown
+    > | null;
+
   errorMessage?:
     string | null;
 
@@ -110,4 +183,22 @@ export interface ScanDetail
 
   updatedAt?:
     string;
+
+  repository?:
+    ScanRepository & {
+      provider?:
+        string;
+
+      owner?:
+        string;
+
+      defaultBranch?:
+        string | null;
+
+      primaryLanguage?:
+        string | null;
+
+      lastRemoteCommitSha?:
+        string | null;
+    };
 }

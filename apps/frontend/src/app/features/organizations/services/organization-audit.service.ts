@@ -14,39 +14,37 @@ export interface OrganizationAuditLog {
 
   resourceType: string;
 
-  resourceId:
-    string | null;
+  resourceId: string | null;
 
-  description:
-    string | null;
+  description: string | null;
 
-  ipAddress:
-    string | null;
+  ipAddress: string | null;
 
-  userAgent:
-    string | null;
+  userAgent: string | null;
 
-  createdAt:
-    string;
+  metadata?: unknown;
+
+  createdAt: string;
 
   actor:
-    {
-      id: string;
-      email: string;
-      firstName: string;
-      lastName: string;
-    } | null;
+    | {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+      }
+    | null;
 
   project:
-    {
-      id: string;
-      name: string;
-    } | null;
+    | {
+        id: string;
+        name: string;
+      }
+    | null;
 }
 
 @Injectable({
-  providedIn:
-    'root',
+  providedIn: 'root',
 })
 export class OrganizationAuditService {
   private readonly api =
@@ -55,14 +53,25 @@ export class OrganizationAuditService {
     );
 
   list(
-    organizationId:
-      string,
+    organizationId: string,
+    limit = 200,
   ) {
     return this.api.get<{
-      data:
-        OrganizationAuditLog[];
+      data: OrganizationAuditLog[];
     }>(
-      `/organizations/${organizationId}/audit-logs`,
+      `/organizations/${organizationId}/audit-logs?limit=${limit}`,
+    );
+  }
+
+  listProject(
+    organizationId: string,
+    projectId: string,
+    limit = 200,
+  ) {
+    return this.api.get<{
+      data: OrganizationAuditLog[];
+    }>(
+      `/organizations/${organizationId}/projects/${projectId}/audit-logs?limit=${limit}`,
     );
   }
 }

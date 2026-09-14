@@ -1,0 +1,282 @@
+<section class="reports-page">
+
+  <header class="page-header">
+
+    <div>
+
+      <span class="eyebrow">
+        ORGANIZATION REPORTING
+      </span>
+
+      <h1>
+        Rapports de l'organisation
+      </h1>
+
+      <p>
+        Analyse consolidée de tous les projets
+        pour une période déterminée.
+      </p>
+
+    </div>
+
+    @if (canExport()) {
+
+      <button
+        type="button"
+        class="primary-report-button"
+        (click)="openCreate()"
+      >
+        Générer un rapport
+      </button>
+
+    }
+
+  </header>
+
+  @if (error()) {
+
+    <div class="alert-error">
+      {{ error() }}
+    </div>
+
+  }
+
+  @if (loading()) {
+
+    <div>
+      Chargement...
+    </div>
+
+  } @else {
+
+    <div class="reports-table-wrapper">
+
+      <table>
+
+        <thead>
+          <tr>
+            <th>
+              Rapport
+            </th>
+
+            <th>
+              Format
+            </th>
+
+            <th>
+              Statut
+            </th>
+
+            <th>
+              Période
+            </th>
+
+            <th>
+              Créé le
+            </th>
+
+            <th>
+              Action
+            </th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          @for (
+            report of reports();
+            track report.id
+          ) {
+
+            <tr>
+
+              <td>
+                {{ report.name }}
+              </td>
+
+              <td>
+                {{ report.format }}
+              </td>
+
+              <td>
+                {{ report.status }}
+              </td>
+
+              <td>
+                {{
+                  report.filters?.['fromDate']
+                    || '—'
+                }}
+
+                →
+
+                {{
+                  report.filters?.['toDate']
+                    || '—'
+                }}
+              </td>
+
+              <td>
+                {{
+                  report.createdAt
+                    | date:
+                      'dd/MM/yyyy HH:mm'
+                }}
+              </td>
+
+              <td>
+
+                @if (canRead()) {
+
+                  <button
+                    type="button"
+                    [disabled]="
+                      report.status !==
+                        'READY' ||
+                      downloadingId() ===
+                        report.id
+                    "
+                    (click)="download(report)"
+                  >
+                    {{
+                      downloadingId() ===
+                        report.id
+                        ? 'Téléchargement...'
+                        : 'Télécharger'
+                    }}
+                  </button>
+
+                }
+
+              </td>
+
+            </tr>
+
+          }
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  }
+
+  @if (
+    modalOpen() &&
+    canExport()
+  ) {
+
+    <div
+      class="report-modal-backdrop"
+      (click)="closeCreate()"
+    >
+
+      <section
+        class="report-modal"
+        (click)="$event.stopPropagation()"
+      >
+
+        <h2>
+          Rapport organisation
+        </h2>
+
+        <label>
+
+          <span>
+            Du
+          </span>
+
+          <input
+            type="date"
+            [value]="fromDate()"
+            (input)="
+              fromDate.set(
+                $any($event.target).value
+              )
+            "
+          />
+
+        </label>
+
+        <label>
+
+          <span>
+            Au
+          </span>
+
+          <input
+            type="date"
+            [value]="toDate()"
+            (input)="
+              toDate.set(
+                $any($event.target).value
+              )
+            "
+          />
+
+        </label>
+
+        <label>
+
+          <span>
+            Format
+          </span>
+
+          <select
+            [value]="format()"
+            (change)="
+              format.set(
+                $any($event.target).value
+              )
+            "
+          >
+
+            <option value="PDF">
+              PDF
+            </option>
+
+            <option value="HTML">
+              HTML
+            </option>
+
+            <option value="JSON">
+              JSON
+            </option>
+
+          </select>
+
+        </label>
+
+        <div class="modal-footer">
+
+          <button
+            type="button"
+            (click)="closeCreate()"
+            [disabled]="generating()"
+          >
+            Annuler
+          </button>
+
+          <button
+            type="button"
+            class="primary-report-button"
+            (click)="generate()"
+            [disabled]="generating()"
+          >
+            {{
+              generating()
+                ? 'Génération...'
+                : 'Générer'
+            }}
+          </button>
+
+        </div>
+
+      </section>
+
+    </div>
+
+  }
+
+</section>

@@ -32,6 +32,8 @@ import { CreateRepositoryDto } from './dto/create-repository.dto';
 import { RepositoryQueryDto } from './dto/repository-query.dto';
 import { UpdateRepositoryDto } from './dto/update-repository.dto';
 import { RepositoriesService } from './repositories.service';
+import { RepositorySyncDispatcherService } from './repository-sync-dispatcher.service';
+
 
 @ApiTags('Repositories')
 @ApiBearerAuth()
@@ -46,6 +48,8 @@ export class RepositoriesController {
   constructor(
     private readonly repositoriesService:
       RepositoriesService,
+    private readonly repositorySyncDispatcher:
+      RepositorySyncDispatcherService,
   ) {}
 
   @Post()
@@ -336,7 +340,7 @@ export class RepositoriesController {
   )
   @ApiOperation({
     summary:
-      'Enregistrer la synchronisation d’un dépôt',
+      'Déclencher une synchronisation réelle du dépôt',
   })
   sync(
     @Param(
@@ -360,8 +364,8 @@ export class RepositoriesController {
     @CurrentUser()
     user: AuthenticatedUser,
   ) {
-    return this.repositoriesService
-      .markAsSynchronized(
+    return this.repositorySyncDispatcher
+      .requestManualSync(
         organizationId,
         projectId,
         repositoryId,

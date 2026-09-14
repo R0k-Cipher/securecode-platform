@@ -22,6 +22,14 @@ import {
   type OrganizationAuditLog,
 } from '../../services/organization-audit.service';
 
+import {
+  AuthContextService,
+} from '../../../../core/auth/auth-context.service';
+
+import {
+  PERMISSIONS,
+} from '../../../../core/auth/auth-context.models';
+
 @Component({
   selector:
     'app-organization-audit-logs',
@@ -49,6 +57,20 @@ export class OrganizationAuditLogsComponent {
   private readonly audit =
     inject(
       OrganizationAuditService,
+    );
+
+  private readonly authContext =
+    inject(
+      AuthContextService,
+    );
+
+  readonly canReadAudit =
+    computed(
+      () =>
+        this.authContext
+          .canOrganization(
+            PERMISSIONS.AUDIT_LOG_READ,
+          ),
     );
 
   readonly organizationId =
@@ -107,6 +129,17 @@ export class OrganizationAuditLogsComponent {
 
   load():
     void {
+      
+    if (
+      !this.canReadAudit()
+    ) {
+      this.loading.set(
+        false,
+      );
+
+      return;
+    }
+
     this.loading.set(
       true,
     );

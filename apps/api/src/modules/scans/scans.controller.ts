@@ -61,11 +61,15 @@ export class ScansController {
       ScansService,
   ) {}
 
-  @Get(
-    'scans',
-  )
+  /*
+  |--------------------------------------------------------------------------
+  | List project scans
+  |--------------------------------------------------------------------------
+  */
+
+  @Get('scans')
   @RequirePermissions(
-    PERMISSION_CODES.PROJECT_READ,
+    PERMISSION_CODES.SCAN_READ,
   )
   @ApiOperation({
     summary:
@@ -85,23 +89,31 @@ export class ScansController {
     projectId: string,
 
     @Query()
-    query:
-      ListScansDto,
+    query: ListScansDto,
   ) {
-    return this.scansService
-      .listProjectScans(
-        organizationId,
-        projectId,
-        query,
-      );
+    return this.scansService.listProjectScans(
+      organizationId,
+      projectId,
+      query,
+    );
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | List repository scans
+  |--------------------------------------------------------------------------
+  */
 
   @Get(
     'repositories/:repositoryId/scans',
   )
   @RequirePermissions(
-    PERMISSION_CODES.PROJECT_READ,
+    PERMISSION_CODES.SCAN_READ,
   )
+  @ApiOperation({
+    summary:
+      'Lister les scans d’un repository',
+  })
   listRepositoryScans(
     @Param(
       'organizationId',
@@ -122,24 +134,30 @@ export class ScansController {
     repositoryId: string,
 
     @Query()
-    query:
-      ListScansDto,
+    query: ListScansDto,
   ) {
-    return this.scansService
-      .listRepositoryScans(
-        organizationId,
-        projectId,
-        repositoryId,
-        query,
-      );
+    return this.scansService.listRepositoryScans(
+      organizationId,
+      projectId,
+      repositoryId,
+      query,
+    );
   }
 
-  @Get(
-    'scans/:scanId',
-  )
+  /*
+  |--------------------------------------------------------------------------
+  | Scan details
+  |--------------------------------------------------------------------------
+  */
+
+  @Get('scans/:scanId')
   @RequirePermissions(
-    PERMISSION_CODES.PROJECT_READ,
+    PERMISSION_CODES.SCAN_READ,
   )
+  @ApiOperation({
+    summary:
+      'Afficher les détails d’un scan',
+  })
   getScan(
     @Param(
       'organizationId',
@@ -159,20 +177,29 @@ export class ScansController {
     )
     scanId: string,
   ) {
-    return this.scansService
-      .getScan(
-        organizationId,
-        projectId,
-        scanId,
-      );
+    return this.scansService.getScan(
+      organizationId,
+      projectId,
+      scanId,
+    );
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Scan progress
+  |--------------------------------------------------------------------------
+  */
 
   @Get(
     'scans/:scanId/progress',
   )
   @RequirePermissions(
-    PERMISSION_CODES.PROJECT_READ,
+    PERMISSION_CODES.SCAN_READ,
   )
+  @ApiOperation({
+    summary:
+      'Afficher la progression d’un scan',
+  })
   getScanProgress(
     @Param(
       'organizationId',
@@ -192,20 +219,29 @@ export class ScansController {
     )
     scanId: string,
   ) {
-    return this.scansService
-      .getScanProgress(
-        organizationId,
-        projectId,
-        scanId,
-      );
+    return this.scansService.getScanProgress(
+      organizationId,
+      projectId,
+      scanId,
+    );
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Manual scan
+  |--------------------------------------------------------------------------
+  */
 
   @Post(
     'repositories/:repositoryId/scans',
   )
   @RequirePermissions(
-    PERMISSION_CODES.REPOSITORY_SYNC,
+    PERMISSION_CODES.SCAN_CREATE,
   )
+  @ApiOperation({
+    summary:
+      'Lancer manuellement un scan de sécurité',
+  })
   createManualScan(
     @Param(
       'organizationId',
@@ -226,24 +262,32 @@ export class ScansController {
     repositoryId: string,
 
     @CurrentUser()
-    user:
-      AuthenticatedUser,
+    user: AuthenticatedUser,
   ) {
-    return this.scansService
-      .createManualScan(
-        organizationId,
-        projectId,
-        repositoryId,
-        user.id,
-      );
+    return this.scansService.createManualScan(
+      organizationId,
+      projectId,
+      repositoryId,
+      user.id,
+    );
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Repository security overview
+  |--------------------------------------------------------------------------
+  */
 
   @Get(
     'repositories/:repositoryId/security-overview',
   )
   @RequirePermissions(
-    PERMISSION_CODES.PROJECT_READ,
+    PERMISSION_CODES.SCAN_READ,
   )
+  @ApiOperation({
+    summary:
+      'Afficher la synthèse sécurité du repository',
+  })
   getRepositorySecurityOverview(
     @Param(
       'organizationId',
@@ -271,38 +315,22 @@ export class ScansController {
       );
   }
 
-  @Get(
-    'security-dashboard',
-  )
-  @RequirePermissions(
-    PERMISSION_CODES.PROJECT_READ,
-  )
-  getSecurityDashboard(
-    @Param(
-      'organizationId',
-      ParseUUIDPipe,
-    )
-    organizationId: string,
-
-    @Param(
-      'projectId',
-      ParseUUIDPipe,
-    )
-    projectId: string,
-  ) {
-    return this.scansService
-      .getProjectSecurityDashboard(
-        organizationId,
-        projectId,
-      );
-  }
+  /*
+  |--------------------------------------------------------------------------
+  | Cancel scan
+  |--------------------------------------------------------------------------
+  */
 
   @Post(
     'scans/:scanId/cancel',
   )
   @RequirePermissions(
-    PERMISSION_CODES.PROJECT_UPDATE,
+    PERMISSION_CODES.SCAN_CANCEL,
   )
+  @ApiOperation({
+    summary:
+      'Annuler un scan en cours',
+  })
   cancelScan(
     @Param(
       'organizationId',
@@ -323,15 +351,13 @@ export class ScansController {
     scanId: string,
 
     @CurrentUser()
-    user:
-      AuthenticatedUser,
+    user: AuthenticatedUser,
   ) {
-    return this.scansService
-      .cancelScan(
-        organizationId,
-        projectId,
-        scanId,
-        user.id,
-      );
+    return this.scansService.cancelScan(
+      organizationId,
+      projectId,
+      scanId,
+      user.id,
+    );
   }
 }

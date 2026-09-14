@@ -22,7 +22,6 @@
   <section class="filters">
 
     <div>
-
       <label for="scan-status">
         Statut
       </label>
@@ -32,7 +31,6 @@
         [(ngModel)]="status"
         (change)="filter()"
       >
-
         <option value="">
           Tous les statuts
         </option>
@@ -44,16 +42,10 @@
           <option
             [ngValue]="item"
           >
-            {{
-              statusLabel(
-                item
-              )
-            }}
+            {{ statusLabel(item) }}
           </option>
         }
-
       </select>
-
     </div>
 
     <button
@@ -67,9 +59,11 @@
   </section>
 
   @if (error()) {
+
     <div class="alert-error">
       {{ error() }}
     </div>
+
   }
 
   @if (loading()) {
@@ -100,7 +94,6 @@
     <section class="table-card">
 
       <div class="table-header">
-
         <span>
           Repository
         </span>
@@ -124,7 +117,6 @@
         <span>
           Date
         </span>
-
       </div>
 
       @for (
@@ -140,7 +132,6 @@
         >
 
           <div class="repository">
-
             <strong>
               {{
                 scan.repository
@@ -154,7 +145,6 @@
                 {{ scan.branch }}
               </small>
             }
-
           </div>
 
           <span>
@@ -163,24 +153,16 @@
 
           <span
             class="status"
-            [attr.data-status]="
-              scan.status
-            "
+            [attr.data-status]="scan.status"
           >
-            {{
-              statusLabel(
-                scan.status
-              )
-            }}
+            {{ statusLabel(scan.status) }}
           </span>
 
           <div class="progress">
 
             <div>
               <span
-                [style.width.%]="
-                  scan.progress
-                "
+                [style.width.%]="scan.progress"
               ></span>
             </div>
 
@@ -200,8 +182,7 @@
           <span class="date">
             {{
               scan.createdAt
-                | date:
-                  'dd/MM/yyyy HH:mm'
+                | date:'dd/MM/yyyy HH:mm'
             }}
           </span>
 
@@ -219,13 +200,13 @@
       </span>
 
       <div>
-
         <button
           type="button"
-          (click)="previousPage()"
           [disabled]="
-            page <= 1
+            page <= 1 ||
+            loading()
           "
+          (click)="previousPage()"
         >
           Précédent
         </button>
@@ -237,14 +218,14 @@
 
         <button
           type="button"
-          (click)="nextPage()"
           [disabled]="
-            page >= totalPages
+            page >= totalPages ||
+            loading()
           "
+          (click)="nextPage()"
         >
           Suivant
         </button>
-
       </div>
 
     </footer>

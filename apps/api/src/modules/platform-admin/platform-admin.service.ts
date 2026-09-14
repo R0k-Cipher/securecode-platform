@@ -16,206 +16,324 @@ import {
   PrismaService,
 } from '@securecode-platform/database';
 
-import {
-  AuditService,
-} from '../audit/audit.service';
+
 
 @Injectable()
 export class PlatformAdminService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditService: AuditService,
+    
   ) {}
 
-  async dashboard() {
-    const openFindingStatuses:
-      FindingStatus[] = [
-        FindingStatus.DETECTED,
-        FindingStatus.TO_REVIEW,
-        FindingStatus.CONFIRMED,
-        FindingStatus.ASSIGNED,
-        FindingStatus.IN_PROGRESS,
-        FindingStatus.READY_FOR_RETEST,
-        FindingStatus.REOPENED,
-      ];
+async dashboard() {
+  const since24h =
+    new Date(
+      Date.now() -
+      24 * 60 * 60 * 1000,
+    );
 
-    const [
+  const [
+    users,
+    activeUsers,
+    organizations,
+    projects,
+    repositories,
+    pendingInvitations,
+    activeGitConnections,
+    gitConnectionErrors,
+    auditEvents24h,
+    activeSessions,
+    latestUsers,
+    latestAuditLogs,
+  ] =
+    await this.prisma
+      .$transaction([
+        this.prisma.user.count(),
+
+        this.prisma.user.count({
+          where: {
+            status:
+              UserStatus.ACTIVE,
+          },
+        }),
+
+        this.prisma.organization.count(),
+
+        this.prisma.project.count(),
+
+        this.prisma.repository.count(),
+
+        this.prisma.invitation.count({
+          where: {
+            acceptedAt:
+              null,
+
+            revokedAt:
+              null,
+
+            expiresAt: {
+              gt:
+                new Date(),
+            },
+          },
+        }),
+
+        this.prisma.gitConnection.count({
+          where: {
+            status:
+              'ACTIVE',
+          },
+        }),
+
+        this.prisma.gitConnection.count({
+          where: {
+            status:
+              'ERROR',
+          },
+        }),
+
+        this.prisma.auditLog.count({
+          where: {
+            createdAt: {
+              gte:
+                since24h,
+            },
+          },
+        }),
+
+        this.prisma.session.count({
+          where: {
+            revokedAt:
+              null,
+
+            expiresAt: {
+              gt:
+                new Date(),
+            },
+          },
+        }),
+
+        this.prisma.user.findMany({
+          take:
+            6,
+
+          orderBy: {
+            createdAt:
+              'desc',
+          },
+
+          select: {
+            id:
+              true,
+
+            email:
+              true,
+
+            firstName:
+              true,
+
+            lastName:
+              true,
+
+            status:
+              true,
+
+            platformRole:
+              true,
+
+            lastLoginAt:
+              true,
+
+            createdAt:
+              true,
+
+            _count: {
+              select: {
+                organizationMemberships:
+                  true,
+
+                createdProjects:
+                  true,
+              },
+            },
+          },
+        }),
+
+        this.prisma.auditLog.findMany({
+          take:
+            8,
+
+          orderBy: {
+            createdAt:
+              'desc',
+          },
+
+          select: {
+            id:
+              true,
+
+            action:
+              true,
+
+            resourceType:
+              true,
+
+            resourceId:
+              true,
+
+            description:
+              true,
+
+            ipAddress:
+              true,
+
+            createdAt:
+              true,
+
+            actor: {
+              select: {
+                id:
+                  true,
+
+                email:
+                  true,
+
+                firstName:
+                  true,
+
+                lastName:
+                  true,
+              },
+            },
+
+            organization: {
+              select: {
+                id:
+                  true,
+
+                name:
+                  true,
+              },
+            },
+
+            project: {
+              select: {
+                id:
+                  true,
+
+                name:
+                  true,
+              },
+            },
+          },
+        }),
+      ]);
+
+  return {
+    summary: {
       users,
       activeUsers,
       organizations,
       projects,
       repositories,
-      scans,
-      findings,
-      failedScans,
-      criticalOpen,
-      latestUsers,
-      latestScans,
-    ] =
-      await this.prisma
-        .$transaction([
-          this.prisma.user
-            .count(),
+      pendingInvitations,
+      activeGitConnections,
+      gitConnectionErrors,
+      auditEvents24h,
+      activeSessions,
+    },
 
-          this.prisma.user
-            .count({
-              where: {
-                status:
-                  UserStatus.ACTIVE,
-              },
-            }),
+    latestUsers,
 
-          this.prisma.organization
-            .count(),
+    latestAuditLogs,
+  };
+}
 
-          this.prisma.project
-            .count(),
+async listAuditLogs() {
+  return this.prisma.auditLog.findMany({
+    take:
+      500,
 
-          this.prisma.repository
-            .count(),
+    orderBy: {
+      createdAt:
+        'desc',
+    },
 
-          this.prisma.scan
-            .count(),
+    select: {
+      id:
+        true,
 
-          this.prisma.finding
-            .count(),
+      action:
+        true,
 
-          this.prisma.scan
-            .count({
-              where: {
-                status:
-                  ScanStatus.FAILED,
-              },
-            }),
+      resourceType:
+        true,
 
-          this.prisma.finding
-            .count({
-              where: {
-                severity:
-                  'CRITICAL',
+      resourceId:
+        true,
 
-                status: {
-                  in:
-                    openFindingStatuses,
-                },
-              },
-            }),
+      description:
+        true,
 
-          this.prisma.user
-            .findMany({
-              take: 8,
+      ipAddress:
+        true,
 
-              orderBy: {
-                createdAt:
-                  'desc',
-              },
+      userAgent:
+        true,
 
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                status: true,
-                platformRole: true,
-                lastLoginAt: true,
-                createdAt: true,
+      metadata:
+        true,
 
-                _count: {
-                  select: {
-                    organizationMemberships:
-                      true,
+      createdAt:
+        true,
 
-                    createdProjects:
-                      true,
-                  },
-                },
-              },
-            }),
+      actor: {
+        select: {
+          id:
+            true,
 
-          this.prisma.scan
-            .findMany({
-              take: 8,
+          email:
+            true,
 
-              orderBy: {
-                createdAt:
-                  'desc',
-              },
+          firstName:
+            true,
 
-              select: {
-                id: true,
-                type: true,
-                trigger: true,
-                status: true,
-                branch: true,
-                commitSha: true,
-                score: true,
-                progress: true,
-                queuedAt: true,
-                startedAt: true,
-                completedAt: true,
-                failedAt: true,
-                errorMessage: true,
+          lastName:
+            true,
 
-                project: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                },
-
-                repository: {
-                  select: {
-                    id: true,
-                    fullName: true,
-                  },
-                },
-
-                requestedBy: {
-                  select: {
-                    id: true,
-                    email: true,
-                  },
-                },
-
-                _count: {
-                  select: {
-                    findings: true,
-                  },
-                },
-              },
-            }),
-        ]);
-
-    return {
-      summary: {
-        users,
-        activeUsers,
-        organizations,
-        projects,
-        repositories,
-        scans,
-        findings,
-        failedScans,
-        criticalOpen,
+          platformRole:
+            true,
+        },
       },
 
-      latestUsers,
+      organization: {
+        select: {
+          id:
+            true,
 
-      latestScans:
-        latestScans.map(
-          (scan) => ({
-            ...scan,
+          name:
+            true,
 
-            score:
-              scan.score === null
-                ? null
-                : Number(
-                    scan.score,
-                  ),
-          }),
-        ),
-    };
-  }
+          slug:
+            true,
+        },
+      },
+
+      project: {
+        select: {
+          id:
+            true,
+
+          name:
+            true,
+
+          slug:
+            true,
+        },
+      },
+    },
+  });
+}
 
   listUsers() {
     return this.prisma.user
@@ -388,14 +506,6 @@ export class PlatformAdminService {
               ),
       }),
     );
-  }
-
-  listAuditLogs() {
-    return this.auditService
-      .getPlatformLogs({
-        take:
-          500,
-      });
   }
 
   async systemStatus() {

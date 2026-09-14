@@ -17,34 +17,40 @@ export class RegisterInvitedUserDto {
   @ApiProperty({
     example: 'Rkia',
   })
-  @Transform(
-    ({ value }) =>
-      String(value)
-        .trim(),
+  @Transform(({ value }) =>
+    String(value).trim(),
   )
   @IsString()
   @MinLength(2)
   @MaxLength(100)
-  firstName!:
-    string;
+  firstName!: string;
 
   @ApiProperty({
-    example: 'Ait Abdelkarim',
+    example:
+      'Ait Abdelkarim',
   })
-  @Transform(
-    ({ value }) =>
-      String(value)
-        .trim(),
+  @Transform(({ value }) =>
+    String(value).trim(),
   )
   @IsString()
   @MinLength(2)
   @MaxLength(100)
-  lastName!:
-    string;
+  lastName!: string;
+
+  @ApiProperty({
+    description:
+      'Mot de passe temporaire reçu dans l’email d’invitation.',
+  })
+  @IsString()
+  @MinLength(12)
+  @MaxLength(128)
+  temporaryPassword!: string;
 
   @ApiProperty({
     example:
       'SecureCode@2026',
+    description:
+      'Mot de passe définitif de l’identité professionnelle dans cette organisation.',
   })
   @IsString()
   @MinLength(12)
@@ -56,6 +62,5 @@ export class RegisterInvitedUserDto {
         'Le mot de passe doit contenir une majuscule, une minuscule, un chiffre et un caractère spécial.',
     },
   )
-  password!:
-    string;
+  password!: string;
 }

@@ -83,6 +83,10 @@ export const environmentValidationSchema = Joi.object({
     .allow('')
     .optional(),
 
+  GITHUB_APP_SLUG: Joi.string()
+    .allow('')
+    .optional(),
+
   GITHUB_CLIENT_ID: Joi.string()
     .allow('')
     .optional(),
@@ -98,6 +102,9 @@ export const environmentValidationSchema = Joi.object({
   GITHUB_WEBHOOK_SECRET: Joi.string()
     .allow('')
     .optional(),
+
+  GITHUB_API_VERSION: Joi.string()
+    .default('2022-11-28'),
 
   GITLAB_CLIENT_ID: Joi.string()
     .allow('')

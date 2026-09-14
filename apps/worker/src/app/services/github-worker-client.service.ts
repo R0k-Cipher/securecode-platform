@@ -90,6 +90,93 @@ export class GithubWorkerClientService {
     }
   }
 
+  async getLatestCommit(
+    installationId: string,
+    owner: string,
+    repositoryName: string,
+    branch: string,
+  ): Promise<{
+    sha: string;
+  }> {
+    const token =
+      await this.createInstallationAccessToken(
+        installationId,
+      );
+
+    const controller =
+      new AbortController();
+
+    const timeout =
+      setTimeout(
+        () =>
+          controller.abort(),
+        15_000,
+      );
+
+    try {
+      const url =
+        `${this.githubApiUrl}/repos/` +
+        `${encodeURIComponent(owner)}/` +
+        `${encodeURIComponent(repositoryName)}/` +
+        `branches/${encodeURIComponent(branch)}`;
+
+      const response =
+        await fetch(
+          url,
+          {
+            method:
+              'GET',
+
+            headers:
+              this.createInstallationHeaders(
+                token,
+              ),
+
+            signal:
+              controller.signal,
+          },
+        );
+
+      if (!response.ok) {
+        const body =
+          await response.text();
+
+        throw new Error(
+          `GitHub branch HTTP ${response.status}: ${body.slice(0, 300)}`,
+        );
+      }
+
+      const data =
+        (await response.json()) as {
+          commit?: {
+            sha?: string;
+          };
+        };
+
+      const sha =
+        data.commit?.sha?.trim();
+
+      if (
+        !sha ||
+        !/^[a-f0-9]{40}$/i.test(
+          sha,
+        )
+      ) {
+        throw new Error(
+          'GitHub a retourné un SHA invalide.',
+        );
+      }
+
+      return {
+        sha,
+      };
+    } finally {
+      clearTimeout(
+        timeout,
+      );
+    }
+  }
+
   private generateAppJwt(): string {
     const appId =
       this.getRequiredConfig(

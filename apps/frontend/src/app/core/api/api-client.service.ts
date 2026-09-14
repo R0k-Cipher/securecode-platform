@@ -68,6 +68,18 @@ export class ApiClientService {
     );
   }
 
+  put<T>(
+    path: string,
+    body: unknown,
+  ): Observable<T> {
+    return this.http.put<T>(
+      this.url(
+        path,
+      ),
+      body,
+    );
+  }
+
   delete<T>(
     path: string,
   ): Observable<T> {

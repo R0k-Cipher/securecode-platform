@@ -4,6 +4,7 @@ import {
   OnInit,
   inject,
   signal,
+  computed,
 } from '@angular/core';
 
 import {
@@ -41,6 +42,14 @@ import {
 import {
   scanStatusLabel,
 } from '../../../../shared/utils/status-labels';
+
+import {
+  AuthContextService,
+} from '../../../../core/auth/auth-context.service';
+
+import {
+  PERMISSIONS,
+} from '../../../../core/auth/auth-context.models';
 
 @Component({
   selector:
@@ -171,6 +180,20 @@ export class ScanListComponent
       return;
     }
 
+    if (
+      !this.canReadScans()
+    ) {
+      this.scans.set(
+        [],
+      );
+
+      this.error.set(
+        "Vous n'avez pas la permission de consulter les scans de ce projet.",
+      );
+
+      return;
+    }
+
     this.loading.set(
       true,
     );
@@ -296,6 +319,16 @@ export class ScanListComponent
     scan:
       ScanListItem,
   ): void {
+    if (
+      !this.canReadScans()
+    ) {
+      this.error.set(
+        "Vous n'avez pas la permission de consulter ce scan.",
+      );
+
+      return;
+    }
+
     void this.router.navigate([
       '/organizations',
       this.organizationId,
@@ -314,4 +347,23 @@ export class ScanListComponent
       status,
     );
   }
+
+private readonly authContext =
+  inject(
+    AuthContextService,
+  );
+
+readonly canReadScans =
+  computed(
+    () =>
+      Boolean(
+        this.projectId &&
+        this.authContext
+          .canProject(
+            this.projectId,
+            PERMISSIONS.SCAN_READ,
+          ),
+      ),
+  );
+
 }

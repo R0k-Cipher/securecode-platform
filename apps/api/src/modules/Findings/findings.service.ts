@@ -635,6 +635,19 @@ export class FindingsService {
     const now =
       new Date();
 
+    const existingFinding =
+      await this.prisma
+        .finding
+        .findUnique({
+          where: {
+            id: findingId,
+          },
+
+          select: {
+            metadata: true,
+          },
+        });
+
     const updated =
       await this.prisma.finding.update({
         where: {
@@ -653,6 +666,17 @@ export class FindingsService {
               : null,
 
           metadata: {
+          ...(
+            (
+              existingFinding
+                ?.metadata ??
+              {}
+            ) as Record<
+              string,
+              unknown
+            >
+          ),
+
             statusChangedBy:
               userId,
 

@@ -20,6 +20,7 @@ import {
   AuditAction,
   GitProvider,
   Prisma,
+  FindingStatus,
   ScanStatus,
   ScanTrigger,
   ScanType,
@@ -40,8 +41,6 @@ import type {
 import { ListScansDto } from './dto/list-scans.dto';
 
 
-
-
 @Injectable()
 export class ScansService {
   constructor(
@@ -55,255 +54,36 @@ export class ScansService {
       Queue,
   ) {}
 
-  async createManualScan(
-    organizationId:
-      string,
+async createManualScan(
+  organizationId: string,
+  projectId: string,
+  repositoryId: string,
+  userId: string,
+) {
+  return this.createRepositoryScan({
+    organizationId,
+    projectId,
+    repositoryId,
 
-    projectId:
-      string,
+    requestedById:
+      userId,
 
-    repositoryId:
-      string,
+    type:
+      ScanType.MANUAL_SCAN,
 
-    userId:
-      string,
-  ) {
-    const repository =
-      await this.prisma
-        .repository
-        .findFirst({
-          where: {
-            id:
-              repositoryId,
+    trigger:
+      ScanTrigger.MANUAL,
 
-            organizationId,
+    queueTrigger:
+      'MANUAL',
 
-            projectId,
+    requestedMode:
+      'AUTO',
 
-            isArchived:
-              false,
-          },
-
-          select: {
-            id:
-              true,
-
-            projectId:
-              true,
-
-            gitConnectionId:
-              true,
-
-            provider:
-              true,
-
-            externalId:
-              true,
-
-            fullName:
-              true,
-
-            defaultBranch:
-              true,
-
-            lastRemoteCommitSha:
-              true,
-          },
-        });
-
-    if (!repository) {
-      throw new NotFoundException(
-        'Repository introuvable.',
-      );
-    }
-
-    if (
-      !repository.defaultBranch ||
-      !repository.lastRemoteCommitSha
-    ) {
-      throw new ConflictException(
-        "Le repository n'a pas encore été synchronisé.",
-      );
-    }
-
-    const correlationId =
-      randomUUID();
-
-    const scan =
-      await this.prisma.scan.create({
-        data: {
-          projectId,
-
-          repositoryId,
-
-          requestedById:
-            userId,
-
-          type:
-            ScanType.MANUAL_SCAN,
-
-          trigger:
-            ScanTrigger.MANUAL,
-
-          status:
-            ScanStatus.QUEUED,
-
-          branch:
-            repository.defaultBranch,
-
-          commitSha:
-            repository.lastRemoteCommitSha,
-
-          progress:
-            0,
-
-          configuration: {
-            requestedMode:
-              'AUTO',
-
-            correlationId,
-          },
-        },
-      });
-
-    const jobData:
-      SecurityScanJobData = {
-        organizationId,
-
-        projectId,
-
-        repositoryId,
-
-        scanId:
-          scan.id,
-
-        gitConnectionId:
-          repository.gitConnectionId,
-
-        provider:
-          repository.provider ===
-          GitProvider.GITHUB
-            ? 'GITHUB'
-            : 'GITLAB',
-
-        repositoryExternalId:
-          repository.externalId,
-
-        repositoryFullName:
-          repository.fullName,
-
-        branch:
-          repository.defaultBranch,
-
-        fromSha:
-          null,
-
-        toSha:
-          repository.lastRemoteCommitSha,
-
-        pullRequestId:
-          null,
-
-        requestedMode:
-          'AUTO',
-
-        trigger:
-          'MANUAL',
-
-        triggeredById:
-          userId,
-
-        eventId:
-          null,
-
-        requestedAt:
-          new Date().toISOString(),
-
-        correlationId,
-      };
-
-    try {
-      const job =
-        await this.scanQueue.add(
-          JOB_NAMES.SECURITY_SCAN,
-          jobData,
-          {
-            jobId: `security-scan-${scan.id}`,
-
-            attempts:
-              2,
-
-            backoff: {
-              type:
-                'exponential',
-
-              delay:
-                5_000,
-            },
-
-            removeOnComplete:
-              100,
-
-            removeOnFail:
-              500,
-          },
-        );
-
-      await this.prisma
-        .scan
-        .update({
-          where: {
-            id:
-              scan.id,
-          },
-
-          data: {
-            queueJobId:
-              job.id
-                ? String(
-                    job.id,
-                  )
-                : null,
-          },
-        });
-
-      return {
-        scanId:
-          scan.id,
-
-        repositoryId,
-
-        status:
-          ScanStatus.QUEUED,
-
-        correlationId,
-      };
-    } catch (
-      error
-    ) {
-      await this.prisma
-        .scan
-        .update({
-          where: {
-            id:
-              scan.id,
-          },
-
-          data: {
-            status:
-              ScanStatus.FAILED,
-
-            failedAt:
-              new Date(),
-
-            errorMessage:
-              'Impossible de planifier le scan.',
-          },
-        });
-
-      throw error;
-    }
-  }
+    correlationId:
+      randomUUID(),
+  });
+}
 
   async listProjectScans(
     organizationId: string,
@@ -791,6 +571,424 @@ export class ScansService {
     return scan;
   }
 
+  async createScheduledScan(
+  organizationId: string,
+  projectId: string,
+  repositoryId: string,
+  correlationId = randomUUID(),
+) {
+  return this.createRepositoryScan({
+    organizationId,
+    projectId,
+    repositoryId,
+
+    requestedById:
+      null,
+
+    type:
+      ScanType.FULL_SCAN,
+
+    trigger:
+      ScanTrigger.SCHEDULED,
+
+    queueTrigger:
+      'SCHEDULED',
+
+    requestedMode:
+      'AUTO',
+
+    correlationId,
+  });
+}
+
+private async createRepositoryScan(
+  input: {
+    organizationId: string;
+    projectId: string;
+    repositoryId: string;
+
+    requestedById:
+      string | null;
+
+    type:
+      ScanType;
+
+    trigger:
+      ScanTrigger;
+
+    queueTrigger:
+      SecurityScanJobData['trigger'];
+
+    requestedMode:
+      SecurityScanJobData['requestedMode'];
+
+    correlationId:
+      string;
+  },
+) {
+  const repository =
+    await this.prisma.repository.findFirst({
+      where: {
+        id:
+          input.repositoryId,
+
+        organizationId:
+          input.organizationId,
+
+        projectId:
+          input.projectId,
+
+        isArchived:
+          false,
+      },
+
+      select: {
+        id:
+          true,
+
+        projectId:
+          true,
+
+        gitConnectionId:
+          true,
+
+        provider:
+          true,
+
+        externalId:
+          true,
+
+        fullName:
+          true,
+
+        defaultBranch:
+          true,
+
+        lastRemoteCommitSha:
+          true,
+
+        gitConnection: {
+          select: {
+            id:
+              true,
+
+            status:
+              true,
+          },
+        },
+      },
+    });
+
+  if (!repository) {
+    throw new NotFoundException(
+      'Repository introuvable.',
+    );
+  }
+
+  if (
+    repository.gitConnection.status !==
+    'ACTIVE'
+  ) {
+    throw new ConflictException(
+      'La connexion Git du repository n’est pas active.',
+    );
+  }
+
+  if (
+    !repository.defaultBranch ||
+    !repository.lastRemoteCommitSha
+  ) {
+    throw new ConflictException(
+      "Le repository n'a pas encore été synchronisé.",
+    );
+  }
+
+  /*
+   * Évite plusieurs analyses identiques en parallèle
+   * sur le même commit.
+   */
+  const existingScan =
+    await this.prisma.scan.findFirst({
+      where: {
+        projectId:
+          input.projectId,
+
+        repositoryId:
+          input.repositoryId,
+
+        commitSha:
+          repository.lastRemoteCommitSha,
+
+        status: {
+          in: [
+            ScanStatus.QUEUED,
+            ScanStatus.PREPARING,
+            ScanStatus.DOWNLOADING,
+            ScanStatus.DETECTING,
+            ScanStatus.SCANNING,
+            ScanStatus.PROCESSING_RESULTS,
+            ScanStatus.CALCULATING_SCORE,
+            ScanStatus.GENERATING_REPORT,
+          ],
+        },
+      },
+
+      select: {
+        id:
+          true,
+
+        status:
+          true,
+
+        queueJobId:
+          true,
+      },
+    });
+
+  if (existingScan) {
+    return {
+      scanId:
+        existingScan.id,
+
+      repositoryId:
+        input.repositoryId,
+
+      status:
+        existingScan.status,
+
+      correlationId:
+        input.correlationId,
+
+      duplicate:
+        true,
+    };
+  }
+
+  /*
+   * Chercher le dernier scan COMPLETED afin
+   * que AUTO puisse calculer un vrai delta.
+   */
+
+  const previousCompletedScan =
+    await this.prisma.scan.findFirst({
+      where: {
+        projectId:
+          input.projectId,
+
+        repositoryId:
+          input.repositoryId,
+
+        status:
+          ScanStatus.COMPLETED,
+      },
+
+      orderBy: {
+        completedAt:
+          'desc',
+      },
+
+      select: {
+        commitSha:
+          true,
+      },
+    });
+
+
+  const fromSha =
+    previousCompletedScan
+      ?.commitSha ??
+    null;
+
+  const scan =
+    await this.prisma.scan.create({
+      data: {
+        projectId:
+          input.projectId,
+
+        repositoryId:
+          input.repositoryId,
+
+        requestedById:
+          input.requestedById,
+
+        type:
+          input.type,
+
+        trigger:
+          input.trigger,
+
+        status:
+          ScanStatus.QUEUED,
+
+        branch:
+          repository.defaultBranch,
+
+        commitSha:
+          repository.lastRemoteCommitSha,
+
+        progress:
+          0,
+
+        configuration: {
+          requestedMode:
+            input.requestedMode,
+
+          correlationId:
+            input.correlationId,
+
+          fromSha,
+
+          toSha:
+            repository.lastRemoteCommitSha,
+
+          scheduled:
+            input.queueTrigger ===
+            'SCHEDULED',
+        },
+      },
+    });
+
+  const jobData:
+    SecurityScanJobData = {
+    organizationId:
+      input.organizationId,
+
+    projectId:
+      input.projectId,
+
+    repositoryId:
+      input.repositoryId,
+
+    scanId:
+      scan.id,
+
+    gitConnectionId:
+      repository.gitConnectionId,
+
+    provider:
+      repository.provider ===
+      GitProvider.GITHUB
+        ? 'GITHUB'
+        : 'GITLAB',
+
+    repositoryExternalId:
+      repository.externalId,
+
+    repositoryFullName:
+      repository.fullName,
+
+    branch:
+      repository.defaultBranch,
+
+    fromSha,
+
+    toSha:
+      repository.lastRemoteCommitSha,
+
+    pullRequestId:
+      null,
+
+    requestedMode:
+      input.requestedMode,
+
+    trigger:
+      input.queueTrigger,
+
+    triggeredById:
+      input.requestedById,
+
+    eventId:
+      null,
+
+    requestedAt:
+      new Date()
+        .toISOString(),
+
+    correlationId:
+      input.correlationId,
+  };
+
+  try {
+    const job =
+      await this.scanQueue.add(
+        JOB_NAMES.SECURITY_SCAN,
+        jobData,
+        {
+          jobId:
+            `security-scan-${scan.id}`,
+
+          attempts:
+            3,
+
+          backoff: {
+            type:
+              'exponential',
+
+            delay:
+              5_000,
+          },
+
+          removeOnComplete:
+            100,
+
+          removeOnFail:
+            500,
+        },
+      );
+
+    await this.prisma.scan.update({
+      where: {
+        id:
+          scan.id,
+      },
+
+      data: {
+        queueJobId:
+          job.id
+            ? String(job.id)
+            : null,
+      },
+    });
+
+    return {
+      scanId:
+        scan.id,
+
+      repositoryId:
+        input.repositoryId,
+
+      status:
+        ScanStatus.QUEUED,
+
+      correlationId:
+        input.correlationId,
+
+      duplicate:
+        false,
+    };
+  } catch (error) {
+    await this.prisma.scan.update({
+      where: {
+        id:
+          scan.id,
+      },
+
+      data: {
+        status:
+          ScanStatus.FAILED,
+
+        failedAt:
+          new Date(),
+
+        errorMessage:
+          'Impossible de planifier le scan.',
+      },
+    });
+
+    throw error;
+  }
+}
+
   private async assertProject(
     organizationId: string,
     projectId: string,
@@ -1119,246 +1317,814 @@ export class ScansService {
         : null;
   }
 
-  async getProjectSecurityDashboard(
-    organizationId: string,
-    projectId: string,
-  ) {
-    await this.assertProject(
-      organizationId,
-      projectId,
+async getProjectSecurityDashboard(
+  organizationId: string,
+  projectId: string,
+) {
+  await this.assertProject(
+    organizationId,
+    projectId,
+  );
+
+  const project =
+    await this.prisma.project.findFirst({
+      where: {
+        id:
+          projectId,
+
+        organizationId,
+      },
+
+      select: {
+        id:
+          true,
+
+        name:
+          true,
+
+        description:
+          true,
+      },
+    });
+
+  if (!project) {
+    throw new NotFoundException(
+      'Projet introuvable.',
     );
+  }
 
-    const [
-      repositories,
-      activeFindings,
-      severity,
-      latestScans,
-      recentScans,
-    ] =
-      await Promise.all([
-        this.prisma.repository.count({
-          where: {
+  /*
+  |--------------------------------------------------------------------------
+  | Finding statuses considered active
+  |--------------------------------------------------------------------------
+  */
+
+  const closedFindingStatuses:
+    FindingStatus[] = [
+      FindingStatus.FIXED,
+      FindingStatus.FALSE_POSITIVE,
+      FindingStatus.CLOSED,
+    ];
+
+  const activeFindingWhere:
+    Prisma.FindingWhereInput = {
+    projectId,
+
+    repository: {
+      organizationId,
+    },
+
+    status: {
+      notIn:
+        closedFindingStatuses,
+    },
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Main dashboard data
+  |--------------------------------------------------------------------------
+  */
+
+  const [
+    repositories,
+    scans,
+    failedScans,
+    findings,
+    openFindings,
+
+    criticalCount,
+    highCount,
+    mediumCount,
+    lowCount,
+    infoCount,
+
+    completedScans,
+    recentScans,
+    criticalFindings,
+  ] =
+    await Promise.all([
+      /*
+       * Repositories
+       */
+      this.prisma.repository.count({
+        where: {
+          organizationId,
+
+          projectId,
+
+          isArchived:
+            false,
+        },
+      }),
+
+      /*
+       * Total scans
+       */
+      this.prisma.scan.count({
+        where: {
+          projectId,
+
+          repository: {
             organizationId,
-            projectId,
-            isArchived:
-              false,
           },
-        }),
+        },
+      }),
 
-        this.prisma.finding.count({
-          where: {
-            projectId,
+      /*
+       * Failed scans
+       */
+      this.prisma.scan.count({
+        where: {
+          projectId,
 
-            repository: {
-              organizationId,
+          status:
+            ScanStatus.FAILED,
+
+          repository: {
+            organizationId,
+          },
+        },
+      }),
+
+      /*
+       * Total findings
+       */
+      this.prisma.finding.count({
+        where: {
+          projectId,
+
+          repository: {
+            organizationId,
+          },
+        },
+      }),
+
+      /*
+       * Active findings
+       */
+      this.prisma.finding.count({
+        where:
+          activeFindingWhere,
+      }),
+
+      /*
+       * Critical
+       */
+      this.prisma.finding.count({
+        where: {
+          ...activeFindingWhere,
+
+          severity:
+            'CRITICAL',
+        },
+      }),
+
+      /*
+       * High
+       */
+      this.prisma.finding.count({
+        where: {
+          ...activeFindingWhere,
+
+          severity:
+            'HIGH',
+        },
+      }),
+
+      /*
+       * Medium
+       */
+      this.prisma.finding.count({
+        where: {
+          ...activeFindingWhere,
+
+          severity:
+            'MEDIUM',
+        },
+      }),
+
+      /*
+       * Low
+       */
+      this.prisma.finding.count({
+        where: {
+          ...activeFindingWhere,
+
+          severity:
+            'LOW',
+        },
+      }),
+
+      /*
+       * Info
+       */
+      this.prisma.finding.count({
+        where: {
+          ...activeFindingWhere,
+
+          severity:
+            'INFO',
+        },
+      }),
+
+      /*
+       * Completed scans used for:
+       * - project score
+       * - history
+       * - performance
+       */
+      this.prisma.scan.findMany({
+        where: {
+          projectId,
+
+          status:
+            ScanStatus.COMPLETED,
+
+          repository: {
+            organizationId,
+          },
+        },
+
+        orderBy: {
+          completedAt:
+            'desc',
+        },
+
+        take:
+          50,
+
+        select: {
+          id:
+            true,
+
+          repositoryId:
+            true,
+
+          score:
+            true,
+
+          statistics:
+            true,
+
+          createdAt:
+            true,
+
+          completedAt:
+            true,
+        },
+      }),
+
+      /*
+       * Recent scans
+       */
+      this.prisma.scan.findMany({
+        where: {
+          projectId,
+
+          repository: {
+            organizationId,
+          },
+        },
+
+        orderBy: {
+          createdAt:
+            'desc',
+        },
+
+        take:
+          10,
+
+        select: {
+          id:
+            true,
+
+          repositoryId:
+            true,
+
+          status:
+            true,
+
+          type:
+            true,
+
+          trigger:
+            true,
+
+          score:
+            true,
+
+          progress:
+            true,
+
+          createdAt:
+            true,
+
+          completedAt:
+            true,
+
+          repository: {
+            select: {
+              id:
+                true,
+
+              name:
+                true,
+
+              fullName:
+                true,
+
+              provider:
+                true,
             },
-
-            status: {
-              notIn: [
-                'FIXED',
-                'FALSE_POSITIVE',
-                'CLOSED',
-              ],
-            },
           },
-        }),
+        },
+      }),
 
-        this.prisma.finding.groupBy({
-          by: [
-            'severity',
-          ],
+      /*
+       * Critical / High priority findings
+       */
+      this.prisma.finding.findMany({
+        where: {
+          ...activeFindingWhere,
 
-          where: {
-            projectId,
+          severity: {
+            in: [
+              'CRITICAL',
+              'HIGH',
+            ],
+          },
+        },
 
-            repository: {
-              organizationId,
-            },
-
-            status: {
-              notIn: [
-                'FIXED',
-                'FALSE_POSITIVE',
-                'CLOSED',
-              ],
-            },
+        orderBy: [
+          {
+            severity:
+              'asc',
           },
 
-          _count: {
-            _all:
-              true,
-          },
-        }),
-
-        this.prisma.scan.findMany({
-          where: {
-            projectId,
-
-            repository: {
-              organizationId,
-            },
-
-            status:
-              'COMPLETED',
-          },
-
-          orderBy: {
-            completedAt:
-              'desc',
-          },
-
-          distinct: [
-            'repositoryId',
-          ],
-
-          select: {
-            repositoryId:
-              true,
-
-            score:
-              true,
-
-            completedAt:
-              true,
-
-            statistics:
-              true,
-          },
-        }),
-
-        this.prisma.scan.findMany({
-          where: {
-            projectId,
-
-            repository: {
-              organizationId,
-            },
-          },
-
-          orderBy: {
+          {
             createdAt:
               'desc',
           },
+        ],
 
-          take:
-            10,
+        take:
+          10,
 
-          select: {
-            id:
-              true,
+        select: {
+          id:
+            true,
 
-            repositoryId:
-              true,
+          title:
+            true,
 
-            status:
-              true,
+          severity:
+            true,
 
-            type:
-              true,
+          status:
+            true,
 
-            trigger:
-              true,
+          filePath:
+            true,
 
-            score:
-              true,
+          repository: {
+            select: {
+              id:
+                true,
 
-            progress:
-              true,
+              name:
+                true,
 
-            createdAt:
-              true,
+              fullName:
+                true,
 
-            completedAt:
-              true,
+              provider:
+                true,
+            },
+          },
 
-            repository: {
-              select: {
-                name:
-                  true,
+          assignments: {
+            take:
+              1,
 
-                fullName:
-                  true,
+            /*
+             * Pas d'orderBy createdAt :
+             * ton FindingAssignment ne possède
+             * pas ce champ dans ton schéma actuel.
+             */
+
+            select: {
+              id:
+                true,
+
+              assignedTo: {
+                select: {
+                  id:
+                    true,
+
+                  email:
+                    true,
+
+                  firstName:
+                    true,
+
+                  lastName:
+                    true,
+                },
               },
             },
           },
-        }),
-      ]);
+        },
+      }),
+    ]);
 
-    const validScores =
-      latestScans
-        .map(
-          (scan) =>
+  /*
+  |--------------------------------------------------------------------------
+  | Severity
+  |--------------------------------------------------------------------------
+  */
+
+  const severity = {
+    INFO:
+      infoCount,
+
+    LOW:
+      lowCount,
+
+    MEDIUM:
+      mediumCount,
+
+    HIGH:
+      highCount,
+
+    CRITICAL:
+      criticalCount,
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Latest completed scan per repository
+  |--------------------------------------------------------------------------
+  */
+
+  const latestScanByRepository =
+    new Map<
+      string,
+      (typeof completedScans)[number]
+    >();
+
+  for (
+    const scan of
+    completedScans
+  ) {
+    if (
+      latestScanByRepository.has(
+        scan.repositoryId,
+      )
+    ) {
+      continue;
+    }
+
+    latestScanByRepository.set(
+      scan.repositoryId,
+      scan,
+    );
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Project security score
+  |--------------------------------------------------------------------------
+  */
+
+  const repositoryScores =
+    Array.from(
+      latestScanByRepository.values(),
+    )
+      .map(
+        scan =>
+          scan.score !==
+          null
+            ? Number(
+                scan.score,
+              )
+            : null,
+      )
+      .filter(
+        (
+          score,
+        ): score is number =>
+          score !== null &&
+          Number.isFinite(
+            score,
+          ),
+      );
+
+  const securityScore =
+    repositoryScores.length
+      ? Number(
+          (
+            repositoryScores.reduce(
+              (
+                total,
+                score,
+              ) =>
+                total +
+                score,
+              0,
+            ) /
+            repositoryScores.length
+          ).toFixed(
+            2,
+          ),
+        )
+      : null;
+
+  /*
+  |--------------------------------------------------------------------------
+  | Grade
+  |--------------------------------------------------------------------------
+  */
+
+  const grade =
+    securityScore ===
+    null
+      ? null
+      : securityScore >=
+          90
+        ? 'A'
+        : securityScore >=
+            80
+          ? 'B'
+          : securityScore >=
+              70
+            ? 'C'
+            : securityScore >=
+                60
+              ? 'D'
+              : 'F';
+
+  /*
+  |--------------------------------------------------------------------------
+  | Score history
+  |--------------------------------------------------------------------------
+  */
+
+  const scoreHistory =
+    completedScans
+      .filter(
+        scan =>
+          scan.score !==
+          null,
+      )
+      .slice(
+        0,
+        12,
+      )
+      .reverse()
+      .map(
+        scan => ({
+          id:
+            scan.id,
+
+          scanId:
+            scan.id,
+
+          score:
             scan.score !==
             null
               ? Number(
                   scan.score,
                 )
               : null,
-        )
-        .filter(
-          (
-            score,
-          ): score is number =>
-            score !== null &&
-            Number.isFinite(
-              score,
-            ),
-        );
 
-    const averageScore =
-      validScores.length >
-        0
-        ? Number(
+          status:
+            ScanStatus.COMPLETED,
+
+          createdAt:
             (
-              validScores.reduce(
-                (
-                  total,
-                  score,
-                ) =>
-                  total + score,
-                0,
-              ) /
-              validScores.length
-            ).toFixed(2),
-          )
-        : null;
+              scan.completedAt ??
+              scan.createdAt
+            ).toISOString(),
+        }),
+      );
 
-    return {
+  /*
+  |--------------------------------------------------------------------------
+  | Scan performance
+  |--------------------------------------------------------------------------
+  */
+
+  const completedScansCount =
+    completedScans.length;
+
+  const scoredScans =
+    completedScans.filter(
+      scan =>
+        scan.score !==
+        null,
+    );
+
+  const averageScore =
+    scoredScans.length
+      ? Number(
+          (
+            scoredScans.reduce(
+              (
+                total,
+                scan,
+              ) =>
+                total +
+                Number(
+                  scan.score,
+                ),
+              0,
+            ) /
+            scoredScans.length
+          ).toFixed(
+            2,
+          ),
+        )
+      : null;
+
+  const terminalScansCount =
+    completedScansCount +
+    failedScans;
+
+  const successRate =
+    terminalScansCount >
+    0
+      ? Number(
+          (
+            (
+              completedScansCount /
+              terminalScansCount
+            ) *
+            100
+          ).toFixed(
+            1,
+          ),
+        )
+      : 0;
+
+  let trend:
+    'UP' |
+    'DOWN' |
+    'STABLE' =
+    'STABLE';
+
+  let scoreDelta:
+    number |
+    null =
+    null;
+
+  if (
+    scoredScans.length >=
+    2
+  ) {
+    const current =
+      Number(
+        scoredScans[0]
+          .score,
+      );
+
+    const previous =
+      Number(
+        scoredScans[1]
+          .score,
+      );
+
+    scoreDelta =
+      Number(
+        (
+          current -
+          previous
+        ).toFixed(
+          2,
+        ),
+      );
+
+    if (
+      scoreDelta >
+      0
+    ) {
+      trend =
+        'UP';
+    } else if (
+      scoreDelta <
+      0
+    ) {
+      trend =
+        'DOWN';
+    }
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | OWASP
+  |--------------------------------------------------------------------------
+  |
+  | On ne crée aucune fausse donnée.
+  | On branchera la vraie catégorie OWASP lorsque
+  | le champ exact du Finding sera confirmé.
+  |--------------------------------------------------------------------------
+  */
+
+  const owasp:
+    Array<{
+      category: string;
+      count: number;
+    }> =
+    [];
+
+  /*
+  |--------------------------------------------------------------------------
+  | WSTG
+  |--------------------------------------------------------------------------
+  |
+  | Pas de valeur fictive.
+  | Les vrais ProjectWstgControl seront branchés ensuite.
+  |--------------------------------------------------------------------------
+  */
+
+  const wstg = {
+    score:
+      0,
+
+    grade:
+      '—',
+
+    categories:
+      [],
+
+    totalCategories:
+      0,
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Final API contract
+  |--------------------------------------------------------------------------
+  */
+
+  return {
+    project,
+
+    summary: {
       repositories,
 
-      activeFindings,
+      scans,
 
-      averageSecurityScore:
-        averageScore,
+      failedScans,
 
-      severity:
-        Object.fromEntries(
-          severity.map(
-            (item) => [
-              item.severity,
-              item._count._all,
-            ],
-          ),
-        ),
+      findings,
 
-      repositoryScores:
-        latestScans.map(
-          (scan) => ({
-            ...scan,
+      openFindings,
 
-            score:
-              scan.score !==
-              null
-                ? Number(
-                    scan.score,
-                  )
-                : null,
-          }),
-        ),
+      securityScore,
 
-      recentScans,
-    };
-  }
+      grade,
+    },
+
+    severity,
+
+    owasp,
+
+    scoreHistory,
+
+    criticalFindings,
+
+    recentScans:
+      recentScans.map(
+        scan => ({
+          ...scan,
+
+          score:
+            scan.score !==
+            null
+              ? Number(
+                  scan.score,
+                )
+              : null,
+        }),
+      ),
+
+    wstg,
+
+    scanPerformance: {
+      averageScore,
+
+      successRate,
+
+      trend,
+
+      scoreDelta,
+
+      completedScans:
+        completedScansCount,
+    },
+  };
+}
 
   async cancelScan(
     organizationId: string,

@@ -7,20 +7,29 @@ import {
 } from '@nestjs/core';
 
 import {
-  AuditController,
-} from './audit.controller';
+  RbacModule,
+} from '../rbac';
+
+import {
+  AuditIpInterceptor,
+} from './audit-ip.interceptor';
 
 import {
   AuditService,
 } from './audit.service';
 
 import {
-  AuditIpInterceptor,
-} from './audit-ip.interceptor';
+  CustomerAuditController,
+} from './customer-audit.controller';
 
 @Module({
+  imports: [
+    RbacModule,
+  ],
+
   controllers: [
-    AuditController,
+    
+    CustomerAuditController,
   ],
 
   providers: [

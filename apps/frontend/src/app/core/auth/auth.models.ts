@@ -3,54 +3,83 @@ export type PlatformRole =
   | 'PLATFORM_ADMIN';
 
 export interface AuthenticatedUser {
-  id: string;
+  id:
+    string;
 
-  email: string;
+  email:
+    string;
 
-  firstName: string;
+  firstName:
+    string;
 
-  lastName: string;
+  lastName:
+    string;
 
   avatarUrl:
     string | null;
 
+  status?:
+    string;
+
+  emailVerifiedAt?:
+    string | null;
+
+  lastLoginAt?:
+    string | null;
+
   platformRole:
     PlatformRole;
+
+  sessionId?:
+    string;
+
+  organizationIdentityId?:
+    string | null;
+
+  organizationId?:
+    string | null;
+
+  login?:
+    string | null;
 }
 
 export interface LoginRequest {
-  email: string;
-
-  password: string;
-}
-
-export interface RegisterRequest {
-  email: string;
-
-  firstName: string;
-
-  lastName: string;
-
-  password: string;
-
-  organizationName:
+  identifier:
     string;
 
-  organizationDescription?:
+  password:
     string;
 }
 
-export interface InitialOrganization {
-  id: string;
+export interface LoginIdentity {
+  id:
+    string;
 
-  name: string;
+  login:
+    string;
 
-  slug: string;
+  mustChangePassword?:
+    boolean;
+
+  organization: {
+    id:
+      string;
+
+    name:
+      string;
+
+    slug:
+      string;
+  };
 }
 
 export interface LoginResponse {
   user:
     AuthenticatedUser;
+
+  identity:
+    LoginIdentity |
+    null;
 
   accessToken:
     string;
@@ -65,8 +94,53 @@ export interface LoginResponse {
     number;
 }
 
-export interface AuthResponse
-  extends LoginResponse {
+export interface RegisterRequest {
+  email:
+    string;
+
+  password:
+    string;
+
+  firstName:
+    string;
+
+  lastName:
+    string;
+
+  organizationName:
+    string;
+
+  organizationDescription?:
+    string;
+}
+
+export interface RegisterOrganization {
+  id:
+    string;
+
+  name:
+    string;
+
+  slug:
+    string;
+}
+
+export interface RegisterResponse {
+  user:
+    AuthenticatedUser;
+
   organization:
-    InitialOrganization;
+    RegisterOrganization;
+
+  accessToken:
+    string;
+
+  refreshToken:
+    string;
+
+  accessTokenExpiresIn:
+    number;
+
+  refreshTokenExpiresIn:
+    number;
 }

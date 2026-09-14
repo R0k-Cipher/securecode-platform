@@ -3,95 +3,57 @@
   <header class="admin-header">
 
     <div>
-
       <span class="eyebrow">
         PLATFORM ADMIN
       </span>
 
       <h1>
-        Administration SecureCode
+        Supervision SecureCode
       </h1>
 
       <p>
-        Supervision globale des utilisateurs,
-        organisations, projets, scans
-        et événements de sécurité.
+        Vue opérationnelle de la plateforme,
+        des tenants, des accès et de l'activité
+        d'administration.
       </p>
-
     </div>
 
     <button
       type="button"
       class="refresh-button"
+      [disabled]="loading()"
       (click)="refresh()"
     >
-      Actualiser
+      {{
+        loading()
+          ? 'Actualisation...'
+          : 'Actualiser'
+      }}
     </button>
 
   </header>
 
-  <nav class="tabs">
-
-    <button
-      type="button"
-      [class.active]="
-        tab() === 'overview'
-      "
-      (click)="setTab('overview')"
-    >
-      Vue globale
-    </button>
-
-    <button
-      type="button"
-      [class.active]="
-        tab() === 'users'
-      "
-      (click)="setTab('users')"
-    >
-      Utilisateurs
-    </button>
-
-    <button
-      type="button"
-      [class.active]="
-        tab() === 'organizations'
-      "
-      (click)="setTab('organizations')"
-    >
-      Organisations
-    </button>
-
-    <button
-      type="button"
-      [class.active]="
-        tab() === 'logs'
-      "
-      (click)="setTab('logs')"
-    >
-      Audit logs
-    </button>
-
-  </nav>
-
-  @if (
-    loading()
-  ) {
-
-    <div class="loading-card">
-      Chargement des données plateforme...
+  @if (error()) {
+    <div class="admin-error">
+      {{ error() }}
     </div>
-
   }
 
   @if (
-    !loading() &&
-    tab() === 'overview' &&
+    loading() &&
+    !data()
+  ) {
+    <div class="loading-card">
+      Chargement de la supervision plateforme...
+    </div>
+  }
+
+  @if (
     data();
     as d
   ) {
 
-    <div class="metrics">
+    <section class="metrics">
 
       @for (
         metric of metrics();
@@ -103,7 +65,6 @@
             metric.critical
           "
         >
-
           <span>
             {{ metric.label }}
           </span>
@@ -115,165 +76,136 @@
           <small>
             {{ metric.helper }}
           </small>
-
         </article>
 
       }
 
-    </div>
+    </section>
 
-    <div class="overview-grid">
+    <section class="overview-grid">
 
-      <section class="card">
+      <article class="card">
 
         <div class="card-header">
 
           <div>
-
             <span class="section-label">
-              ACTIVITY
+              AUDIT
             </span>
 
             <h2>
-              Derniers scans
+              Activité récente
             </h2>
-
           </div>
+
+          <span class="record-count">
+            {{
+              d.latestAuditLogs
+                ?.length ??
+              0
+            }}
+            événements
+          </span>
 
         </div>
 
         @if (
-          d.latestScans?.length
+          d.latestAuditLogs
+            ?.length
         ) {
 
-          <div class="table-wrapper">
+          <div class="activity-list">
 
-            <table>
+            @for (
+              log of
+                d.latestAuditLogs;
+              track log.id
+            ) {
 
-              <thead>
-                <tr>
-                  <th>
-                    Repository
-                  </th>
+              <div class="activity-item">
 
-                  <th>
-                    Statut
-                  </th>
+                <div class="avatar">
+                  {{
+                    log.actor
+                      ?.firstName
+                      ?.charAt(0) ||
+                    'S'
+                  }}
+                </div>
 
-                  <th>
-                    Findings
-                  </th>
+                <div>
 
-                  <th>
-                    Score
-                  </th>
+                  <strong>
+                    {{
+                      log.description ||
+                      (
+                        log.action +
+                        ' ' +
+                        log.resourceType
+                      )
+                    }}
+                  </strong>
 
-                  <th>
-                    Date
-                  </th>
-                </tr>
-              </thead>
+                  <small>
+                    {{
+                      log.actor
+                        ?.email ||
+                      'Système'
+                    }}
 
-              <tbody>
-
-                @for (
-                  scan of d.latestScans;
-                  track scan.id
-                ) {
-
-                  <tr>
-
-                    <td>
-
-                      <strong>
-                        {{
-                          scan
-                            .repository
-                            ?.fullName
-                        }}
-                      </strong>
-
-                      <small>
-                        {{
-                          scan
-                            .project
-                            ?.name
-                        }}
-                      </small>
-
-                    </td>
-
-                    <td>
-
-                      <span
-                        class="status-badge"
-                        [class.success]="
-                          scan.status ===
-                          'COMPLETED'
-                        "
-                        [class.danger]="
-                          scan.status ===
-                          'FAILED'
-                        "
-                      >
-                        {{
-                          scan.status
-                        }}
-                      </span>
-
-                    </td>
-
-                    <td>
+                    @if (
+                      log.organization
+                        ?.name
+                    ) {
+                      •
                       {{
-                        scan
-                          ._count
-                          ?.findings ??
-                        0
+                        log.organization
+                          .name
                       }}
-                    </td>
+                    }
 
-                    <td>
+                    @if (
+                      log.project
+                        ?.name
+                    ) {
+                      •
                       {{
-                        scan.score ??
-                        '—'
+                        log.project
+                          .name
                       }}
-                    </td>
+                    }
+                  </small>
 
-                    <td>
-                      {{
-                        scan
-                          .queuedAt
-                          | date:
-                            'dd/MM/yyyy HH:mm'
-                      }}
-                    </td>
+                </div>
 
-                  </tr>
+                <small>
+                  {{
+                    log.createdAt
+                      | date:
+                        'dd/MM HH:mm'
+                  }}
+                </small>
 
-                }
+              </div>
 
-              </tbody>
-
-            </table>
+            }
 
           </div>
 
         } @else {
 
           <div class="empty-state">
-            Aucun scan récent.
+            Aucun événement récent.
           </div>
 
         }
 
-      </section>
+      </article>
 
-      <section class="card">
+      <article class="card">
 
         <div class="card-header">
-
           <div>
-
             <span class="section-label">
               USERS
             </span>
@@ -281,15 +213,14 @@
             <h2>
               Nouveaux utilisateurs
             </h2>
-
           </div>
-
         </div>
 
         <div class="activity-list">
 
           @for (
-            user of d.latestUsers;
+            user of
+              d.latestUsers;
             track user.id
           ) {
 
@@ -297,19 +228,16 @@
 
               <div class="avatar">
                 {{
-                  user
-                    .firstName
+                  user.firstName
                     ?.charAt(0)
                 }}
                 {{
-                  user
-                    .lastName
+                  user.lastName
                     ?.charAt(0)
                 }}
               </div>
 
               <div>
-
                 <strong>
                   {{
                     user.firstName
@@ -320,11 +248,8 @@
                 </strong>
 
                 <small>
-                  {{
-                    user.email
-                  }}
+                  {{ user.email }}
                 </small>
-
               </div>
 
               <span
@@ -335,9 +260,7 @@
                   )
                 "
               >
-                {{
-                  user.status
-                }}
+                {{ user.status }}
               </span>
 
             </div>
@@ -346,457 +269,7 @@
 
         </div>
 
-      </section>
-
-    </div>
-
-  }
-
-  @if (
-    tab() === 'users'
-  ) {
-
-    <section class="card">
-
-      <div class="card-header">
-
-        <div>
-
-          <span class="section-label">
-            USERS
-          </span>
-
-          <h2>
-            Gestion des utilisateurs
-          </h2>
-
-        </div>
-
-        <span class="record-count">
-          {{
-            users().length
-          }}
-          utilisateur(s)
-        </span>
-
-      </div>
-
-      <div class="table-wrapper">
-
-        <table>
-
-          <thead>
-
-            <tr>
-              <th>
-                Utilisateur
-              </th>
-
-              <th>
-                Statut
-              </th>
-
-              <th>
-                Rôle plateforme
-              </th>
-
-              <th>
-                Organisations
-              </th>
-
-              <th>
-                Dernière connexion
-              </th>
-
-              <th>
-                Action
-              </th>
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            @for (
-              user of users();
-              track user.id
-            ) {
-
-              <tr>
-
-                <td>
-
-                  <strong>
-                    {{
-                      user.firstName
-                    }}
-                    {{
-                      user.lastName
-                    }}
-                  </strong>
-
-                  <small>
-                    {{
-                      user.email
-                    }}
-                  </small>
-
-                </td>
-
-                <td>
-
-                  <span
-                    class="status-badge"
-                    [ngClass]="
-                      statusClass(
-                        user.status
-                      )
-                    "
-                  >
-                    {{
-                      user.status
-                    }}
-                  </span>
-
-                </td>
-
-                <td>
-
-                  <span
-                    class="role-badge"
-                  >
-                    {{
-                      user.platformRole
-                    }}
-                  </span>
-
-                </td>
-
-                <td>
-                  {{
-                    user
-                      ._count
-                      ?.organizationMemberships ??
-                    0
-                  }}
-                </td>
-
-                <td>
-                  {{
-                    user.lastLoginAt
-                      ? (
-                          user.lastLoginAt
-                          | date:
-                            'dd/MM/yyyy HH:mm'
-                        )
-                      : 'Jamais'
-                  }}
-                </td>
-
-                <td>
-
-                  <button
-                    type="button"
-                    class="secondary-button"
-                    (click)="
-                      toggleUser(
-                        user
-                      )
-                    "
-                  >
-                    {{
-                      user.status ===
-                      'ACTIVE'
-                        ? 'Suspendre'
-                        : 'Activer'
-                    }}
-                  </button>
-
-                </td>
-
-              </tr>
-
-            }
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </section>
-
-  }
-
-  @if (
-    tab() ===
-    'organizations'
-  ) {
-
-    <section class="card">
-
-      <div class="card-header">
-
-        <div>
-
-          <span class="section-label">
-            TENANTS
-          </span>
-
-          <h2>
-            Organisations
-          </h2>
-
-        </div>
-
-        <span class="record-count">
-          {{
-            orgs().length
-          }}
-          organisation(s)
-        </span>
-
-      </div>
-
-      <div class="table-wrapper">
-
-        <table>
-
-          <thead>
-            <tr>
-              <th>
-                Organisation
-              </th>
-
-              <th>
-                Créateur
-              </th>
-
-              <th>
-                Membres
-              </th>
-
-              <th>
-                Projets
-              </th>
-
-              <th>
-                Repositories
-              </th>
-
-              <th>
-                Création
-              </th>
-            </tr>
-          </thead>
-
-          <tbody>
-
-            @for (
-              org of orgs();
-              track org.id
-            ) {
-
-              <tr>
-
-                <td>
-
-                  <strong>
-                    {{ org.name }}
-                  </strong>
-
-                  <small>
-                    {{ org.slug }}
-                  </small>
-
-                </td>
-
-                <td>
-                  {{
-                    org
-                      .createdBy
-                      .email
-                  }}
-                </td>
-
-                <td>
-                  {{
-                    org
-                      ._count
-                      .members
-                  }}
-                </td>
-
-                <td>
-                  {{
-                    org
-                      ._count
-                      .projects
-                  }}
-                </td>
-
-                <td>
-                  {{
-                    org
-                      ._count
-                      .repositories ??
-                    0
-                  }}
-                </td>
-
-                <td>
-                  {{
-                    org.createdAt
-                    | date:
-                      'dd/MM/yyyy'
-                  }}
-                </td>
-
-              </tr>
-
-            }
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </section>
-
-  }
-
-  @if (
-    tab() === 'logs'
-  ) {
-
-    <section class="card">
-
-      <div class="card-header">
-
-        <div>
-
-          <span class="section-label">
-            AUDIT
-          </span>
-
-          <h2>
-            Journaux d'audit
-          </h2>
-
-        </div>
-
-        <span class="record-count">
-          {{
-            logs().length
-          }}
-          événement(s)
-        </span>
-
-      </div>
-
-      <div class="table-wrapper">
-
-        <table>
-
-          <thead>
-
-            <tr>
-              <th>
-                Date
-              </th>
-
-              <th>
-                Acteur
-              </th>
-
-              <th>
-                Action
-              </th>
-
-              <th>
-                Ressource
-              </th>
-
-              <th>
-                Organisation
-              </th>
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            @for (
-              log of logs();
-              track log.id
-            ) {
-
-              <tr>
-
-                <td>
-                  {{
-                    log.createdAt
-                    | date:
-                      'dd/MM/yyyy HH:mm:ss'
-                  }}
-                </td>
-
-                <td>
-                  {{
-                    log.actor
-                      ?.email ||
-                    'Système'
-                  }}
-                </td>
-
-                <td>
-
-                  <span
-                    class="audit-action"
-                  >
-                    {{
-                      log.action
-                    }}
-                  </span>
-
-                </td>
-
-                <td>
-
-                  <strong>
-                    {{
-                      log.resourceType
-                    }}
-                  </strong>
-
-                  <small>
-                    {{
-                      log.resourceId ??
-                      '—'
-                    }}
-                  </small>
-
-                </td>
-
-                <td>
-                  {{
-                    log
-                      .organization
-                      ?.name ??
-                    'Plateforme'
-                  }}
-                </td>
-
-              </tr>
-
-            }
-
-          </tbody>
-
-        </table>
-
-      </div>
+      </article>
 
     </section>
 

@@ -279,6 +279,34 @@ export class GithubClientService {
     }
   }
 
+  async resolveCommitSha(
+    installationId: number,
+    owner: string,
+    repository: string,
+    ref: string,
+  ): Promise<string> {
+    const octokit =
+      await this.createInstallationClient(installationId);
+
+    try {
+      const response =
+        await octokit.rest.repos.getCommit({
+          owner,
+          repo: repository,
+          ref,
+        });
+
+      return response.data.sha;
+    } catch (error) {
+      throw new ServiceUnavailableException(
+        `Impossible de résoudre la révision "${ref}" depuis GitHub.`,
+        {
+          cause: error,
+        },
+      );
+    }
+  }
+
   private mapRepository(
     repository: GithubRepositoryApiResponse,
   ): GithubInstallationRepository {

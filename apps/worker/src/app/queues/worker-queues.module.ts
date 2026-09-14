@@ -1,6 +1,15 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { BullModule } from '@nestjs/bullmq';
+import {
+  Module,
+} from '@nestjs/common';
+
+import {
+  ConfigModule,
+  ConfigService,
+} from '@nestjs/config';
+
+import {
+  BullModule,
+} from '@nestjs/bullmq';
 
 import {
   QUEUE_NAMES,
@@ -25,6 +34,10 @@ import {
 import {
   SecurityScanProcessor,
 } from '../processors/security-scan.processor';
+
+import {
+  ScheduledScanProcessor,
+} from '../processors/scheduled-scan.processor';
 
 import {
   RepositoryStateResolverService,
@@ -53,7 +66,10 @@ import {
 import {
   FindingPersistenceService,
 } from '../services/finding-persistence.service';
-import { FindingNormalizerService } from '../services/finding-normalizer.service';
+
+import {
+  FindingNormalizerService,
+} from '../services/finding-normalizer.service';
 
 import {
   FindingReconciliationService,
@@ -90,44 +106,75 @@ import {
 @Module({
   imports: [
     BullModule.forRootAsync({
-      imports: [ConfigModule],
+      imports: [
+        ConfigModule,
+      ],
 
-      inject: [ConfigService],
+      inject: [
+        ConfigService,
+      ],
 
-      useFactory: (configService: ConfigService) => ({
-        connection: {
-          host:
-            configService.getOrThrow<string>('redis.host'),
+      useFactory:
+        (
+          configService:
+            ConfigService,
+        ) => ({
+          connection: {
+            host:
+              configService
+                .getOrThrow<string>(
+                  'redis.host',
+                ),
 
-          port:
-            configService.getOrThrow<number>('redis.port'),
+            port:
+              configService
+                .getOrThrow<number>(
+                  'redis.port',
+                ),
 
-          password:
-            configService.get<string>('redis.password') ||
-            undefined,
+            password:
+              configService
+                .get<string>(
+                  'redis.password',
+                ) ||
+              undefined,
 
-          db:
-            configService.get<number>('redis.database') ?? 0,
-        },
-      }),
+            db:
+              configService
+                .get<number>(
+                  'redis.database',
+                ) ??
+              0,
+          },
+        }),
     }),
 
-    BullModule.registerQueue({
-      name: QUEUE_NAMES.REPOSITORY_SYNC,
-    },
-    {
-    name:
-      QUEUE_NAMES.SECURITY_SCAN,
-    }),
+    BullModule.registerQueue(
+      {
+        name:
+          QUEUE_NAMES.REPOSITORY_SYNC,
+      },
+
+      {
+        name:
+          QUEUE_NAMES.SECURITY_SCAN,
+      },
+
+      {
+        name:
+          QUEUE_NAMES.SCAN_SCHEDULER,
+      },
+    ),
   ],
 
   providers: [
     RepositorySyncProcessor,
-    RepositoryWorkspaceService,
+    SecurityScanProcessor,
+    ScheduledScanProcessor,
 
+    RepositoryWorkspaceService,
     GithubWorkerClientService,
     RepositoryDownloadService,
-    SecurityScanProcessor,
 
     RepositoryStateResolverService,
     GithubCompareService,
@@ -135,19 +182,20 @@ import {
 
     FileDiscoveryService,
     RepositoryExtractionService,
+
     FindingPersistenceService,
     FindingNormalizerService,
     FindingReconciliationService,
-    SecurityScoreService,
 
+    SecurityScoreService,
     ScannerRuntimeService,
+
     OsvVulnerabilityProviderService,
     ScannerFileCacheService,
     ScanExecutionSummaryService,
     OsvCacheService,
     ExternalServiceCircuitBreakerService,
     RepositoryLanguageSummaryService,
-    OsvVulnerabilityProviderService,
   ],
 })
 export class WorkerQueuesModule {}

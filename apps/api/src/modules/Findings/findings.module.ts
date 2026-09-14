@@ -14,6 +14,14 @@ import {
   FindingsService,
 } from './findings.service';
 
+import {
+  FindingAssignmentsController,
+} from './finding-assignments.controller';
+
+import {
+  FindingAssignmentsService,
+} from './finding-assignments.service';
+
 @Module({
   imports: [
     RbacModule,
@@ -21,14 +29,17 @@ import {
 
   controllers: [
     FindingsController,
+    FindingAssignmentsController,
   ],
 
   providers: [
     FindingsService,
+    FindingAssignmentsService,
   ],
 
   exports: [
     FindingsService,
+    FindingAssignmentsService,
   ],
 })
 export class FindingsModule {}

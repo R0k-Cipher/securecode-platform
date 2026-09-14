@@ -17,6 +17,7 @@
       </p>
     </div>
 
+  @if (canCreateProject()) {
     <button
       type="button"
       class="primary-button"
@@ -24,6 +25,7 @@
     >
       Nouveau projet
     </button>
+  }
 
   </header>
 
@@ -149,13 +151,15 @@
           vos repositories.
         </p>
 
-        <button
-          type="button"
-          class="primary-button"
-          (click)="openCreate()"
-        >
-          Créer un projet
-        </button>
+        @if (canCreateProject()) {
+          <button
+            type="button"
+            class="primary-button"
+            (click)="openCreate()"
+          >
+            Créer un projet
+          </button>
+        }
       }
 
     </section>
@@ -265,41 +269,74 @@
           <footer class="project-actions">
 
             @if (
-              project.status !==
-              'ARCHIVED'
+              canReadProjectMembers(
+                project.id
+              )
             ) {
               <button
                 type="button"
                 (click)="
-                  openEdit(
+                  openProjectMembers(
                     project,
                     $event
                   )
                 "
               >
-                Modifier
-              </button>
-
-              <button
-                type="button"
-                [disabled]="
-                  processing() ===
-                  project.id
-                "
-                (click)="
-                  archive(
-                    project,
-                    $event
-                  )
-                "
-              >
-                Archiver
+                Membres
               </button>
             }
 
             @if (
-              project.status ===
+              project.status !==
               'ARCHIVED'
+            ) {
+              @if (
+                canUpdateProject(
+                  project.id
+                )
+              ) {
+                <button
+                  type="button"
+                  (click)="
+                    openEdit(
+                      project,
+                      $event
+                    )
+                  "
+                >
+                  Modifier
+                </button>
+              }
+
+              @if (
+                canArchiveProject(
+                  project.id
+                )
+              ) {
+                <button
+                  type="button"
+                  [disabled]="
+                    processing() ===
+                    project.id
+                  "
+                  (click)="
+                    archive(
+                      project,
+                      $event
+                    )
+                  "
+                >
+                  Archiver
+                </button>
+              }
+            }
+
+            @if (
+              project.status ===
+              'ARCHIVED' &&
+              canRestoreProject(
+                project.id
+              )
             ) {
               <button
                 type="button"
@@ -318,22 +355,29 @@
               </button>
             }
 
-            <button
-              type="button"
-              class="danger-action"
-              [disabled]="
-                deleting() ===
+
+            @if (
+              canDeleteProject(
                 project.id
-              "
-              (click)="
-                remove(
-                  project,
-                  $event
-                )
-              "
-            >
-              Supprimer
-            </button>
+              )
+            ) {
+              <button
+                type="button"
+                class="danger-action"
+                [disabled]="
+                  deleting() ===
+                  project.id
+                "
+                (click)="
+                  remove(
+                    project,
+                    $event
+                  )
+                "
+              >
+                Supprimer
+              </button>
+            }
 
           </footer>
 
@@ -384,7 +428,7 @@
 
 </section>
 
-@if (showCreateModal()) {
+@if (showCreateModal() && canCreateProject()) {
 
   <div
     class="modal-backdrop"
@@ -528,8 +572,9 @@
   </div>
 }
 
-@if (showEditModal()) {
-
+@if (
+  showEditModal() && editingProject() && canUpdateProject(editingProject()!.id)
+) {
   <div
     class="modal-backdrop"
     (click)="closeEdit()"

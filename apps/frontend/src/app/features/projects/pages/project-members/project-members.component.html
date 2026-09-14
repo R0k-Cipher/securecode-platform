@@ -1,0 +1,465 @@
+<section class="project-members-page">
+
+  <header class="page-header">
+
+    <div class="header-copy">
+
+      <span class="eyebrow">
+        PROJET
+      </span>
+
+      <h1>
+        Membres du projet
+      </h1>
+
+      @if (project()) {
+        <p>
+          Gérez les accès et rôles pour
+          <strong>
+            {{ project()!.name }}
+          </strong>.
+        </p>
+      } @else {
+        <p>
+          Gérez les utilisateurs autorisés
+          à accéder à ce projet.
+        </p>
+      }
+
+    </div>
+
+    <div class="header-actions">
+
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="backToProject()"
+      >
+        Retour au projet
+      </button>
+
+      @if (canManageMembers()) {
+        <button
+          type="button"
+          class="primary-button"
+          (click)="openAddForm()"
+        >
+          Ajouter un membre
+        </button>
+      }
+
+    </div>
+
+  </header>
+
+  @if (error()) {
+    <div class="alert error-alert">
+      {{ error() }}
+    </div>
+  }
+
+  @if (success()) {
+    <div class="alert success-alert">
+      {{ success() }}
+    </div>
+  }
+
+  @if (loading()) {
+
+    <div class="loading-state">
+      Chargement des membres...
+    </div>
+
+  } @else if (!canReadMembers()) {
+
+    <div class="empty-state">
+      <h2>
+        Accès refusé
+      </h2>
+
+      <p>
+        Vous n'avez pas l'autorisation
+        de consulter les membres de ce projet.
+      </p>
+    </div>
+
+  } @else {
+
+    <section class="members-card">
+
+      <header class="card-header">
+
+        <div>
+          <h2>
+            Membres affectés
+          </h2>
+
+          <p>
+            {{ members().length }}
+            membre{{
+              members().length > 1
+                ? 's'
+                : ''
+            }}
+          </p>
+        </div>
+
+      </header>
+
+      @if (members().length === 0) {
+
+        <div class="empty-state">
+
+          <h3>
+            Aucun membre affecté
+          </h3>
+
+          <p>
+            Les utilisateurs doivent d'abord
+            appartenir à l'organisation avant
+            d'être ajoutés à ce projet.
+          </p>
+
+          @if (canManageMembers()) {
+            <button
+              type="button"
+              class="primary-button"
+              (click)="openAddForm()"
+            >
+              Ajouter le premier membre
+            </button>
+          }
+
+        </div>
+
+      } @else {
+
+        <div class="table-wrapper">
+
+          <table>
+
+            <thead>
+              <tr>
+                <th>
+                  Utilisateur
+                </th>
+
+                <th>
+                  Email
+                </th>
+
+                <th>
+                  Statut
+                </th>
+
+                <th>
+                  Rôle projet
+                </th>
+
+                @if (canManageMembers()) {
+                  <th class="actions-column">
+                    Actions
+                  </th>
+                }
+              </tr>
+            </thead>
+
+            <tbody>
+
+              @for (
+                member of members();
+                track member.id
+              ) {
+
+                <tr>
+
+                  <td>
+
+                    <div class="user-cell">
+
+                      <div class="avatar">
+
+                        @if (
+                          member.user.avatarUrl
+                        ) {
+                          <img
+                            [src]="member.user.avatarUrl"
+                            [alt]="fullName(member)"
+                          />
+                        } @else {
+                          <span>
+                            {{
+                              member.user.firstName
+                                ? member.user.firstName.charAt(0)
+                                : member.user.email.charAt(0)
+                            }}
+                          </span>
+                        }
+
+                      </div>
+
+                      <div>
+                        <strong>
+                          {{ fullName(member) }}
+                        </strong>
+
+                        <small>
+                          {{ member.role.name }}
+                        </small>
+                      </div>
+
+                    </div>
+
+                  </td>
+
+                  <td>
+                    {{ member.user.email }}
+                  </td>
+
+                  <td>
+                    <span
+                      class="status-badge"
+                      [class.inactive]="
+                        member.user.status !== 'ACTIVE'
+                      "
+                    >
+                      {{ member.user.status }}
+                    </span>
+                  </td>
+
+                  <td>
+
+                    @if (canManageMembers()) {
+
+                      <select
+                        #roleSelect
+                        [value]="member.role.code"
+                        [disabled]="
+                          updatingUserId() ===
+                          member.userId
+                        "
+                        (change)="
+                          updateRole(
+                            member,
+                            roleSelect.value
+                          )
+                        "
+                      >
+
+                        @for (
+                          role of roles();
+                          track role.id
+                        ) {
+                          <option
+                            [value]="role.code"
+                          >
+                            {{ role.name }}
+                          </option>
+                        }
+
+                      </select>
+
+                    } @else {
+
+                      <span class="role-badge">
+                        {{ member.role.name }}
+                      </span>
+
+                    }
+
+                  </td>
+
+                  @if (canManageMembers()) {
+
+                    <td class="actions-column">
+
+                      <button
+                        type="button"
+                        class="danger-button"
+                        [disabled]="
+                          removingUserId() ===
+                          member.userId
+                        "
+                        (click)="removeMember(member)"
+                      >
+                        {{
+                          removingUserId() ===
+                          member.userId
+                            ? 'Suppression...'
+                            : 'Retirer'
+                        }}
+                      </button>
+
+                    </td>
+
+                  }
+
+                </tr>
+
+              }
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      }
+
+    </section>
+
+  }
+
+</section>
+
+@if (
+  addFormOpen() &&
+  canManageMembers()
+) {
+
+  <div
+    class="modal-backdrop"
+    (click)="closeAddForm()"
+  >
+
+    <section
+      class="modal-card"
+      role="dialog"
+      aria-modal="true"
+      (click)="$event.stopPropagation()"
+    >
+
+      <header class="modal-header">
+
+        <div>
+          <span class="eyebrow">
+            ACCÈS PROJET
+          </span>
+
+          <h2>
+            Ajouter un membre
+          </h2>
+
+          <p>
+            Sélectionnez un utilisateur déjà
+            membre actif de l'organisation,
+            puis son rôle dans ce projet.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="close-button"
+          [disabled]="saving()"
+          (click)="closeAddForm()"
+        >
+          ×
+        </button>
+
+      </header>
+
+      <div class="form-group">
+
+        <label for="project-member-user">
+          Membre de l'organisation
+        </label>
+
+        <select
+          id="project-member-user"
+          [ngModel]="selectedUserId()"
+          (ngModelChange)="selectedUserId.set($event)"
+        >
+
+          <option value="">
+            Sélectionner un utilisateur
+          </option>
+
+          @for (
+            member of availableOrganizationMembers();
+            track member.user.id
+          ) {
+
+            <option
+              [value]="member.user.id"
+            >
+              {{ organizationMemberName(member) }}
+              — {{ member.user.email }}
+            </option>
+
+          }
+
+        </select>
+
+        @if (
+          availableOrganizationMembers().length ===
+          0
+        ) {
+          <small>
+            Aucun autre membre actif de
+            l'organisation n'est disponible.
+          </small>
+        }
+
+      </div>
+
+      <div class="form-group">
+
+        <label for="project-member-role">
+          Rôle dans le projet
+        </label>
+
+        <select
+          id="project-member-role"
+          [ngModel]="selectedRoleCode()"
+          (ngModelChange)="selectedRoleCode.set($event)"
+        >
+
+          @for (
+            role of roles();
+            track role.id
+          ) {
+            <option
+              [value]="role.code"
+            >
+              {{ role.name }}
+            </option>
+          }
+
+        </select>
+
+      </div>
+
+      <footer class="modal-actions">
+
+        <button
+          type="button"
+          class="secondary-button"
+          [disabled]="saving()"
+          (click)="closeAddForm()"
+        >
+          Annuler
+        </button>
+
+        <button
+          type="button"
+          class="primary-button"
+          [disabled]="
+            saving() ||
+            !selectedUserId()
+          "
+          (click)="addMember()"
+        >
+          {{
+            saving()
+              ? 'Ajout...'
+              : 'Ajouter au projet'
+          }}
+        </button>
+
+      </footer>
+
+    </section>
+
+  </div>
+
+}

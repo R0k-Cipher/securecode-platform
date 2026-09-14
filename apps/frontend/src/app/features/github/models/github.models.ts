@@ -114,6 +114,18 @@ export interface GithubRepository {
   size:
     number;
 
+  imported?:
+    boolean;
+
+  localRepositoryId?:
+    string | null;
+
+  projectId?:
+    string | null;
+
+  syncStatus?:
+    string | null;
+
   owner: {
     id:
       number;
@@ -132,6 +144,20 @@ export interface GithubRepository {
 export interface GithubRepositoryPage {
   items:
     GithubRepository[];
+
+  installation?: {
+    id:
+      string;
+
+    accountName:
+      string | null;
+
+    repositorySelection:
+      'all' | 'selected';
+
+    manageUrl:
+      string;
+  };
 
   pagination: {
     page:

@@ -11,14 +11,12 @@ import {
 } from '@angular/core';
 
 import {
+  finalize,
+} from 'rxjs';
+
+import {
   PlatformAdminService,
 } from '../../platform-admin.service';
-
-type AdminTab =
-  | 'overview'
-  | 'users'
-  | 'organizations'
-  | 'logs';
 
 @Component({
   selector:
@@ -39,38 +37,30 @@ type AdminTab =
 })
 export class AdminDashboardComponent
 implements OnInit {
-
   private readonly service =
     inject(
       PlatformAdminService,
     );
 
   readonly loading =
-    signal(true);
+    signal(
+      true,
+    );
 
-  readonly data =
-    signal<any | null>(
+  readonly error =
+    signal<
+      string |
+      null
+    >(
       null,
     );
 
-  readonly users =
-    signal<any[]>(
-      [],
-    );
-
-  readonly orgs =
-    signal<any[]>(
-      [],
-    );
-
-  readonly logs =
-    signal<any[]>(
-      [],
-    );
-
-  readonly tab =
-    signal<AdminTab>(
-      'overview',
+  readonly data =
+    signal<
+      any |
+      null
+    >(
+      null,
     );
 
   readonly metrics =
@@ -88,8 +78,10 @@ implements OnInit {
           {
             label:
               'Utilisateurs',
+
             value:
               summary.users ?? 0,
+
             helper:
               `${summary.activeUsers ?? 0} actifs`,
           },
@@ -97,8 +89,10 @@ implements OnInit {
           {
             label:
               'Organisations',
+
             value:
               summary.organizations ?? 0,
+
             helper:
               'Tenants enregistrés',
           },
@@ -106,48 +100,75 @@ implements OnInit {
           {
             label:
               'Projets',
+
             value:
               summary.projects ?? 0,
+
             helper:
-              'Projets supervisés',
+              'Projets clients',
           },
 
           {
             label:
-              'Repositories',
+              'Sessions actives',
+
             value:
-              summary.repositories ?? 0,
+              summary.activeSessions ?? 0,
+
             helper:
-              'Sources connectées',
+              'Sessions non révoquées',
           },
 
           {
             label:
-              'Scans',
+              'Invitations en attente',
+
             value:
-              summary.scans ?? 0,
+              summary.pendingInvitations ?? 0,
+
             helper:
-              `${summary.failedScans ?? 0} en échec`,
+              'Invitations valides',
           },
 
           {
             label:
-              'Findings',
+              'Connexions Git actives',
+
             value:
-              summary.findings ?? 0,
+              summary.activeGitConnections ?? 0,
+
             helper:
-              'Détections cumulées',
+              'GitHub / GitLab',
           },
 
           {
             label:
-              'Critical Open',
+              'Erreurs Git',
+
             value:
-              summary.criticalOpen ?? 0,
+              summary.gitConnectionErrors ?? 0,
+
             helper:
-              'À traiter en priorité',
+              'Connexions à vérifier',
+
             critical:
-              true,
+              (
+                summary
+                  .gitConnectionErrors ??
+                0
+              ) >
+              0,
+          },
+
+          {
+            label:
+              'Événements audit 24h',
+
+            value:
+              summary.auditEvents24h ?? 0,
+
+            helper:
+              'Activité enregistrée',
           },
         ];
       },
@@ -164,94 +185,40 @@ implements OnInit {
       true,
     );
 
+    this.error.set(
+      null,
+    );
+
     this.service
       .dashboard()
-      .subscribe({
-        next: (
-          response,
-        ) => {
-          this.data.set(
-            response,
-          );
-
-          this.loading.set(
-            false,
-          );
-        },
-
-        error: () => {
-          this.loading.set(
-            false,
-          );
-        },
-      });
-
-    this.service
-      .users()
-      .subscribe(
-        (
-          response,
-        ) =>
-          this.users.set(
-            response,
-          ),
-      );
-
-    this.service
-      .organizations()
-      .subscribe(
-        (
-          response,
-        ) =>
-          this.orgs.set(
-            response,
-          ),
-      );
-
-    this.service
-      .auditLogs()
-      .subscribe(
-        (
-          response,
-        ) =>
-          this.logs.set(
-            response,
-          ),
-      );
-  }
-
-  setTab(
-    tab: AdminTab,
-  ):
-    void {
-    this.tab.set(
-      tab,
-    );
-  }
-
-  toggleUser(
-    user: any,
-  ):
-    void {
-    const status =
-      user.status ===
-      'ACTIVE'
-        ? 'SUSPENDED'
-        : 'ACTIVE';
-
-    this.service
-      .setStatus(
-        user.id,
-        status,
+      .pipe(
+        finalize(
+          () =>
+            this.loading.set(
+              false,
+            ),
+        ),
       )
-      .subscribe(
-        () =>
-          this.refresh(),
-      );
+      .subscribe({
+        next:
+          response => {
+            this.data.set(
+              response,
+            );
+          },
+
+        error:
+          () => {
+            this.error.set(
+              'Impossible de charger les données de supervision.',
+            );
+          },
+      });
   }
 
   statusClass(
-    status: string,
+    status:
+      string,
   ):
     string {
     if (
@@ -263,9 +230,9 @@ implements OnInit {
 
     if (
       status ===
-      'SUSPENDED' ||
+        'SUSPENDED' ||
       status ===
-      'DISABLED'
+        'DISABLED'
     ) {
       return 'danger';
     }

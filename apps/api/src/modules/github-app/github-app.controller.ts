@@ -59,10 +59,6 @@ import {
 @ApiTags(
   'GitHub App',
 )
-@ApiBearerAuth()
-@UseGuards(
-  AuthGuard('jwt'),
-)
 @Controller()
 export class GithubAppController {
   constructor(
@@ -71,19 +67,21 @@ export class GithubAppController {
   ) {}
 
   /*
-   * ------------------------------------------------
+   * ============================================================
    * Installation URL
-   * ------------------------------------------------
+   * ============================================================
    */
 
   @Get(
     'organizations/:organizationId/projects/:projectId/github-app/installation-url',
   )
+  @ApiBearerAuth()
   @UseGuards(
+    AuthGuard('jwt'),
     PermissionsGuard,
   )
   @RequirePermissions(
-    PERMISSION_CODES.GIT_CONNECTION_CREATE,
+    PERMISSION_CODES.REPOSITORY_CREATE,
   )
   @ApiOperation({
     summary:
@@ -120,6 +118,26 @@ export class GithubAppController {
       );
   }
 
+  /*
+   * ============================================================
+   * GitHub callback
+   *
+   * IMPORTANT :
+   * Cette route est volontairement PUBLIQUE.
+   *
+   * GitHub ne possède pas le JWT SecureCode de l'utilisateur.
+   * La sécurité repose sur :
+   *
+   * - le state UUID ;
+   * - GithubInstallationPending ;
+   * - son expiration ;
+   * - la vérification GitHub de l'installation ;
+   * - la vérification GITHUB_APP_ID ;
+   * - les vérifications tenant/RBAC effectuées après résolution
+   *   du pending.
+   * ============================================================
+   */
+
   @Get(
     'github-app/callback',
   )
@@ -131,32 +149,30 @@ export class GithubAppController {
     @Query()
     query:
       GithubInstallationCallbackDto,
-
-    @CurrentUser()
-    user:
-      AuthenticatedUser,
   ) {
     return this.githubAppService
       .completeInstallation(
         query.installation_id,
-        user.id,
+        query.state,
       );
   }
 
   /*
-   * ------------------------------------------------
+   * ============================================================
    * Installation token
-   * ------------------------------------------------
+   * ============================================================
    */
 
   @Post(
     'organizations/:organizationId/github-app/connections/:connectionId/access-token',
   )
+  @ApiBearerAuth()
   @UseGuards(
+    AuthGuard('jwt'),
     PermissionsGuard,
   )
   @RequirePermissions(
-    PERMISSION_CODES.REPOSITORY_SYNC,
+    PERMISSION_CODES.GIT_CONNECTION_READ,
   )
   @ApiOperation({
     summary:
@@ -190,19 +206,21 @@ export class GithubAppController {
   }
 
   /*
-   * ------------------------------------------------
+   * ============================================================
    * GitHub repositories
-   * ------------------------------------------------
+   * ============================================================
    */
 
   @Get(
     'organizations/:organizationId/github-app/connections/:gitConnectionId/repositories',
   )
+  @ApiBearerAuth()
   @UseGuards(
+    AuthGuard('jwt'),
     PermissionsGuard,
   )
   @RequirePermissions(
-    PERMISSION_CODES.PROJECT_READ,
+    PERMISSION_CODES.GIT_CONNECTION_READ,
   )
   @ApiOperation({
     summary:
@@ -252,19 +270,21 @@ export class GithubAppController {
   }
 
   /*
-   * ------------------------------------------------
+   * ============================================================
    * Import repository
-   * ------------------------------------------------
+   * ============================================================
    */
 
   @Post(
     'organizations/:organizationId/projects/:projectId/github-app/repositories/import',
   )
+  @ApiBearerAuth()
   @UseGuards(
+    AuthGuard('jwt'),
     PermissionsGuard,
   )
   @RequirePermissions(
-    PERMISSION_CODES.PROJECT_UPDATE,
+    PERMISSION_CODES.REPOSITORY_CREATE,
   )
   @ApiOperation({
     summary:

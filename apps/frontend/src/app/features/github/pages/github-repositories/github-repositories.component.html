@@ -21,6 +21,55 @@
 
   </header>
 
+  @if (installation()) {
+
+  <section class="github-access-card">
+
+    <div class="github-access-content">
+
+      <span class="section-label">
+        CONNEXION GITHUB
+      </span>
+
+      <h2>
+        {{ installation()?.accountName || 'GitHub' }}
+      </h2>
+
+      <p>
+        {{
+          installation()?.repositorySelection === 'all'
+            ? 'Tous les repositories autorisés par GitHub sont accessibles.'
+            : 'Seuls les repositories sélectionnés dans l’installation GitHub sont accessibles.'
+        }}
+      </p>
+
+    </div>
+
+    <div class="github-access-actions">
+
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="manageGithubInstallation()"
+      >
+        Gérer l’accès GitHub
+      </button>
+
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="loadRepositories()"
+        [disabled]="loading()"
+      >
+        Actualiser
+      </button>
+
+    </div>
+
+  </section>
+
+}
+
   <section class="search-card">
 
     <input
@@ -143,6 +192,18 @@
                     }}
                   </span>
 
+                  @if (repository.imported) {
+
+                    <span class="repo-imported">
+                      {{
+                        repository.projectId === projectId
+                          ? 'Déjà dans ce projet'
+                          : 'Déjà utilisé par un autre projet'
+                      }}
+                    </span>
+
+                  }
+
                 </div>
 
               </div>
@@ -156,6 +217,7 @@
                   )
                 "
                 [disabled]="
+                  repository.imported ||
                   importingRepositoryId()
                     === repository.id
                 "
@@ -164,7 +226,9 @@
                   importingRepositoryId()
                     === repository.id
                     ? 'Importation...'
-                    : 'Importer'
+                    : repository.imported
+                      ? 'Déjà utilisé'
+                      : 'Importer'
                 }}
               </button>
 
