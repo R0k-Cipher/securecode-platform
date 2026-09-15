@@ -3,7 +3,6 @@ import type {
   FindingStatus,
 } from '../../findings/models/finding.models';
 
-
 export interface DashboardSummary {
   repositories: number;
 
@@ -40,13 +39,11 @@ export interface DashboardSeverity {
   [key: string]: number;
 }
 
-
 export interface DashboardOwaspItem {
   category: string;
 
   count: number;
 }
-
 
 export interface DashboardScoreHistoryItem {
   id: string;
@@ -60,7 +57,6 @@ export interface DashboardScoreHistoryItem {
   scanId?: string;
 }
 
-
 export interface DashboardRepository {
   id: string;
 
@@ -70,7 +66,6 @@ export interface DashboardRepository {
 
   provider?: string | null;
 }
-
 
 export interface DashboardScan {
   id: string;
@@ -87,7 +82,6 @@ export interface DashboardScan {
 
   repository: DashboardRepository;
 }
-
 
 export interface DashboardFinding {
   id: string;
@@ -116,7 +110,6 @@ export interface DashboardFinding {
     } | null;
   }>;
 }
-
 
 export interface SecurityDashboardProject {
   id: string;
@@ -148,7 +141,6 @@ export interface DashboardWstgCategory {
   grade: string;
 }
 
-
 export interface DashboardWstg {
   score: number;
 
@@ -158,7 +150,6 @@ export interface DashboardWstg {
 
   totalCategories: number;
 }
-
 
 export interface DashboardScanPerformance {
   averageScore: number | null;
@@ -171,7 +162,6 @@ export interface DashboardScanPerformance {
 
   completedScans: number;
 }
-
 
 export interface SecurityDashboardResponse {
   project: SecurityDashboardProject;
@@ -195,10 +185,41 @@ export interface SecurityDashboardResponse {
   scanPerformance?: DashboardScanPerformance;
 }
 
-
 /*
  * Nom utilisé par SecurityDashboardComponent
  * et SecurityDashboardService.
  */
-export type SecurityDashboard =
-  SecurityDashboardResponse;
+export type SecurityDashboard = SecurityDashboardResponse;
+
+export interface SecurityIntelligence {
+  generatedAt: string;
+  summary: {
+    assessedFindings: number;
+    knownExploited: number;
+    reachable: number;
+    internetExposed: number;
+    openAttackPaths: number;
+    distribution: Record<string, number>;
+  };
+  topRisks: Array<{
+    id: string;
+    findingId: string;
+    contextualScore: number;
+    priority: string;
+    knownExploited: boolean;
+    reachable: boolean | null;
+    internetExposed: boolean | null;
+    finding: DashboardFinding;
+    explanation: string[];
+  }>;
+  attackPaths: Array<{
+    id: string;
+    title: string;
+    severity: FindingSeverity;
+    score: number;
+    entryPoint: string | null;
+    targetAsset: string | null;
+    findingIds: string[];
+    repository: DashboardRepository;
+  }>;
+}

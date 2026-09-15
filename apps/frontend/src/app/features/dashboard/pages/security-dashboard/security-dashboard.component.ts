@@ -1,31 +1,32 @@
-import { CommonModule } from "@angular/common";
+import { CommonModule } from '@angular/common';
 
-import { Component, computed, inject, signal } from "@angular/core";
+import { Component, computed, inject, signal } from '@angular/core';
 
-import { ActivatedRoute, Router } from "@angular/router";
+import { ActivatedRoute, Router } from '@angular/router';
 
-import { AuthContextService } from "../../../../core/auth/auth-context.service";
+import { AuthContextService } from '../../../../core/auth/auth-context.service';
 
-import { PERMISSIONS } from "../../../../core/auth/auth-context.models";
+import { PERMISSIONS } from '../../../../core/auth/auth-context.models';
 
-import { SecurityDashboardService } from "../../services/security-dashboard.service";
+import { SecurityDashboardService } from '../../services/security-dashboard.service';
 
 import type {
   DashboardFinding,
   DashboardScan,
   SecurityDashboard,
-} from "../../models/security-dashboard.models";
+  SecurityIntelligence,
+} from '../../models/security-dashboard.models';
 
 @Component({
-  selector: "app-security-dashboard",
+  selector: 'app-security-dashboard',
 
   standalone: true,
 
   imports: [CommonModule],
 
-  templateUrl: "./security-dashboard.component.html",
+  templateUrl: './security-dashboard.component.html',
 
-  styleUrl: "./security-dashboard.component.scss",
+  styleUrl: './security-dashboard.component.scss',
 })
 export class SecurityDashboardComponent {
   private readonly route = inject(ActivatedRoute);
@@ -37,11 +38,13 @@ export class SecurityDashboardComponent {
   private readonly authContext = inject(AuthContextService);
 
   readonly organizationId =
-    this.route.snapshot.paramMap.get("organizationId") ?? "";
+    this.route.snapshot.paramMap.get('organizationId') ?? '';
 
-  readonly projectId = this.route.snapshot.paramMap.get("projectId") ?? "";
+  readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
 
   readonly data = signal<SecurityDashboard | null>(null);
+
+  readonly intelligence = signal<SecurityIntelligence | null>(null);
 
   readonly hasCweData = computed(() => (this.data()?.cwe?.length ?? 0) > 0);
 
@@ -145,7 +148,7 @@ export class SecurityDashboardComponent {
     if (!this.organizationId || !this.projectId) {
       this.loading.set(false);
 
-      this.error.set("Organisation ou projet introuvable.");
+      this.error.set('Organisation ou projet introuvable.');
 
       return;
     }
@@ -168,10 +171,17 @@ export class SecurityDashboardComponent {
 
         this.error.set(
           error?.error?.message ??
-            "Impossible de charger le dashboard de sécurité.",
+            'Impossible de charger le dashboard de sécurité.',
         );
       },
     });
+
+    this.service
+      .getIntelligence(this.organizationId, this.projectId)
+      .subscribe({
+        next: (intelligence) => this.intelligence.set(intelligence),
+        error: () => this.intelligence.set(null),
+      });
   }
 
   /*
@@ -181,12 +191,12 @@ export class SecurityDashboardComponent {
   */
 
   go(
-    path: "repositories" | "scans" | "findings" | "reports",
+    path: 'repositories' | 'scans' | 'findings' | 'reports',
 
     queryParams?: Record<string, string>,
   ): void {
     void this.router.navigate(
-      ["/organizations", this.organizationId, "projects", this.projectId, path],
+      ['/organizations', this.organizationId, 'projects', this.projectId, path],
       {
         queryParams,
       },
@@ -195,9 +205,9 @@ export class SecurityDashboardComponent {
 
   goToOrganizationDashboard(): void {
     void this.router.navigate([
-      "/organizations",
+      '/organizations',
       this.organizationId,
-      "dashboard",
+      'dashboard',
     ]);
   }
 
@@ -207,11 +217,11 @@ export class SecurityDashboardComponent {
     }
 
     void this.router.navigate([
-      "/organizations",
+      '/organizations',
       this.organizationId,
-      "projects",
+      'projects',
       this.projectId,
-      "findings",
+      'findings',
       findingId,
     ]);
   }
@@ -222,13 +232,18 @@ export class SecurityDashboardComponent {
     }
 
     void this.router.navigate([
-      "/organizations",
+      '/organizations',
       this.organizationId,
-      "projects",
+      'projects',
       this.projectId,
-      "scans",
+      'scans',
       scanId,
     ]);
+  }
+
+  openAttackPathFinding(findingIds: string[]): void {
+    const findingId = findingIds?.[0];
+    if (findingId) this.openFinding(findingId);
   }
 
   /*
@@ -273,15 +288,15 @@ export class SecurityDashboardComponent {
     const user = finding.assignments?.[0]?.assignedTo;
 
     if (!user) {
-      return "Non assigné";
+      return 'Non assigné';
     }
 
     const fullName = [user.firstName, user.lastName]
       .filter(Boolean)
-      .join(" ")
+      .join(' ')
       .trim();
 
-    return fullName || user.email || "Assigné";
+    return fullName || user.email || 'Assigné';
   }
 
   repositoryName(scan: DashboardScan): string {
@@ -290,27 +305,27 @@ export class SecurityDashboardComponent {
 
   scanStatusLabel(status: string): string {
     const labels: Record<string, string> = {
-      QUEUED: "En attente",
+      QUEUED: 'En attente',
 
-      PREPARING: "Préparation",
+      PREPARING: 'Préparation',
 
-      DOWNLOADING: "Téléchargement",
+      DOWNLOADING: 'Téléchargement',
 
-      DETECTING: "Détection",
+      DETECTING: 'Détection',
 
-      SCANNING: "Analyse",
+      SCANNING: 'Analyse',
 
-      PROCESSING_RESULTS: "Traitement",
+      PROCESSING_RESULTS: 'Traitement',
 
-      CALCULATING_SCORE: "Calcul du score",
+      CALCULATING_SCORE: 'Calcul du score',
 
-      GENERATING_REPORT: "Rapport",
+      GENERATING_REPORT: 'Rapport',
 
-      COMPLETED: "Terminé",
+      COMPLETED: 'Terminé',
 
-      FAILED: "Échec",
+      FAILED: 'Échec',
 
-      CANCELLED: "Annulé",
+      CANCELLED: 'Annulé',
     };
 
     return labels[status] ?? status;
@@ -318,17 +333,17 @@ export class SecurityDashboardComponent {
 
   triggerLabel(trigger: string): string {
     const labels: Record<string, string> = {
-      MANUAL: "Manuel",
+      MANUAL: 'Manuel',
 
-      PUSH: "Push",
+      PUSH: 'Push',
 
-      PULL_REQUEST: "Pull Request",
+      PULL_REQUEST: 'Pull Request',
 
-      RELEASE: "Release",
+      RELEASE: 'Release',
 
-      SCHEDULED: "Planifié",
+      SCHEDULED: 'Planifié',
 
-      API: "API",
+      API: 'API',
     };
 
     return labels[trigger] ?? trigger;

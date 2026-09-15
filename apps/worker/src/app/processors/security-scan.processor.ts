@@ -1,173 +1,97 @@
-import {
-  Logger,
-} from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 
-import {
-  OnWorkerEvent,
-  Processor,
-  WorkerHost,
-} from '@nestjs/bullmq';
+import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 
-import {
-  Job,
-} from 'bullmq';
+import { Job } from 'bullmq';
 
-import {
-  Prisma,
-  ScanStatus,
-  ScanType,
-} from '@prisma/client';
+import { Prisma, ScanStatus, ScanType } from '@prisma/client';
 
-import {
-  PrismaService,
-} from '@securecode-platform/database';
+import { PrismaService } from '@securecode-platform/database';
 
-import {
-  ScannerCore,
-} from '@securecode-platform/scanner-core';
+import { ScannerCore } from '@securecode-platform/scanner-core';
 
-import type {
-  ScanContext,
-} from '@securecode-platform/scanner-core';
+import type { ScanContext } from '@securecode-platform/scanner-core';
 
-import {
-  JOB_NAMES,
-  QUEUE_NAMES,
-} from '@securecode-platform/queue-contracts';
+import { JOB_NAMES, QUEUE_NAMES } from '@securecode-platform/queue-contracts';
 
-import type {
-  SecurityScanJobData,
-} from '@securecode-platform/queue-contracts';
+import type { SecurityScanJobData } from '@securecode-platform/queue-contracts';
 
-import {
-  RepositoryStateResolverService,
-} from '../services/repository-state-resolver.service';
+import { RepositoryStateResolverService } from '../services/repository-state-resolver.service';
 
-import {
-  ChangeSetResolverService,
-} from '../services/change-set-resolver.service';
+import { ChangeSetResolverService } from '../services/change-set-resolver.service';
 
-import {
-  ScannerRuntimeService,
-} from '../services/scanner-runtime.service';
+import { ScannerRuntimeService } from '../services/scanner-runtime.service';
 
-import {
-  FileDiscoveryService,
-} from '../services/file-discovery.service';
+import { FileDiscoveryService } from '../services/file-discovery.service';
 
-import {
-  RepositoryDownloadService,
-} from '../services/repository-download.service';
+import { RepositoryDownloadService } from '../services/repository-download.service';
 
-import {
-  RepositoryWorkspaceService,
-} from '../services/repository-workspace.service';
+import { RepositoryWorkspaceService } from '../services/repository-workspace.service';
 
-import {
-  RepositoryExtractionService,
-} from '../services/repository-extraction.service';
+import { RepositoryExtractionService } from '../services/repository-extraction.service';
 
-import {
-  FindingNormalizerService,
-} from '../services/finding-normalizer.service';
+import { FindingNormalizerService } from '../services/finding-normalizer.service';
 
-import {
-  FindingPersistenceService,
-} from '../services/finding-persistence.service';
+import { FindingPersistenceService } from '../services/finding-persistence.service';
 
-import {
-  FindingReconciliationService,
-} from '../services/finding-reconciliation.service';
+import { FindingReconciliationService } from '../services/finding-reconciliation.service';
 
-import {
-  SecurityScoreService,
-} from '../services/security-score.service';
+import { SecurityScoreService } from '../services/security-score.service';
 
-import {
-  ScanExecutionSummaryService,
-} from '../services/scan-execution-summary.service';
+import { ScanExecutionSummaryService } from '../services/scan-execution-summary.service';
 import { RepositoryLanguageSummaryService } from '../services/repository-language-summary.service';
+import { ContextualRiskService } from '../services/contextual-risk.service';
 
-@Processor(
-  QUEUE_NAMES.SECURITY_SCAN,
-  {
-    concurrency: 2,
-  },
-)
-export class SecurityScanProcessor
-  extends WorkerHost
-{
-  private readonly logger =
-    new Logger(
-      SecurityScanProcessor.name,
-    );
+@Processor(QUEUE_NAMES.SECURITY_SCAN, {
+  concurrency: 2,
+})
+export class SecurityScanProcessor extends WorkerHost {
+  private readonly logger = new Logger(SecurityScanProcessor.name);
 
-  private readonly scannerCore =
-    new ScannerCore();
+  private readonly scannerCore = new ScannerCore();
 
   constructor(
-    private readonly prisma:
-      PrismaService,
+    private readonly prisma: PrismaService,
 
-    private readonly stateResolver:
-      RepositoryStateResolverService,
+    private readonly stateResolver: RepositoryStateResolverService,
 
-    private readonly changeSetResolver:
-      ChangeSetResolverService,
+    private readonly changeSetResolver: ChangeSetResolverService,
 
-    private readonly fileDiscovery:
-      FileDiscoveryService,
+    private readonly fileDiscovery: FileDiscoveryService,
 
-    private readonly scannerRuntime:
-      ScannerRuntimeService,
+    private readonly scannerRuntime: ScannerRuntimeService,
 
-    private readonly workspaceService:
-      RepositoryWorkspaceService,
+    private readonly workspaceService: RepositoryWorkspaceService,
 
-    private readonly downloadService:
-      RepositoryDownloadService,
+    private readonly downloadService: RepositoryDownloadService,
 
-    private readonly extractionService:
-      RepositoryExtractionService,
+    private readonly extractionService: RepositoryExtractionService,
 
-    private readonly findingNormalizer:
-      FindingNormalizerService,
+    private readonly findingNormalizer: FindingNormalizerService,
 
-    private readonly findingPersistence:
-      FindingPersistenceService,
+    private readonly findingPersistence: FindingPersistenceService,
 
-    private readonly findingReconciliation:
-      FindingReconciliationService,
+    private readonly findingReconciliation: FindingReconciliationService,
 
-    private readonly securityScore:
-      SecurityScoreService,
+    private readonly securityScore: SecurityScoreService,
 
-    private readonly executionSummary:
-      ScanExecutionSummaryService,
+    private readonly executionSummary: ScanExecutionSummaryService,
 
-    private readonly repositoryLanguageSummary:
-      RepositoryLanguageSummaryService,
+    private readonly repositoryLanguageSummary: RepositoryLanguageSummaryService,
+
+    private readonly contextualRisk: ContextualRiskService,
   ) {
     super();
   }
 
-  async process(
-    job: Job<SecurityScanJobData>,
-  ): Promise<void> {
-    if (
-      job.name !==
-      JOB_NAMES.SECURITY_SCAN
-    ) {
-      throw new Error(
-        `Job non supporté : ${job.name}`,
-      );
+  async process(job: Job<SecurityScanJobData>): Promise<void> {
+    if (job.name !== JOB_NAMES.SECURITY_SCAN) {
+      throw new Error(`Job non supporté : ${job.name}`);
     }
 
-    const data =
-      job.data;
+    const data = job.data;
 
-    let workspacePath:
-      string | null = null;
+    let workspacePath: string | null = null;
 
     try {
       /*
@@ -176,14 +100,9 @@ export class SecurityScanProcessor
        * ------------------------------------------------
        */
 
-      await this.markRunning(
-        data.scanId,
-        job,
-      );
+      await this.markRunning(data.scanId, job);
 
-      await job.updateProgress(
-        5,
-      );
+      await job.updateProgress(5);
 
       /*
        * ------------------------------------------------
@@ -191,83 +110,58 @@ export class SecurityScanProcessor
        * ------------------------------------------------
        */
 
-      const repository =
-        await this.prisma.repository.findFirst({
-          where: {
-            id:
-              data.repositoryId,
+      const repository = await this.prisma.repository.findFirst({
+        where: {
+          id: data.repositoryId,
 
-            organizationId:
-              data.organizationId,
+          organizationId: data.organizationId,
 
-            projectId:
-              data.projectId,
+          projectId: data.projectId,
 
-            gitConnectionId:
-              data.gitConnectionId,
-          },
+          gitConnectionId: data.gitConnectionId,
+        },
 
-          select: {
-            id:
-              true,
+        select: {
+          id: true,
 
-            provider:
-              true,
+          provider: true,
 
-            externalId:
-              true,
+          externalId: true,
 
-            owner:
-              true,
+          owner: true,
 
-            name:
-              true,
+          name: true,
 
-            fullName:
-              true,
+          fullName: true,
 
-            defaultBranch:
-              true,
+          defaultBranch: true,
 
-            gitConnection: {
-              select: {
-                id:
-                  true,
+          gitConnection: {
+            select: {
+              id: true,
 
-                provider:
-                  true,
+              provider: true,
 
-                installationId:
-                  true,
+              installationId: true,
 
-                status:
-                  true,
-              },
+              status: true,
             },
           },
-        });
+        },
+      });
 
       if (!repository) {
-        throw new Error(
-          'Repository introuvable ou incohérent avec le job.',
-        );
+        throw new Error('Repository introuvable ou incohérent avec le job.');
       }
 
       if (
-        data.provider ===
-          'GITHUB' &&
-        !repository
-          .gitConnection
-          .installationId
+        data.provider === 'GITHUB' &&
+        !repository.gitConnection.installationId
       ) {
-        throw new Error(
-          "La connexion GitHub ne possède pas d'installationId.",
-        );
+        throw new Error("La connexion GitHub ne possède pas d'installationId.");
       }
 
-      await job.updateProgress(
-        10,
-      );
+      await job.updateProgress(10);
 
       /*
        * ------------------------------------------------
@@ -275,14 +169,9 @@ export class SecurityScanProcessor
        * ------------------------------------------------
        */
 
-      const state =
-        await this.stateResolver.resolve(
-          repository.id,
-        );
+      const state = await this.stateResolver.resolve(repository.id);
 
-      const fromSha =
-        data.fromSha ??
-        state.previousSuccessfulSha;
+      const fromSha = data.fromSha ?? state.previousSuccessfulSha;
 
       /*
        * ------------------------------------------------
@@ -290,34 +179,23 @@ export class SecurityScanProcessor
        * ------------------------------------------------
        */
 
-      const changeSet =
-        await this.changeSetResolver.resolve({
-          provider:
-            data.provider,
+      const changeSet = await this.changeSetResolver.resolve({
+        provider: data.provider,
 
-          repositoryId:
-            repository.id,
+        repositoryId: repository.id,
 
-          installationId:
-            repository
-              .gitConnection
-              .installationId,
+        installationId: repository.gitConnection.installationId,
 
-          owner:
-            repository.owner,
+        owner: repository.owner,
 
-          repositoryName:
-            repository.name,
+        repositoryName: repository.name,
 
-          fromSha,
+        fromSha,
 
-          toSha:
-            data.toSha,
-        });
+        toSha: data.toSha,
+      });
 
-      await job.updateProgress(
-        20,
-      );
+      await job.updateProgress(20);
 
       /*
        * ------------------------------------------------
@@ -325,89 +203,62 @@ export class SecurityScanProcessor
        * ------------------------------------------------
        */
 
-      const plan =
-        this.scannerCore.planScan(
-          changeSet,
-          {
-            requestedMode:
-              data.requestedMode,
-          },
-        );
+      const plan = this.scannerCore.planScan(changeSet, {
+        requestedMode: data.requestedMode,
+      });
 
-      const currentScan =
-        await this.prisma.scan.findUnique({
-          where: {
-            id:
-              data.scanId,
-          },
-          select: {
-            type: true,
-            configuration: true,
-          },
-        });
+      const currentScan = await this.prisma.scan.findUnique({
+        where: {
+          id: data.scanId,
+        },
+        select: {
+          type: true,
+          configuration: true,
+        },
+      });
 
       if (!currentScan) {
-        throw new Error(
-          `Scan ${data.scanId} introuvable.`,
-        );
+        throw new Error(`Scan ${data.scanId} introuvable.`);
       }
 
-      const existingConfiguration =
-        this.asJsonObject(
-          currentScan.configuration,
-        );
+      const existingConfiguration = this.asJsonObject(
+        currentScan.configuration,
+      );
 
       await this.prisma.scan.update({
         where: {
-          id:
-            data.scanId,
+          id: data.scanId,
         },
 
         data: {
-          type:
-            this.resolveBusinessScanType(
-              data.trigger,
-              plan.mode,
-            ),
+          type: this.resolveBusinessScanType(data.trigger, plan.mode),
 
-          status:
-            ScanStatus.PREPARING,
+          status: ScanStatus.PREPARING,
 
-          progress:
-            20,
+          progress: 20,
 
           configuration: {
             ...existingConfiguration,
 
-            requestedMode:
-              data.requestedMode,
+            requestedMode: data.requestedMode,
 
-            resolvedMode:
-              plan.mode,
+            resolvedMode: plan.mode,
 
-            scanners:
-              plan.scanners,
+            scanners: plan.scanners,
 
-            affectedFiles:
-              plan.affectedFiles,
+            affectedFiles: plan.affectedFiles,
 
-            deletedFiles:
-              plan.deletedFiles,
+            deletedFiles: plan.deletedFiles,
 
-            requiresProjectContext:
-              plan.requiresProjectContext,
+            requiresProjectContext: plan.requiresProjectContext,
 
-            reasons:
-              plan.reasons,
+            reasons: plan.reasons,
 
-            fromSha:
-              changeSet.fromSha,
+            fromSha: changeSet.fromSha,
 
-            toSha:
-              changeSet.toSha,
+            toSha: changeSet.toSha,
 
-            correlationId:
-              data.correlationId,
+            correlationId: data.correlationId,
           },
         },
       });
@@ -418,11 +269,7 @@ export class SecurityScanProcessor
        * ------------------------------------------------
        */
 
-      workspacePath =
-        await this.workspaceService
-          .createWorkspace(
-            data.scanId,
-          );
+      workspacePath = await this.workspaceService.createWorkspace(data.scanId);
 
       /*
        * ------------------------------------------------
@@ -432,70 +279,49 @@ export class SecurityScanProcessor
 
       await this.prisma.scan.update({
         where: {
-          id:
-            data.scanId,
+          id: data.scanId,
         },
 
         data: {
-          status:
-            ScanStatus.DOWNLOADING,
+          status: ScanStatus.DOWNLOADING,
 
-          progress:
-            25,
+          progress: 25,
         },
       });
 
-      await job.updateProgress(
-        25,
-      );
+      await job.updateProgress(25);
 
-      if (
-        data.provider !==
-        'GITHUB'
-      ) {
+      if (data.provider !== 'GITHUB') {
         throw new Error(
           `Téléchargement du provider ${data.provider} non encore implémenté.`,
         );
       }
 
-      const installationId =
-        repository
-          .gitConnection
-          .installationId;
+      const installationId = repository.gitConnection.installationId;
 
       if (!installationId) {
-        throw new Error(
-          'Installation GitHub absente.',
-        );
+        throw new Error('Installation GitHub absente.');
       }
 
       const downloadResult =
-        await this.downloadService
-          .downloadGithubRepository({
-            installationId,
+        await this.downloadService.downloadGithubRepository({
+          installationId,
 
-            owner:
-              repository.owner,
+          owner: repository.owner,
 
-            repositoryName:
-              repository.name,
+          repositoryName: repository.name,
 
-            /*
-             * Toujours privilégier le SHA exact.
-             */
-            ref:
-              data.toSha,
+          /*
+           * Toujours privilégier le SHA exact.
+           */
+          ref: data.toSha,
 
-            workspacePath,
-          });
+          workspacePath,
+        });
 
-      await this.assertNotCancelled(
-        data.scanId,
-      );
+      await this.assertNotCancelled(data.scanId);
 
-      await job.updateProgress(
-        35,
-      );
+      await job.updateProgress(35);
 
       /*
        * ------------------------------------------------
@@ -503,22 +329,15 @@ export class SecurityScanProcessor
        * ------------------------------------------------
        */
 
-      const extractedSourcePath =
-        await this.extractionService
-          .extractArchive({
-            archivePath:
-              downloadResult.archivePath,
+      const extractedSourcePath = await this.extractionService.extractArchive({
+        archivePath: downloadResult.archivePath,
 
-            workspacePath,
-          });
+        workspacePath,
+      });
 
-      await this.assertNotCancelled(
-        data.scanId,
-      );
+      await this.assertNotCancelled(data.scanId);
 
-      await job.updateProgress(
-        45,
-      );
+      await job.updateProgress(45);
 
       /*
        * ------------------------------------------------
@@ -528,61 +347,38 @@ export class SecurityScanProcessor
 
       await this.prisma.scan.update({
         where: {
-          id:
-            data.scanId,
+          id: data.scanId,
         },
 
         data: {
-          status:
-            ScanStatus.DETECTING,
+          status: ScanStatus.DETECTING,
 
-          progress:
-            45,
+          progress: 45,
         },
       });
 
-      const inventory =
-        await this.fileDiscovery.discover(
-            extractedSourcePath,
-          );
+      const inventory = await this.fileDiscovery.discover(extractedSourcePath);
 
-      await this.assertNotCancelled(
-        data.scanId,
-      );
+      await this.assertNotCancelled(data.scanId);
 
       const languageSummary =
-        this.repositoryLanguageSummary
-          .summarize(
-            inventory,
-          );
+        this.repositoryLanguageSummary.summarize(inventory);
 
       await this.prisma.repository.update({
         where: {
-          id:
-            repository.id,
+          id: repository.id,
         },
 
         data: {
-          primaryLanguage:
-            languageSummary
-              .primaryLanguage,
+          primaryLanguage: languageSummary.primaryLanguage,
         },
       });
 
-    const inventorySourceFiles =
-      inventory.files
-        .filter(
-          (file) =>
-            !file.isBinary &&
-            file.language !== null,
-        )
-        .map(
-          (file) =>
-            file.relativePath,
-        );
+      const inventorySourceFiles = inventory.files
+        .filter((file) => !file.isBinary && file.language !== null)
+        .map((file) => file.relativePath);
 
-    const dependencyFileNames =
-      new Set([
+      const dependencyFileNames = new Set([
         'package.json',
         'package-lock.json',
         'pnpm-lock.yaml',
@@ -606,116 +402,70 @@ export class SecurityScanProcessor
         'Cargo.lock',
       ]);
 
-    const inventoryDependencyFiles =
-      inventory.files
-        .filter(
-          (file) => {
-            if (file.isBinary) {
-              return false;
-            }
+      const inventoryDependencyFiles = inventory.files
+        .filter((file) => {
+          if (file.isBinary) {
+            return false;
+          }
 
-            const name =
-              file.relativePath
-                .split('/')
-                .at(-1);
+          const name = file.relativePath.split('/').at(-1);
 
-            return (
-              Boolean(name) &&
-              dependencyFileNames.has(
-                name!,
-              )
-            );
-          },
-        )
-        .map(
-          (file) =>
-            file.relativePath,
-        );
+          return Boolean(name) && dependencyFileNames.has(name!);
+        })
+        .map((file) => file.relativePath);
 
-    const inventoryConfigurationFiles =
-      inventory.files
-        .filter(
-          (file) => {
-            if (file.isBinary) {
-              return false;
-            }
+      const inventoryConfigurationFiles = inventory.files
+        .filter((file) => {
+          if (file.isBinary) {
+            return false;
+          }
 
-            const path =
-              file.relativePath
-                .toLowerCase();
+          const path = file.relativePath.toLowerCase();
 
-            return (
-              path.endsWith('.yml') ||
-              path.endsWith('.yaml') ||
-              path.endsWith('.json') ||
-              path.endsWith('.toml') ||
-              path.endsWith('.ini') ||
-              path.endsWith('.conf') ||
-              path.endsWith('.env.example')
-            );
-          },
-        )
-        .map(
-          (file) =>
-            file.relativePath,
-        );
+          return (
+            path.endsWith('.yml') ||
+            path.endsWith('.yaml') ||
+            path.endsWith('.json') ||
+            path.endsWith('.toml') ||
+            path.endsWith('.ini') ||
+            path.endsWith('.conf') ||
+            path.endsWith('.env.example')
+          );
+        })
+        .map((file) => file.relativePath);
 
-    const inventoryContainerFiles =
-      inventory.files
-        .filter(
-          (file) => {
-            if (file.isBinary) {
-              return false;
-            }
+      const inventoryContainerFiles = inventory.files
+        .filter((file) => {
+          if (file.isBinary) {
+            return false;
+          }
 
-            const name =
-              file.relativePath
-                .split('/')
-                .at(-1)
-                ?.toLowerCase();
+          const name = file.relativePath.split('/').at(-1)?.toLowerCase();
 
-            return (
-              name === 'dockerfile' ||
-              name?.startsWith('dockerfile.') ||
-              name === 'docker-compose.yml' ||
-              name === 'docker-compose.yaml' ||
-              name === 'compose.yml' ||
-              name === 'compose.yaml'
-            );
-          },
-        )
-        .map(
-          (file) =>
-            file.relativePath,
-        );
+          return (
+            name === 'dockerfile' ||
+            name?.startsWith('dockerfile.') ||
+            name === 'docker-compose.yml' ||
+            name === 'docker-compose.yaml' ||
+            name === 'compose.yml' ||
+            name === 'compose.yaml'
+          );
+        })
+        .map((file) => file.relativePath);
 
-    const inventoryCiCdFiles =
-      inventory.files
-        .filter(
-          (file) => {
-            if (file.isBinary) {
-              return false;
-            }
+      const inventoryCiCdFiles = inventory.files
+        .filter((file) => {
+          if (file.isBinary) {
+            return false;
+          }
 
-            const path =
-              file.relativePath
-                .replace(/\\/g, '/')
-                .toLowerCase();
+          const path = file.relativePath.replace(/\\/g, '/').toLowerCase();
 
-            return (
-              path.startsWith(
-                '.github/workflows/',
-              ) ||
-              path ===
-                '.gitlab-ci.yml'
-            );
-          },
-        )
-        .map(
-          (file) =>
-            file.relativePath,
-        );
-
+          return (
+            path.startsWith('.github/workflows/') || path === '.gitlab-ci.yml'
+          );
+        })
+        .map((file) => file.relativePath);
 
       /*
        * ------------------------------------------------
@@ -723,47 +473,23 @@ export class SecurityScanProcessor
        * ------------------------------------------------
        */
 
-      let scanFiles:
-        string[];
+      let scanFiles: string[];
 
-      if (
-        plan.mode ===
-        'FULL'
-      ) {
-        scanFiles =
-          inventory.files
-            .filter(
-              (file) =>
-                !file.isBinary,
-            )
-            .map(
-              (file) =>
-                file.relativePath,
-            );
+      if (plan.mode === 'FULL') {
+        scanFiles = inventory.files
+          .filter((file) => !file.isBinary)
+          .map((file) => file.relativePath);
       } else {
-        const affectedSet =
-          new Set(
-            plan.affectedFiles,
-          );
+        const affectedSet = new Set(plan.affectedFiles);
 
-        scanFiles =
-          inventory.files
-            .filter(
-              (file) =>
-                !file.isBinary &&
-                affectedSet.has(
-                  file.relativePath,
-                ),
-            )
-            .map(
-              (file) =>
-                file.relativePath,
-            );
+        scanFiles = inventory.files
+          .filter(
+            (file) => !file.isBinary && affectedSet.has(file.relativePath),
+          )
+          .map((file) => file.relativePath);
       }
 
-      await job.updateProgress(
-        55,
-      );
+      await job.updateProgress(55);
 
       /*
        * ------------------------------------------------
@@ -771,19 +497,14 @@ export class SecurityScanProcessor
        * ------------------------------------------------
        */
 
-      const scanContext:
-        ScanContext = {
-        organizationId:
-          data.organizationId,
+      const scanContext: ScanContext = {
+        organizationId: data.organizationId,
 
-        projectId:
-          data.projectId,
+        projectId: data.projectId,
 
-        repositoryId:
-          data.repositoryId,
+        repositoryId: data.repositoryId,
 
-        scanId:
-          data.scanId,
+        scanId: data.scanId,
 
         /*
          * Très important :
@@ -791,31 +512,22 @@ export class SecurityScanProcessor
          * pas racine contenant repository.zip.
          */
 
-        workspacePath:
-          extractedSourcePath,
+        workspacePath: extractedSourcePath,
 
-        mode:
-          plan.mode,
+        mode: plan.mode,
 
-        branch:
-          data.branch,
+        branch: data.branch,
 
-        commitSha:
-          data.toSha,
+        commitSha: data.toSha,
 
-        scannerProfile:
-          'DEFAULT',
+        scannerProfile: 'DEFAULT',
 
-        affectedFiles:
-          scanFiles,
+        affectedFiles: scanFiles,
 
-        deletedFiles:
-          plan.deletedFiles,
+        deletedFiles: plan.deletedFiles,
 
         sourceFiles:
-          plan.mode === 'FULL'
-            ? inventorySourceFiles
-            : plan.sourceFiles,
+          plan.mode === 'FULL' ? inventorySourceFiles : plan.sourceFiles,
 
         dependencyFiles:
           plan.mode === 'FULL'
@@ -828,20 +540,13 @@ export class SecurityScanProcessor
             : plan.configurationFiles,
 
         containerFiles:
-          plan.mode === 'FULL'
-            ? inventoryContainerFiles
-            : plan.containerFiles,
+          plan.mode === 'FULL' ? inventoryContainerFiles : plan.containerFiles,
 
-        ciCdFiles:
-          plan.mode === 'FULL'
-            ? inventoryCiCdFiles
-            : plan.ciCdFiles,
+        ciCdFiles: plan.mode === 'FULL' ? inventoryCiCdFiles : plan.ciCdFiles,
 
-        correlationId:
-          data.correlationId,
+        correlationId: data.correlationId,
 
-        fileInventory:
-          inventory,
+        fileInventory: inventory,
       };
 
       /*
@@ -852,316 +557,229 @@ export class SecurityScanProcessor
 
       await this.prisma.scan.update({
         where: {
-          id:
-            data.scanId,
+          id: data.scanId,
         },
 
         data: {
-          status:
-            ScanStatus.SCANNING,
+          status: ScanStatus.SCANNING,
 
-          progress:
-            60,
+          progress: 60,
         },
       });
 
-      await job.updateProgress(
-        60,
+      await job.updateProgress(60);
+
+      const scannerResults = await this.scannerRuntime.execute(
+        scanContext,
+        plan.scanners,
       );
 
-      const scannerResults =
-        await this.scannerRuntime.execute(
-            scanContext,
-            plan.scanners,
-          );
+      await this.assertNotCancelled(data.scanId);
 
-      await this.assertNotCancelled(
-        data.scanId,
-      );
-
-        if (
-          plan.scanners.length > 0 &&
-          scannerResults.length === 0
-        ) {
-          throw new Error(
-            'Aucun scanner compatible n’a été exécuté pour ce plan de scan.',
-          );
-        }
-
-      const executionSummary =
-        this.executionSummary.build(
-          scannerResults,
+      if (plan.scanners.length > 0 && scannerResults.length === 0) {
+        throw new Error(
+          'Aucun scanner compatible n’a été exécuté pour ce plan de scan.',
         );
+      }
 
-      if (
-        executionSummary.partial
-      ) {
-        const failedScannerIds =
-          executionSummary.scanners
-            .filter(
-              (scanner) =>
-                !scanner.success,
-            )
-            .map(
-              (scanner) =>
-                scanner.scannerId,
-            );
+      const executionSummary = this.executionSummary.build(scannerResults);
+
+      if (executionSummary.partial) {
+        const failedScannerIds = executionSummary.scanners
+          .filter((scanner) => !scanner.success)
+          .map((scanner) => scanner.scannerId);
 
         this.logger.warn(
           `Scan ${data.scanId} partiel : ` +
-          `${executionSummary.failedScanners} scanner(s) en échec` +
-          (
-            failedScannerIds.length > 0
+            `${executionSummary.failedScanners} scanner(s) en échec` +
+            (failedScannerIds.length > 0
               ? ` [${failedScannerIds.join(', ')}]`
-              : ''
-          ) +
-          '.',
+              : '') +
+            '.',
         );
       }
 
       await this.prisma.scan.update({
-      where: {
-        id:
-          data.scanId,
-      },
+        where: {
+          id: data.scanId,
+        },
 
-      data: {
-        status:
-          ScanStatus.PROCESSING_RESULTS,
+        data: {
+          status: ScanStatus.PROCESSING_RESULTS,
 
-        progress:
-          80,
-      },
-    });
+          progress: 80,
+        },
+      });
 
-    const successfulScannerResults =
-      scannerResults.filter(
-        (result) =>
-          result.success,
+      const successfulScannerResults = scannerResults.filter(
+        (result) => result.success,
       );
 
-    const normalizedFindings =
-      this.findingNormalizer.normalize(
-          data.repositoryId,
-          successfulScannerResults,
-        );
+      const normalizedFindings = this.findingNormalizer.normalize(
+        data.repositoryId,
+        successfulScannerResults,
+      );
 
-    const persistenceResult =
-      await this.findingPersistence.persist({
-          organizationId:
-            data.organizationId,
+      const persistenceResult = await this.findingPersistence.persist({
+        organizationId: data.organizationId,
 
-          projectId:
-            data.projectId,
+        projectId: data.projectId,
 
-          repositoryId:
-            data.repositoryId,
+        repositoryId: data.repositoryId,
 
-          scanId:
-            data.scanId,
+        scanId: data.scanId,
 
-          commitSha:
-            data.toSha,
+        commitSha: data.toSha,
 
-          findings:
-            normalizedFindings,
-        });
+        findings: normalizedFindings,
+      });
 
-    const reconciliationResult =
-      executionSummary.complete
+      const reconciliationResult = executionSummary.complete
         ? await this.findingReconciliation.reconcile({
-            repositoryId:
-              data.repositoryId,
+            repositoryId: data.repositoryId,
 
-            scanId:
-              data.scanId,
+            scanId: data.scanId,
 
-            mode:
-              plan.mode,
+            mode: plan.mode,
 
-            detectedFingerprints:
-              normalizedFindings.map(
-                (finding) =>
-                  finding.fingerprint,
-              ),
+            detectedFingerprints: normalizedFindings.map(
+              (finding) => finding.fingerprint,
+            ),
 
-            scannedFiles:
-              scanFiles,
+            scannedFiles: scanFiles,
 
-            deletedFiles:
-              plan.deletedFiles,
+            deletedFiles: plan.deletedFiles,
           })
         : {
             fixed: 0,
           };
 
-        await this.prisma.scan.update({
-          where: {
-            id:
-              data.scanId,
-          },
+      await this.prisma.scan.update({
+        where: {
+          id: data.scanId,
+        },
 
-          data: {
-            status:
-              ScanStatus.CALCULATING_SCORE,
+        data: {
+          status: ScanStatus.CALCULATING_SCORE,
 
-            progress:
-              94,
-          },
-        });
+          progress: 94,
+        },
+      });
 
-        const scoreResult =
-          await this.securityScore.calculate(
-              data.repositoryId,
-              executionSummary.complete,
-            );
+      const scoreResult = await this.securityScore.calculate(
+        data.repositoryId,
+        executionSummary.complete,
+      );
 
-        await job.updateProgress(
-          96,
-        );
+      const contextualRiskResult = await this.contextualRisk.assessScan({
+        organizationId: data.organizationId,
+        projectId: data.projectId,
+        repositoryId: data.repositoryId,
+        scanId: data.scanId,
+        branch: data.branch,
+      });
+
+      await job.updateProgress(96);
 
       this.logger.log(
         `Scan ${data.scanId} exécuté sur ${repository.fullName} : ` +
-        `${scannerResults.length} scanner(s), ` +
-        `${persistenceResult.total} finding(s).`,
+          `${scannerResults.length} scanner(s), ` +
+          `${persistenceResult.total} finding(s).`,
       );
 
-    const scanStatistics =
-      JSON.parse(
+      const scanStatistics = JSON.parse(
         JSON.stringify({
-          changedFileCount:
-            changeSet.changedFileCount,
+          changedFileCount: changeSet.changedFileCount,
 
-          scannersPlanned:
-            plan.scanners.length,
+          scannersPlanned: plan.scanners.length,
 
-          scannersExecuted:
-            scannerResults.length,
+          scannersExecuted: scannerResults.length,
 
-          successfulScanners:
-            executionSummary.successfulScanners,
+          successfulScanners: executionSummary.successfulScanners,
 
-          failedScanners:
-            executionSummary.failedScanners,
+          failedScanners: executionSummary.failedScanners,
 
-          partial:
-            executionSummary.partial,
+          partial: executionSummary.partial,
 
-          complete:
-            executionSummary.complete,
+          complete: executionSummary.complete,
 
-          scannerDurationMs:
-            executionSummary.totalDurationMs,
+          scannerDurationMs: executionSummary.totalDurationMs,
 
-          scannerExecution:
-            executionSummary.scanners,
+          scannerExecution: executionSummary.scanners,
 
-          affectedFileCount:
-            scanFiles.length,
+          affectedFileCount: scanFiles.length,
 
-          deletedFileCount:
-            plan.deletedFiles.length,
+          deletedFileCount: plan.deletedFiles.length,
 
-          inventoryFileCount:
-            inventory.totalFiles,
+          inventoryFileCount: inventory.totalFiles,
 
-          inventorySizeBytes:
-            inventory.totalSizeBytes,
+          inventorySizeBytes: inventory.totalSizeBytes,
 
-          skippedFiles:
-            inventory.skippedFiles,
+          skippedFiles: inventory.skippedFiles,
 
-          ignoredFiles:
-            inventory.ignoredFiles,
+          ignoredFiles: inventory.ignoredFiles,
 
-          archiveSizeBytes:
-            downloadResult.sizeBytes,
+          archiveSizeBytes: downloadResult.sizeBytes,
 
-          cacheHits:
-            executionSummary.cacheHits,
+          cacheHits: executionSummary.cacheHits,
 
-          cacheMisses:
-            executionSummary.cacheMisses,
+          cacheMisses: executionSummary.cacheMisses,
 
-          findingsCount:
-            persistenceResult.total,
+          findingsCount: persistenceResult.total,
 
-          newFindings:
-            persistenceResult.created,
+          newFindings: persistenceResult.created,
 
-          existingFindings:
-            persistenceResult.updated,
+          existingFindings: persistenceResult.updated,
 
-          reopenedFindings:
-            persistenceResult.reopened,
+          reopenedFindings: persistenceResult.reopened,
 
-          fixedFindings:
-            reconciliationResult.fixed,
+          fixedFindings: reconciliationResult.fixed,
 
-          activeCritical:
-            scoreResult.critical,
+          activeCritical: scoreResult.critical,
 
-          activeHigh:
-            scoreResult.high,
+          activeHigh: scoreResult.high,
 
-          activeMedium:
-            scoreResult.medium,
+          activeMedium: scoreResult.medium,
 
-          activeLow:
-            scoreResult.low,
+          activeLow: scoreResult.low,
 
-          activeInfo:
-            scoreResult.info,
+          activeInfo: scoreResult.info,
 
-          securityScore:
-            scoreResult.score,
+          securityScore: scoreResult.score,
 
-          securityScoreReliable:
-            scoreResult.reliable,
+          securityScoreReliable: scoreResult.reliable,
 
-          languages:
-            languageSummary.languages,
+          contextualRisksAssessed: contextualRiskResult.assessed,
 
-          primaryLanguage:
-            languageSummary.primaryLanguage,
+          attackPathsDetected: contextualRiskResult.attackPaths,
 
-          totalSourceFiles:
-            languageSummary.totalSourceFiles,
+          languages: languageSummary.languages,
 
-        coverage: {
-          secretScanner:
-          true,
+          primaryLanguage: languageSummary.primaryLanguage,
 
-          sastLanguages:
-            languageSummary.languages
-              .filter(
-                (item) =>
-                  [
-                    'JAVASCRIPT',
-                    'TYPESCRIPT',
-                    'PYTHON',
-                    'PHP',
-                    'JAVA',
-                  ].includes(
-                    item.language,
-                  ),
-              )
-              .map(
-                (item) =>
+          totalSourceFiles: languageSummary.totalSourceFiles,
+
+          coverage: {
+            secretScanner: true,
+
+            sastLanguages: languageSummary.languages
+              .filter((item) =>
+                ['JAVASCRIPT', 'TYPESCRIPT', 'PYTHON', 'PHP', 'JAVA'].includes(
                   item.language,
-              ),
+                ),
+              )
+              .map((item) => item.language),
           },
         }),
       ) as Prisma.InputJsonValue;
 
-    /*
-    * ------------------------------------------------
-    * 13. Finalisation
-    * ------------------------------------------------
-    */
+      /*
+       * ------------------------------------------------
+       * 13. Finalisation
+       * ------------------------------------------------
+       */
 
-    const notificationTarget =
-      await this.prisma.scan.findUnique({
+      const notificationTarget = await this.prisma.scan.findUnique({
         where: {
           id: data.scanId,
         },
@@ -1176,158 +794,102 @@ export class SecurityScanProcessor
         },
       });
 
+      await this.prisma.scan.update({
+        where: {
+          id: data.scanId,
+        },
 
-    await this.prisma.scan.update({
-      where: {
-        id:
-          data.scanId,
-      },
+        data: {
+          status: ScanStatus.COMPLETED,
 
-      data: {
-        status:
-          ScanStatus.COMPLETED,
+          progress: 100,
 
-        progress:
-          100,
+          completedAt: new Date(),
 
-        completedAt:
-          new Date(),
+          score: scoreResult.score,
 
-        score:
-          scoreResult.score,
+          statistics: scanStatistics,
+        },
+      });
 
-        statistics:
-          scanStatistics,
-      },
-    });
+      await this.notifyProjectMembers({
+        organizationId: data.organizationId,
+        projectId: notificationTarget?.projectId ?? data.projectId,
+        repositoryId: data.repositoryId,
+        repositoryName:
+          notificationTarget?.repository.fullName ?? repository.fullName,
+        scanId: data.scanId,
+        requestedById: notificationTarget?.requestedById ?? null,
+        trigger: data.trigger,
+        type: 'SCAN_COMPLETED',
+        score: scoreResult.score,
+      });
 
-    await this.notifyProjectMembers({
-      organizationId:
-        data.organizationId,
-      projectId:
-        notificationTarget?.projectId ??
-        data.projectId,
-      repositoryId:
-        data.repositoryId,
-      repositoryName:
-        notificationTarget?.repository.fullName ??
-        repository.fullName,
-      scanId:
-        data.scanId,
-      requestedById:
-        notificationTarget?.requestedById ??
-        null,
-      trigger:
-        data.trigger,
-      type:
-        'SCAN_COMPLETED',
-      score:
-        scoreResult.score,
-    });
-
-
-      await job.updateProgress(
-        100,
-      );
+      await job.updateProgress(100);
 
       this.logger.log(
         `Security scan ${data.scanId} terminé pour ${repository.fullName}.`,
       );
-    } catch (
-      error: unknown
-    ) {
+    } catch (error: unknown) {
       const message =
-        error instanceof Error
-          ? error.message
-          : 'Erreur inconnue du scan.';
+        error instanceof Error ? error.message : 'Erreur inconnue du scan.';
 
-      if (
-        message ===
-        'SCAN_CANCELLED'
-      ) {
-        this.logger.warn(
-          `Scan ${data.scanId} annulé.`,
-        );
+      if (message === 'SCAN_CANCELLED') {
+        this.logger.warn(`Scan ${data.scanId} annulé.`);
 
         return;
       }
 
       this.logger.error(
         `Échec du scan ${data.scanId}: ${message}`,
-        error instanceof Error
-          ? error.stack
-          : undefined,
+        error instanceof Error ? error.stack : undefined,
       );
 
-      await this.assertNotCancelled(
-        data.scanId,
-      );
+      await this.assertNotCancelled(data.scanId);
 
       await this.prisma.scan.updateMany({
         where: {
-          id:
-            data.scanId,
+          id: data.scanId,
 
-          repositoryId:
-            data.repositoryId,
+          repositoryId: data.repositoryId,
 
-          projectId:
-            data.projectId,
+          projectId: data.projectId,
         },
 
         data: {
-          status:
-            ScanStatus.FAILED,
+          status: ScanStatus.FAILED,
 
-          failedAt:
-            new Date(),
+          failedAt: new Date(),
 
-          errorMessage:
-            message.slice(
-              0,
-              2000,
-            ),
+          errorMessage: message.slice(0, 2000),
         },
       });
 
-      const failedTarget =
-        await this.prisma.scan.findUnique({
-          where: {
-            id: data.scanId,
-          },
-          select: {
-            requestedById: true,
-            projectId: true,
-            repository: {
-              select: {
-                fullName: true,
-              },
+      const failedTarget = await this.prisma.scan.findUnique({
+        where: {
+          id: data.scanId,
+        },
+        select: {
+          requestedById: true,
+          projectId: true,
+          repository: {
+            select: {
+              fullName: true,
             },
           },
-        });
+        },
+      });
 
       await this.notifyProjectMembers({
-        organizationId:
-          data.organizationId,
-        projectId:
-          failedTarget?.projectId ??
-          data.projectId,
-        repositoryId:
-          data.repositoryId,
-        repositoryName:
-          failedTarget?.repository.fullName ??
-          data.repositoryId,
-        scanId:
-          data.scanId,
-        requestedById:
-          failedTarget?.requestedById ??
-          null,
-        trigger:
-          data.trigger,
-        type:
-          'SCAN_FAILED',
-        errorMessage:
-          message,
+        organizationId: data.organizationId,
+        projectId: failedTarget?.projectId ?? data.projectId,
+        repositoryId: data.repositoryId,
+        repositoryName: failedTarget?.repository.fullName ?? data.repositoryId,
+        scanId: data.scanId,
+        requestedById: failedTarget?.requestedById ?? null,
+        trigger: data.trigger,
+        type: 'SCAN_FAILED',
+        errorMessage: message,
       });
 
       /*
@@ -1342,17 +904,10 @@ export class SecurityScanProcessor
        * ------------------------------------------------
        */
 
-      if (
-        workspacePath
-      ) {
+      if (workspacePath) {
         try {
-          await this.workspaceService
-            .cleanupWorkspace(
-              workspacePath,
-            );
-        } catch (
-          cleanupError: unknown
-        ) {
+          await this.workspaceService.cleanupWorkspace(workspacePath);
+        } catch (cleanupError: unknown) {
           /*
            * Un échec de cleanup ne doit pas
            * transformer un scan réussi en FAILED.
@@ -1361,9 +916,7 @@ export class SecurityScanProcessor
             `Impossible de nettoyer le workspace du scan ${data.scanId}.`,
             cleanupError instanceof Error
               ? cleanupError.stack
-              : String(
-                  cleanupError,
-                ),
+              : String(cleanupError),
           );
         }
       }
@@ -1374,46 +927,30 @@ export class SecurityScanProcessor
     scanId: string,
     job: Job<SecurityScanJobData>,
   ): Promise<void> {
-
     await this.prisma.scan.update({
       where: {
-        id:
-          scanId,
+        id: scanId,
       },
 
       data: {
-        status:
-          ScanStatus.PREPARING,
+        status: ScanStatus.PREPARING,
 
-        startedAt:
-          new Date(),
+        startedAt: new Date(),
 
-        progress:
-          1,
+        progress: 1,
 
-        queueJobId:
-          job.id
-            ? String(
-                job.id,
-              )
-            : null,
+        queueJobId: job.id ? String(job.id) : null,
 
-        errorMessage:
-          null,
+        errorMessage: null,
 
-        failedAt:
-          null,
+        failedAt: null,
       },
     });
   }
 
   private resolveBusinessScanType(
     trigger: SecurityScanJobData['trigger'],
-    mode:
-      | 'FULL'
-      | 'INCREMENTAL'
-      | 'PULL_REQUEST',
-
+    mode: 'FULL' | 'INCREMENTAL' | 'PULL_REQUEST',
   ): ScanType {
     if (trigger === 'MANUAL') {
       return ScanType.MANUAL_SCAN;
@@ -1434,133 +971,89 @@ export class SecurityScanProcessor
         : ScanType.INCREMENTAL_SCAN;
   }
 
-  private async notifyProjectMembers(
-    input: {
-      organizationId: string;
-      projectId: string;
-      repositoryId: string;
-      repositoryName: string;
-      scanId: string;
-      requestedById: string | null;
-      trigger: SecurityScanJobData['trigger'];
-      type:
-        | 'SCAN_COMPLETED'
-        | 'SCAN_FAILED';
-      score?: number;
-      errorMessage?: string;
-    },
-  ): Promise<void> {
+  private async notifyProjectMembers(input: {
+    organizationId: string;
+    projectId: string;
+    repositoryId: string;
+    repositoryName: string;
+    scanId: string;
+    requestedById: string | null;
+    trigger: SecurityScanJobData['trigger'];
+    type: 'SCAN_COMPLETED' | 'SCAN_FAILED';
+    score?: number;
+    errorMessage?: string;
+  }): Promise<void> {
     try {
-      const members =
-        await this.prisma.projectMember.findMany({
-          where: {
-            projectId:
-              input.projectId,
-            user: {
-              status:
-                'ACTIVE',
-            },
-            role: {
-              permissions: {
-                some: {
-                  permission: {
-                    code:
-                      'scan:read',
-                  },
+      const members = await this.prisma.projectMember.findMany({
+        where: {
+          projectId: input.projectId,
+          user: {
+            status: 'ACTIVE',
+          },
+          role: {
+            permissions: {
+              some: {
+                permission: {
+                  code: 'scan:read',
                 },
               },
             },
           },
-          select: {
-            userId:
-              true,
-          },
-        });
+        },
+        select: {
+          userId: true,
+        },
+      });
 
-      const recipients =
-        new Set(
-          members.map(
-            member =>
-              member.userId,
-          ),
-        );
+      const recipients = new Set(members.map((member) => member.userId));
 
       if (input.requestedById) {
-        recipients.add(
-          input.requestedById,
-        );
+        recipients.add(input.requestedById);
       }
 
       if (recipients.size === 0) {
         return;
       }
 
-      const triggerLabels:
-        Record<string, string> = {
-          MANUAL:
-            'manuel',
-          PUSH:
-            'après un push',
-          PULL_REQUEST:
-            'après une pull request',
-          RELEASE:
-            'de release',
-          SCHEDULED:
-            'programmé',
-          API:
-            'via API',
-        };
+      const triggerLabels: Record<string, string> = {
+        MANUAL: 'manuel',
+        PUSH: 'après un push',
+        PULL_REQUEST: 'après une pull request',
+        RELEASE: 'de release',
+        SCHEDULED: 'programmé',
+        API: 'via API',
+      };
 
-      const triggerLabel =
-        triggerLabels[input.trigger] ??
-        input.trigger;
+      const triggerLabel = triggerLabels[input.trigger] ?? input.trigger;
 
-      const completed =
-        input.type ===
-        'SCAN_COMPLETED';
+      const completed = input.type === 'SCAN_COMPLETED';
 
-      const title = completed
-        ? 'Scan terminé'
-        : 'Échec du scan';
+      const title = completed ? 'Scan terminé' : 'Échec du scan';
 
       const message = completed
         ? `Le scan ${triggerLabel} de ${input.repositoryName} est terminé avec un score de ${input.score ?? 0}/100.`
         : `Le scan ${triggerLabel} de ${input.repositoryName} a échoué : ${input.errorMessage ?? 'erreur inconnue'}`;
 
       await this.prisma.notification.createMany({
-        data: [
-          ...recipients,
-        ].map(
-          userId => ({
-            userId,
-            type:
-              input.type,
-            title,
-            message,
-            metadata: {
-              organizationId:
-                input.organizationId,
-              projectId:
-                input.projectId,
-              repositoryId:
-                input.repositoryId,
-              scanId:
-                input.scanId,
-              trigger:
-                input.trigger,
-              score:
-                input.score ??
-                null,
-            },
-          }),
-        ),
+        data: [...recipients].map((userId) => ({
+          userId,
+          type: input.type,
+          title,
+          message,
+          metadata: {
+            organizationId: input.organizationId,
+            projectId: input.projectId,
+            repositoryId: input.repositoryId,
+            scanId: input.scanId,
+            trigger: input.trigger,
+            score: input.score ?? null,
+          },
+        })),
       });
     } catch (error: unknown) {
       this.logger.error(
         `Le scan ${input.scanId} est finalisé, mais ses notifications n'ont pas pu être créées.`,
-        error instanceof Error
-          ? error.stack
-          : undefined,
+        error instanceof Error ? error.stack : undefined,
       );
     }
   }
@@ -1568,35 +1061,20 @@ export class SecurityScanProcessor
   private asJsonObject(
     value: Prisma.JsonValue | null,
   ): Record<string, Prisma.JsonValue> {
-    if (
-      !value ||
-      typeof value !== 'object' ||
-      Array.isArray(value)
-    ) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
       return {};
     }
 
     return value as Record<string, Prisma.JsonValue>;
   }
 
-  @OnWorkerEvent(
-    'completed',
-  )
-  onCompleted(
-    job:
-      Job<SecurityScanJobData>,
-  ): void {
-    this.logger.log(
-      `Security scan ${job.id ?? 'inconnu'} terminé.`,
-    );
+  @OnWorkerEvent('completed')
+  onCompleted(job: Job<SecurityScanJobData>): void {
+    this.logger.log(`Security scan ${job.id ?? 'inconnu'} terminé.`);
   }
-  @OnWorkerEvent(
-    'failed',
-  )
+  @OnWorkerEvent('failed')
   onFailed(
-    job:
-      Job<SecurityScanJobData> |
-      undefined,
+    job: Job<SecurityScanJobData> | undefined,
 
     error: Error,
   ): void {
@@ -1606,29 +1084,19 @@ export class SecurityScanProcessor
     );
   }
 
-  private async assertNotCancelled(
-    scanId: string,
-  ): Promise<void> {
-    const scan =
-      await this.prisma.scan.findUnique({
-        where: {
-          id:
-            scanId,
-        },
+  private async assertNotCancelled(scanId: string): Promise<void> {
+    const scan = await this.prisma.scan.findUnique({
+      where: {
+        id: scanId,
+      },
 
-        select: {
-          status:
-            true,
-        },
-      });
+      select: {
+        status: true,
+      },
+    });
 
-    if (
-      scan?.status ===
-      ScanStatus.CANCELLED
-    ) {
-      throw new Error(
-        'SCAN_CANCELLED',
-      );
+    if (scan?.status === ScanStatus.CANCELLED) {
+      throw new Error('SCAN_CANCELLED');
     }
   }
 }

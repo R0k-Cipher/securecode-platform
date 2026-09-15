@@ -116,7 +116,7 @@
         </div>
 
         <div class="score-value">
-          <strong> {{ d.summary.securityScore ?? "—" }} </strong>
+          <strong> {{ d.summary.securityScore ?? '—' }} </strong>
 
           <span> /100 </span>
         </div>
@@ -124,7 +124,7 @@
         <div class="kpi-footer">
           <span> Grade </span>
 
-          <strong> {{ d.summary.grade ?? "—" }} </strong>
+          <strong> {{ d.summary.grade ?? '—' }} </strong>
         </div>
       </article>
 
@@ -364,9 +364,9 @@
                   ></span>
                 </div>
 
-                <strong> {{ item.score ?? "—" }} </strong>
+                <strong> {{ item.score ?? '—' }} </strong>
 
-                <small> {{ item.createdAt | date: "dd/MM" }} </small>
+                <small> {{ item.createdAt | date: 'dd/MM' }} </small>
               </div>
             }
           </div>
@@ -408,7 +408,7 @@
               <strong> {{ item.count }} </strong>
 
               <small>
-                {{ item.count > 1 ? "findings" : "finding" }}
+                {{ item.count > 1 ? 'findings' : 'finding' }}
               </small>
             </article>
           }
@@ -442,11 +442,11 @@
           </div>
 
           <div class="wstg-overall">
-            <strong> {{ d.wstg?.score ?? "—" }} </strong>
+            <strong> {{ d.wstg?.score ?? '—' }} </strong>
 
             <span> /100 </span>
 
-            <small> Grade {{ d.wstg?.grade ?? "—" }} </small>
+            <small> Grade {{ d.wstg?.grade ?? '—' }} </small>
           </div>
         </header>
 
@@ -498,7 +498,7 @@
           <div class="performance-item">
             <span> Score moyen </span>
 
-            <strong> {{ d.scanPerformance?.averageScore ?? "—" }} </strong>
+            <strong> {{ d.scanPerformance?.averageScore ?? '—' }} </strong>
           </div>
 
           <div class="performance-item">
@@ -521,10 +521,10 @@
               [attr.data-trend]="d.scanPerformance?.trend ?? 'STABLE'"
             >
               @switch (d.scanPerformance?.trend) {
-                @case ("UP") {
+                @case ('UP') {
                   ↑ Hausse
                 }
-                @case ("DOWN") {
+                @case ('DOWN') {
                   ↓ Baisse
                 }
                 @default {
@@ -540,6 +540,80 @@
     <!-- ================================================= -->
     <!-- PRIORITY FINDINGS -->
     <!-- ================================================= -->
+
+    @if (intelligence(); as intel) {
+      <section class="dashboard-card">
+        <header class="card-header">
+          <div>
+            <span class="section-kicker"> SECURITY INTELLIGENCE </span>
+            <h2>Risque contextuel et chemins d’attaque</h2>
+            <p>
+              Priorisation explicable enrichie avec exploitabilité, exposition
+              et reachability.
+            </p>
+          </div>
+        </header>
+
+        <div class="performance-grid">
+          <div class="performance-item">
+            <span>Évalués</span
+            ><strong>{{ intel.summary.assessedFindings }}</strong>
+          </div>
+          <div class="performance-item">
+            <span>Exploités (KEV)</span
+            ><strong>{{ intel.summary.knownExploited }}</strong>
+          </div>
+          <div class="performance-item">
+            <span>Atteignables</span
+            ><strong>{{ intel.summary.reachable }}</strong>
+          </div>
+          <div class="performance-item">
+            <span>Chemins ouverts</span
+            ><strong>{{ intel.summary.openAttackPaths }}</strong>
+          </div>
+        </div>
+
+        @if (intel.attackPaths.length) {
+          <div class="findings-table">
+            <div class="table-heading">
+              <span>Sévérité</span><span>Chemin d’attaque</span
+              ><span>Repository</span><span>Score contextuel</span>
+            </div>
+            @for (path of intel.attackPaths; track path.id) {
+              <button
+                type="button"
+                class="finding-row"
+                (click)="openAttackPathFinding(path.findingIds)"
+              >
+                <span
+                  class="severity-badge"
+                  [attr.data-severity]="path.severity"
+                  >{{ path.severity }}</span
+                >
+                <span class="finding-title"
+                  ><strong>{{ path.title }}</strong
+                  ><small
+                    >{{ path.entryPoint }} → {{ path.targetAsset }}</small
+                  ></span
+                >
+                <span>{{
+                  path.repository.fullName || path.repository.name
+                }}</span>
+                <span class="scan-score">{{ path.score }}/100</span>
+              </button>
+            }
+          </div>
+        } @else {
+          <div class="empty-card-state compact">
+            <span class="empty-symbol success">✓</span>
+            <div>
+              <strong>Aucun chemin d’attaque corrélé</strong>
+              <p>Les corrélations apparaîtront après le prochain scan.</p>
+            </div>
+          </div>
+        }
+      </section>
+    }
 
     <section class="dashboard-card">
       <header class="card-header">
@@ -590,7 +664,7 @@
                 <strong> {{ finding.title }} </strong>
 
                 <small>
-                  {{ finding.filePath || "Emplacement non renseigné" }}
+                  {{ finding.filePath || 'Emplacement non renseigné' }}
                 </small>
               </span>
 
@@ -671,9 +745,9 @@
                 {{ scanStatusLabel(scan.status) }}
               </span>
 
-              <span class="scan-score"> {{ scan.score ?? "—" }} </span>
+              <span class="scan-score"> {{ scan.score ?? '—' }} </span>
 
-              <span> {{ scan.createdAt | date: "dd/MM/yyyy HH:mm" }} </span>
+              <span> {{ scan.createdAt | date: 'dd/MM/yyyy HH:mm' }} </span>
             </button>
           }
         </div>

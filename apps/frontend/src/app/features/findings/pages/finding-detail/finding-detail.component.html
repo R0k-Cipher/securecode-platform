@@ -1,94 +1,61 @@
-
 <section class="finding-page">
-
   <!-- =========================================================
        BACK
        ========================================================= -->
 
-  <button
-    type="button"
-    class="back-button"
-    (click)="back()"
-  >
+  <button type="button" class="back-button" (click)="back()">
     Retour aux findings
   </button>
-
 
   <!-- =========================================================
        ERROR
        ========================================================= -->
 
   @if (error()) {
-
     <div class="alert-error">
       {{ error() }}
     </div>
-
   }
-
 
   <!-- =========================================================
        LOADING
        ========================================================= -->
 
   @if (loading()) {
-
     <div class="loading-state">
-
       <span class="spinner"></span>
 
-      <span>
-        Chargement du finding...
-      </span>
-
+      <span> Chargement du finding... </span>
     </div>
-
   }
-
 
   <!-- =========================================================
        FINDING
        ========================================================= -->
 
   @else if (finding(); as item) {
-
     <!-- =======================================================
          HEADER
          ======================================================= -->
 
     <header class="finding-header">
-
       <div class="finding-heading">
-
         <div class="heading-badges">
-
           <!-- Severity -->
 
           <span
             class="severity"
-            [class]="
-              'severity ' +
-              severityClass(
-                item.severity
-              )
-            "
+            [class]="'severity ' + severityClass(item.severity)"
           >
             {{ item.severity }}
           </span>
 
-
           <!-- Status -->
 
           <span class="status-badge">
-            {{
-              statusLabel(
-                item.status
-              )
-            }}
+            {{ statusLabel(item.status) }}
           </span>
-
         </div>
-
 
         <!-- Title -->
 
@@ -96,11 +63,9 @@
           {{ item.title }}
         </h1>
 
-
         <!-- Metadata -->
 
         <div class="heading-meta">
-
           <span>
             {{ item.ruleId }}
           </span>
@@ -110,125 +75,135 @@
           </span>
 
           @if (item.cweId) {
-
             <span>
               {{ item.cweId }}
             </span>
-
           }
-
         </div>
-
       </div>
-
     </header>
-
 
     <!-- =======================================================
          LAYOUT
          ======================================================= -->
 
     <div class="finding-layout">
-
-
       <!-- =====================================================
            MAIN COLUMN
            ===================================================== -->
 
       <main class="main-column">
-
-
         <!-- ===================================================
              DESCRIPTION
              =================================================== -->
 
         <section class="card">
-
           <div class="card-header">
+            <span class="section-label"> DESCRIPTION </span>
 
-            <span class="section-label">
-              DESCRIPTION
-            </span>
-
-            <h2>
-              Vulnérabilité détectée
-            </h2>
-
+            <h2>Vulnérabilité détectée</h2>
           </div>
 
-
           <p class="description">
-
-            {{
-              item.description ||
-              'Aucune description détaillée disponible.'
-            }}
-
+            {{ item.description || 'Aucune description détaillée disponible.' }}
           </p>
-
         </section>
+
+        @if (riskAssessment(); as risk) {
+          <section class="card">
+            <div class="card-header">
+              <span class="section-label">SECURITY INTELLIGENCE</span>
+              <h2>Risque contextuel : {{ risk.contextualScore }}/100</h2>
+            </div>
+
+            <dl class="detail-list">
+              <div>
+                <dt>Priorité</dt>
+                <dd>{{ riskPriorityLabel(risk.priority) }}</dd>
+              </div>
+              <div>
+                <dt>Exploitée (CISA KEV)</dt>
+                <dd>{{ risk.knownExploited ? 'Oui' : 'Non détectée' }}</dd>
+              </div>
+              <div>
+                <dt>Reachability</dt>
+                <dd>
+                  {{
+                    risk.reachable === true
+                      ? 'Atteignable'
+                      : risk.reachable === false
+                        ? 'Non atteignable'
+                        : 'À confirmer'
+                  }}
+                </dd>
+              </div>
+              <div>
+                <dt>Exposition Internet</dt>
+                <dd>
+                  {{
+                    risk.internetExposed === true
+                      ? 'Probable'
+                      : risk.internetExposed === false
+                        ? 'Non'
+                        : 'À confirmer'
+                  }}
+                </dd>
+              </div>
+              <div>
+                <dt>EPSS</dt>
+                <dd>
+                  {{
+                    risk.epssScore === null
+                      ? 'Indisponible'
+                      : (risk.epssScore * 100 | number: '1.2-2') + '%'
+                  }}
+                </dd>
+              </div>
+              <div>
+                <dt>Confiance</dt>
+                <dd>{{ risk.confidence }}%</dd>
+              </div>
+            </dl>
+
+            <div class="description">
+              <strong>Justification explicable</strong>
+              <ul>
+                @for (reason of risk.explanation; track reason) {
+                  <li>{{ reason }}</li>
+                }
+              </ul>
+            </div>
+          </section>
+        }
 
         <!-- ===================================================
              ASSIGNMENT / REMEDIATION
              =================================================== -->
         @if (canAssignFinding() || currentAssignment()) {
           <section class="card">
-
             <div class="section-heading">
+              <span class="section-label"> REMEDIATION </span>
 
-              <span class="section-label">
-                REMEDIATION
-              </span>
-
-              <h2>
-                Affectation
-              </h2>
-
+              <h2>Affectation</h2>
             </div>
-
 
             <!-- =================================================
                 EXISTING ASSIGNMENT
                 ================================================= -->
 
-            @if (
-              currentAssignment();
-              as assignment
-            ) {
-
+            @if (currentAssignment(); as assignment) {
               <div class="assignment-user">
-
                 <div>
-
                   <strong>
+                    {{ assignment.assignedTo?.firstName }}
 
-                    {{
-                      assignment
-                        .assignedTo
-                        ?.firstName
-                    }}
-
-                    {{
-                      assignment
-                        .assignedTo
-                        ?.lastName
-                    }}
-
+                    {{ assignment.assignedTo?.lastName }}
                   </strong>
 
-
                   <small>
-
-                    {{
-                      assignment
-                        .assignedTo
-                        ?.email
-                    }}
-
+                    {{ assignment.assignedTo?.email }}
                   </small>
-
                 </div>
-
 
                 <!--
                   Only users having
@@ -237,7 +212,6 @@
                 -->
 
                 @if (canAssignFinding()) {
-
                   <button
                     type="button"
                     class="secondary-button"
@@ -246,11 +220,9 @@
                   >
                     Retirer
                   </button>
-
                 }
 
                 @if (canStartWork()) {
-
                   <button
                     type="button"
                     class="primary-button"
@@ -263,190 +235,118 @@
                         : 'Commencer la correction'
                     }}
                   </button>
-
                 }
 
                 @if (canSubmitForRetest()) {
-
                   <button
                     type="button"
                     class="primary-button"
                     [disabled]="updatingTask()"
                     (click)="submitForRetest()"
                   >
-                    {{
-                      updatingTask()
-                        ? 'Envoi...'
-                        : 'Soumettre au retest'
-                    }}
+                    {{ updatingTask() ? 'Envoi...' : 'Soumettre au retest' }}
                   </button>
-
                 }
-
               </div>
-
             }
-
 
             <!-- =================================================
                 NO ASSIGNMENT
                 ================================================= -->
 
             @else {
-
               <!--
                 Users without finding:assign
                 can only see the current state.
               -->
 
               @if (canAssignFinding()) {
-
-                <p>
-                  Ce finding n'est affecté
-                  à aucun membre.
-                </p>
-
+                <p>Ce finding n'est affecté à aucun membre.</p>
 
                 <!-- =============================================
                     MEMBER SELECT
                     ============================================= -->
 
-            <div class="assignment-form">
+                <div class="assignment-form">
+                  <label class="assignment-field">
+                    <span class="field-label"> Membre du projet </span>
 
-            <label class="assignment-field">
+                    <select
+                      [ngModel]="selectedMemberId()"
+                      (ngModelChange)="selectedMemberId.set($event)"
+                      [disabled]="membersLoading() || assigning()"
+                    >
+                      <option value="">
+                        {{
+                          membersLoading()
+                            ? 'Chargement des membres...'
+                            : 'Sélectionner un membre'
+                        }}
+                      </option>
 
-              <span class="field-label">
-                Membre du projet
-              </span>
+                      @for (member of members(); track member.id) {
+                        <option [value]="member.user.id">
+                          {{ member.user.firstName }}
 
-              <select
-                [ngModel]="selectedMemberId()"
-                (ngModelChange)="selectedMemberId.set($event)"
-                [disabled]="membersLoading() || assigning()"
-              >
+                          {{ member.user.lastName }}
 
-                <option value="">
-                  {{
-                    membersLoading()
-                      ? 'Chargement des membres...'
-                      : 'Sélectionner un membre'
-                  }}
-                </option>
+                          — {{ member.role.name }}
+                        </option>
+                      }
+                    </select>
+                  </label>
 
-                @for (
-                  member of members();
-                  track member.id
-                ) {
-
-                  <option
-                    [value]="member.user.id"
+                  <button
+                    type="button"
+                    class="primary-button"
+                    [disabled]="
+                      !selectedMemberId() || assigning() || membersLoading()
+                    "
+                    (click)="assignTo(selectedMemberId())"
                   >
-                    {{
-                      member.user.firstName
-                    }}
+                    {{ assigning() ? 'Affectation...' : 'Assigner la tâche' }}
+                  </button>
+                </div>
 
-                    {{
-                      member.user.lastName
-                    }}
-
-                    — {{ member.role.name }}
-                  </option>
-
+                @if (!membersLoading() && members().length === 0) {
+                  <p class="assignment-empty">
+                    Aucun membre actif n’est affecté à ce projet.
+                  </p>
                 }
-
-              </select>
-
-            </label>
-
-            <button
-              type="button"
-              class="primary-button"
-              [disabled]="
-                !selectedMemberId() ||
-                assigning() ||
-                membersLoading()
-              "
-              (click)="
-                assignTo(
-                  selectedMemberId()
-                )
-              "
-            >
-              {{
-                assigning()
-                  ? 'Affectation...'
-                  : 'Assigner la tâche'
-              }}
-            </button>
-
-          </div>
-
-          @if (
-            !membersLoading() &&
-            members().length === 0
-          ) {
-            <p class="assignment-empty">
-              Aucun membre actif n’est affecté à ce projet.
-            </p>
-          }
-
               }
-
 
               <!-- =============================================
                   READ ONLY
                   ============================================= -->
 
               @else {
-
-                <p>
-                  Ce finding n'est affecté
-                  à aucun membre.
-                </p>
-
+                <p>Ce finding n'est affecté à aucun membre.</p>
               }
-
             }
-
           </section>
         }
 
-        @if (
-          canValidateFinding() && item.status === 'READY_FOR_RETEST'
-        ) {
-
+        @if (canValidateFinding() && item.status === 'READY_FOR_RETEST') {
           <section class="card validation-card">
-
             <div class="section-heading">
+              <span class="section-label"> VALIDATION </span>
 
-              <span class="section-label">
-                VALIDATION
-              </span>
-
-              <h2>
-                Validation de la correction
-              </h2>
-
+              <h2>Validation de la correction</h2>
             </div>
 
             <p>
-              La personne assignée a signalé cette vulnérabilité
-              comme corrigée. Vérifiez la correction avant de la valider.
+              La personne assignée a signalé cette vulnérabilité comme corrigée.
+              Vérifiez la correction avant de la valider.
             </p>
 
             <div class="validation-actions">
-
               <button
                 type="button"
                 class="validate-button"
                 [disabled]="saving()"
                 (click)="validateFix()"
               >
-                {{
-                  saving()
-                    ? 'Validation...'
-                    : 'Valider la correction'
-                }}
+                {{ saving() ? 'Validation...' : 'Valider la correction' }}
               </button>
 
               <button
@@ -457,431 +357,230 @@
               >
                 Réouvrir la tâche
               </button>
-
             </div>
-
           </section>
-
         }
-
 
         <!-- ===================================================
              CODE LOCATION
              =================================================== -->
 
         <section class="card">
-
           <div class="card-header">
+            <span class="section-label"> LOCATION </span>
 
-            <span class="section-label">
-              LOCATION
-            </span>
-
-            <h2>
-              Emplacement dans le code
-            </h2>
-
+            <h2>Emplacement dans le code</h2>
           </div>
 
-
           <dl class="location-grid">
-
-
             <!-- File -->
 
             <div>
-
-              <dt>
-                Fichier
-              </dt>
+              <dt>Fichier</dt>
 
               <dd>
-
-                {{
-                  item.filePath ||
-                  'Finding global'
-                }}
-
+                {{ item.filePath || 'Finding global' }}
               </dd>
-
             </div>
-
 
             <!-- Start line -->
 
             <div>
-
-              <dt>
-                Ligne début
-              </dt>
+              <dt>Ligne début</dt>
 
               <dd>
-
-                {{
-                  item.startLine ??
-                  'N/A'
-                }}
-
+                {{ item.startLine ?? 'N/A' }}
               </dd>
-
             </div>
-
 
             <!-- Column -->
 
             <div>
-
-              <dt>
-                Colonne
-              </dt>
+              <dt>Colonne</dt>
 
               <dd>
-
-                {{
-                  item.startColumn ??
-                  'N/A'
-                }}
-
+                {{ item.startColumn ?? 'N/A' }}
               </dd>
-
             </div>
-
 
             <!-- End line -->
 
             <div>
-
-              <dt>
-                Ligne fin
-              </dt>
+              <dt>Ligne fin</dt>
 
               <dd>
-
-                {{
-                  item.endLine ??
-                  'N/A'
-                }}
-
+                {{ item.endLine ?? 'N/A' }}
               </dd>
-
             </div>
-
           </dl>
-
         </section>
-
-
 
         <!-- ===================================================
              SOURCE CODE
              =================================================== -->
 
         @if (item.codeSnippet) {
-
           <section class="card">
-
             <div class="card-header">
+              <span class="section-label"> SOURCE CODE </span>
 
-              <span class="section-label">
-                SOURCE CODE
-              </span>
-
-              <h2>
-                Code concerné
-              </h2>
-
+              <h2>Code concerné</h2>
             </div>
-
 
             <pre>
 <code>{{ item.codeSnippet }}</code>
             </pre>
-
           </section>
-
         }
-
-
 
         <!-- ===================================================
              RECOMMENDATION
              =================================================== -->
 
-          <section class="card recommendation-card">
+        <section class="card recommendation-card">
+          <div class="card-header">
+            <span class="section-label"> REMEDIATION </span>
 
-            <div class="card-header">
+            <h2>Recommandation</h2>
+          </div>
 
-              <span class="section-label">
-                REMEDIATION
-              </span>
-
-              <h2>
-                Recommandation
-              </h2>
-
-            </div>
-
-
-            <p>
-
-              {{
-                item.recommendation ||
+          <p>
+            {{
+              item.recommendation ||
                 'Aucune recommandation disponible pour ce finding.'
-              }}
-
-            </p>
-
-          </section>
-
+            }}
+          </p>
+        </section>
       </main>
-
-
 
       <!-- =====================================================
            SIDE COLUMN
            ===================================================== -->
 
       <aside class="side-column">
-
-
         <!-- ===================================================
              CLASSIFICATION
              =================================================== -->
 
         <section class="card">
-
           <div class="card-header">
+            <span class="section-label"> CLASSIFICATION </span>
 
-            <span class="section-label">
-              CLASSIFICATION
-            </span>
-
-            <h2>
-              Références sécurité
-            </h2>
-
+            <h2>Références sécurité</h2>
           </div>
 
-
           <dl class="detail-list">
-
-
             <!-- Severity -->
 
             <div>
-
-              <dt>
-                Sévérité
-              </dt>
+              <dt>Sévérité</dt>
 
               <dd>
-
                 <span
                   class="severity"
-                  [class]="
-                    'severity ' +
-                    severityClass(
-                      item.severity
-                    )
-                  "
+                  [class]="'severity ' + severityClass(item.severity)"
                 >
                   {{ item.severity }}
                 </span>
-
               </dd>
-
             </div>
-
 
             <!-- CWE -->
 
             <div>
-
-              <dt>
-                CWE
-              </dt>
+              <dt>CWE</dt>
 
               <dd>
-
-                {{
-                  item.cweId ||
-                  'N/A'
-                }}
-
+                {{ item.cweId || 'N/A' }}
               </dd>
-
             </div>
-
 
             <!-- OWASP -->
 
             <div>
-
-              <dt>
-                OWASP
-              </dt>
+              <dt>OWASP</dt>
 
               <dd>
-
-                {{
-                  item.owaspCategory ||
-                  'N/A'
-                }}
-
+                {{ item.owaspCategory || 'N/A' }}
               </dd>
-
             </div>
-
 
             <!-- Category -->
 
             <div>
-
-              <dt>
-                Catégorie
-              </dt>
+              <dt>Catégorie</dt>
 
               <dd>
-
-                {{
-                  item.category ||
-                  'N/A'
-                }}
-
+                {{ item.category || 'N/A' }}
               </dd>
-
             </div>
-
 
             <!-- Confidence -->
 
             <div>
-
-              <dt>
-                Confiance
-              </dt>
+              <dt>Confiance</dt>
 
               <dd>
-
-                {{
-                  item.confidence ??
-                  'N/A'
-                }}
-
+                {{ item.confidence ?? 'N/A' }}
               </dd>
-
             </div>
-
           </dl>
-
         </section>
-
-
 
         <!-- ===================================================
              CONTEXT
              =================================================== -->
 
         <section class="card">
-
           <div class="card-header">
+            <span class="section-label"> CONTEXT </span>
 
-            <span class="section-label">
-              CONTEXT
-            </span>
-
-            <h2>
-              Analyse associée
-            </h2>
-
+            <h2>Analyse associée</h2>
           </div>
-
 
           <!-- =================================================
                REPOSITORY
                ================================================= -->
 
           @if (canReadRepository()) {
-
             <button
               type="button"
               class="context-button"
               (click)="openRepository()"
             >
-
-              <span>
-                Repository
-              </span>
+              <span> Repository </span>
 
               <strong>
-
-                {{
-                  item.repository
-                    .fullName
-                }}
-
+                {{ item.repository.fullName }}
               </strong>
-
             </button>
-
           }
-
-
 
           <!-- =================================================
                SCAN
                ================================================= -->
 
           @if (canReadScan()) {
-
-            <button
-              type="button"
-              class="context-button"
-              (click)="openScan()"
-            >
-
-              <span>
-                Scan
-              </span>
+            <button type="button" class="context-button" (click)="openScan()">
+              <span> Scan </span>
 
               <strong>
-
-                {{
-                  item.scan.id
-                    .slice(
-                      0,
-                      8
-                    )
-                }}
-
+                {{ item.scan.id.slice(0, 8) }}
               </strong>
-
             </button>
-
           }
-
         </section>
-
-
 
         <!-- ===================================================
              WORKFLOW
              =================================================== -->
 
         <section class="card">
-
           <div class="card-header">
+            <span class="section-label"> WORKFLOW </span>
 
-            <span class="section-label">
-              WORKFLOW
-            </span>
-
-            <h2>
-              Traitement du finding
-            </h2>
-
+            <h2>Traitement du finding</h2>
           </div>
-
 
           <!-- =================================================
                EDIT MODE
@@ -889,73 +588,36 @@
                ================================================= -->
 
           @if (canUpdateFinding()) {
-
-
             <!-- ===============================================
                  STATUS
                  =============================================== -->
 
             <label class="form-field">
+              <span> Nouveau statut </span>
 
-              <span>
-                Nouveau statut
-              </span>
-
-
-              <select
-                [(ngModel)]="
-                  selectedStatus
-                "
-              >
-
-                @for (
-                  status of statuses;
-                  track status
-                ) {
-
-                  <option
-                    [ngValue]="status"
-                  >
-
-                    {{
-                      statusLabel(
-                        status
-                      )
-                    }}
-
+              <select [(ngModel)]="selectedStatus">
+                @for (status of statuses; track status) {
+                  <option [ngValue]="status">
+                    {{ statusLabel(status) }}
                   </option>
-
                 }
-
               </select>
-
             </label>
-
-
 
             <!-- ===============================================
                  COMMENT
                  =============================================== -->
 
             <label class="form-field">
-
-              <span>
-                Commentaire
-              </span>
-
+              <span> Commentaire </span>
 
               <textarea
-                [(ngModel)]="
-                  comment
-                "
+                [(ngModel)]="comment"
                 rows="4"
                 maxlength="2000"
                 placeholder="Commentaire facultatif..."
               ></textarea>
-
             </label>
-
-
 
             <!-- ===============================================
                  SAVE
@@ -965,154 +627,75 @@
               type="button"
               class="save-button"
               (click)="saveStatus()"
-              [disabled]="
-                saving() ||
-                selectedStatus ===
-                  item.status
-              "
+              [disabled]="saving() || selectedStatus === item.status"
             >
-
-              {{
-                saving()
-                  ? 'Enregistrement...'
-                  : 'Mettre à jour'
-              }}
-
+              {{ saving() ? 'Enregistrement...' : 'Mettre à jour' }}
             </button>
-
           }
-
 
           <!-- =================================================
                READ ONLY MODE
                ================================================= -->
 
           @else {
-
             <dl class="detail-list">
-
               <div>
-
-                <dt>
-                  Statut actuel
-                </dt>
+                <dt>Statut actuel</dt>
 
                 <dd>
-
-                  {{
-                    statusLabel(
-                      item.status
-                    )
-                  }}
-
+                  {{ statusLabel(item.status) }}
                 </dd>
-
               </div>
-
             </dl>
-
           }
-
         </section>
-
-
 
         <!-- ===================================================
              HISTORY
              =================================================== -->
 
         <section class="card timeline-card">
-
           <div class="card-header">
+            <span class="section-label"> HISTORY </span>
 
-            <span class="section-label">
-              HISTORY
-            </span>
-
-            <h2>
-              Détection
-            </h2>
-
+            <h2>Détection</h2>
           </div>
 
-
           <dl class="detail-list">
-
-
             <!-- First detection -->
 
             <div>
-
-              <dt>
-                Première détection
-              </dt>
+              <dt>Première détection</dt>
 
               <dd>
-
-                {{
-                  item.firstDetectedAt
-                    | date:
-                      'dd/MM/yyyy HH:mm'
-                }}
-
+                {{ item.firstDetectedAt | date: 'dd/MM/yyyy HH:mm' }}
               </dd>
-
             </div>
-
 
             <!-- Last detection -->
 
             <div>
-
-              <dt>
-                Dernière détection
-              </dt>
+              <dt>Dernière détection</dt>
 
               <dd>
-
-                {{
-                  item.lastDetectedAt
-                    | date:
-                      'dd/MM/yyyy HH:mm'
-                }}
-
+                {{ item.lastDetectedAt | date: 'dd/MM/yyyy HH:mm' }}
               </dd>
-
             </div>
-
 
             <!-- Resolution -->
 
             @if (item.resolvedAt) {
-
               <div>
-
-                <dt>
-                  Résolution
-                </dt>
+                <dt>Résolution</dt>
 
                 <dd>
-
-                  {{
-                    item.resolvedAt
-                      | date:
-                        'dd/MM/yyyy HH:mm'
-                  }}
-
+                  {{ item.resolvedAt | date: 'dd/MM/yyyy HH:mm' }}
                 </dd>
-
               </div>
-
             }
-
           </dl>
-
         </section>
-
       </aside>
-
     </div>
-
   }
-
 </section>

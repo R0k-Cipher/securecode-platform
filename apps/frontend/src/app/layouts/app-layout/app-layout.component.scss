@@ -79,13 +79,26 @@
   display: flex;
   align-items: center;
 
-  gap: 12px;
-
   width: 100%;
+  height: 52px;
+
+  overflow: hidden;
 
   color: white;
 
   text-decoration: none;
+}
+
+.product-logo {
+  display: block;
+
+  width: 110px;
+  height: 110px;
+
+  margin-top: 0px;
+
+  object-fit: contain;
+  object-position: center;
 }
 
 .brand-symbol {
@@ -543,10 +556,10 @@
 }
 
 .logout-button {
-  width: 100%;
+  width: 10%;
 
   padding:
-    8px 10px;
+    2px 2px;
 
   border:
     1px solid

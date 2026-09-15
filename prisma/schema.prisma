@@ -420,7 +420,9 @@ model Organization {
   scannerFileCaches          ScannerFileCache[]
   githubInstallationPendings GithubInstallationPending[]
 
-  auditLogs AuditLog[]
+  auditLogs       AuditLog[]
+  riskAssessments RiskAssessment[]
+  attackPaths     AttackPath[]
 
   @@index([createdById])
   @@index([createdAt])
@@ -548,6 +550,8 @@ model Project {
   scanSchedules   ScanSchedule[]
   reports         Report[]
   auditLogs       AuditLog[]
+  riskAssessments RiskAssessment[]
+  attackPaths     AttackPath[]
 
   githubInstallationPendings GithubInstallationPending[]
   invitationAssignments      InvitationProjectAssignment[]
@@ -683,6 +687,8 @@ model Repository {
   webhookEvents     WebhookEvent[]
   scans             Scan[]
   findings          Finding[]
+  riskAssessments   RiskAssessment[]
+  attackPaths       AttackPath[]
 
   @@unique([gitConnectionId, externalId])
   @@unique([projectId, fullName])
@@ -863,16 +869,18 @@ model Scan {
   createdAt     DateTime    @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime    @updatedAt @db.Timestamptz(6)
 
-  project      Project             @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  repository   Repository          @relation(fields: [repositoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  commit       Commit?             @relation(fields: [commitId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  pullRequest  PullRequest?        @relation(fields: [pullRequestId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  release      Release?            @relation(fields: [releaseId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  requestedBy  User?               @relation("ScanRequester", fields: [requestedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  technologies ScanTechnology[]
-  findings     Finding[]
-  occurrences  FindingOccurrence[]
-  reports      Report[]
+  project         Project             @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  repository      Repository          @relation(fields: [repositoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  commit          Commit?             @relation(fields: [commitId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  pullRequest     PullRequest?        @relation(fields: [pullRequestId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  release         Release?            @relation(fields: [releaseId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  requestedBy     User?               @relation("ScanRequester", fields: [requestedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  technologies    ScanTechnology[]
+  findings        Finding[]
+  occurrences     FindingOccurrence[]
+  reports         Report[]
+  riskAssessments RiskAssessment[]
+  attackPaths     AttackPath[]
 
   @@index([projectId, status])
   @@index([repositoryId, createdAt])
@@ -1005,6 +1013,7 @@ model Finding {
   assignments            FindingAssignment[]
   vulnerabilityRelations VulnerabilityFinding[]
   wstgControls           FindingWstgControl[]
+  riskAssessment         RiskAssessment?
 
   @@unique([repositoryId, fingerprint])
   @@index([scanId])
@@ -1014,6 +1023,79 @@ model Finding {
   @@index([cweId])
   @@index([owaspCategory])
   @@map("findings")
+}
+
+// ============================================================================
+// CONTEXTUAL RISK AND ATTACK PATHS
+// ============================================================================
+
+model RiskAssessment {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
+  projectId        String   @db.Uuid
+  repositoryId     String   @db.Uuid
+  scanId           String   @db.Uuid
+  findingId        String   @unique @db.Uuid
+  contextualScore  Decimal  @db.Decimal(5, 2)
+  priority         String   @db.VarChar(30)
+  epssScore        Decimal? @db.Decimal(6, 5)
+  knownExploited   Boolean  @default(false)
+  reachable        Boolean?
+  internetExposed  Boolean?
+  assetCriticality Int
+  confidence       Decimal  @db.Decimal(5, 2)
+  factors          Json
+  explanation      Json
+  evidence         Json?
+  engineVersion    String   @db.VarChar(30)
+  calculatedAt     DateTime @default(now()) @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  scan         Scan         @relation(fields: [scanId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  finding      Finding      @relation(fields: [findingId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([organizationId, projectId])
+  @@index([projectId, priority, contextualScore])
+  @@index([repositoryId, contextualScore])
+  @@index([scanId])
+  @@index([knownExploited])
+  @@map("risk_assessments")
+}
+
+model AttackPath {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @db.Uuid
+  projectId      String          @db.Uuid
+  repositoryId   String          @db.Uuid
+  scanId         String          @db.Uuid
+  title          String          @db.VarChar(500)
+  severity       FindingSeverity
+  score          Decimal         @db.Decimal(5, 2)
+  status         String          @default("OPEN") @db.VarChar(30)
+  entryPoint     String?         @db.Text
+  targetAsset    String?         @db.Text
+  findingIds     Json
+  graph          Json
+  evidence       Json
+  detectedAt     DateTime        @default(now()) @db.Timestamptz(6)
+  resolvedAt     DateTime?       @db.Timestamptz(6)
+  createdAt      DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  scan         Scan         @relation(fields: [scanId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([organizationId, projectId])
+  @@index([projectId, status, score])
+  @@index([repositoryId, status])
+  @@index([scanId])
+  @@map("attack_paths")
 }
 
 model FindingOccurrence {

@@ -58,6 +58,8 @@ import {
   HealthModule,
 } from './health/health.module';
 
+import { SecurityIntelligenceModule } from '../modules/AI-Engine/security-intelligence.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -96,11 +98,12 @@ import {
     FindingsModule,
     SecurityDashboardModule,
     PlatformAdminModule,
-    
+
     EmailModule,
     NotificationsModule,
     ReportsModule,
     InvitationsModule,
+    SecurityIntelligenceModule,
   ],
 })
 export class AppModule {}
