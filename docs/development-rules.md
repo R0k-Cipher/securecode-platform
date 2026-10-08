@@ -1,4 +1,4 @@
-# SecureCode-AI — Règles de développement
+# SecureCode — Règles de développement
 
 1. Aucun contrôleur ne contient de logique métier.
 2. Aucun scanner ne communique directement avec Prisma.

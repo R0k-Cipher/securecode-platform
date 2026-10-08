@@ -118,32 +118,45 @@ export class EmailService {
       };
     }
 
-    const result =
-      await this.transporter
-        .sendMail({
-          from:
-            this.from,
-
-          to:
-            input.to,
-
-          subject:
-            input.subject,
-
-          html:
-            input.html,
-
-          text:
-            input.text,
+    try {
+      const result =
+        await this.transporter.sendMail({
+          from: this.from,
+          to: input.to,
+          subject: input.subject,
+          html: input.html,
+          text: input.text,
         });
 
-    return {
-      sent: true,
+      this.logger.log(
+        `Email envoyé avec succès à ${input.to}`,
+      );
 
-      messageId:
-        result.messageId ??
-        null,
-    };
+      return {
+        sent: true,
+        messageId: result.messageId ?? null,
+      };
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : String(error);
+
+      const stack =
+        error instanceof Error
+          ? error.stack
+          : undefined;
+
+      this.logger.error(
+        `Échec SMTP pour ${input.to}: ${message}`,
+        stack,
+      );
+
+      return {
+        sent: false,
+        messageId: null,
+      };
+    }
   }
 
   async sendOrganizationInvitation(
